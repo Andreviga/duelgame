@@ -1,5 +1,5 @@
 import type Phaser from "phaser";
-import type { Arena, Lutador } from "../sim/combate/tipos";
+import type { Arena, Lutador, Mundo, Papel } from "../sim/combate/tipos";
 import { misturar } from "./efeitos";
 
 /** Uma cor por jogador: azul, laranja, verde e roxo. */
@@ -16,6 +16,53 @@ function corEscuraDoJogador(jogador: number): number {
 export const NOMES = ["AZUL", "LARANJA"] as const;
 
 type G = Phaser.GameObjects.Graphics;
+
+/** Cor de cada mundo, usada no emblema do personagem e nas cartas. */
+export const COR_DO_MUNDO: Readonly<Record<Mundo, number>> = {
+  futebol: 0xf2c94c,
+  piratas: 0x56b6c2,
+  monstros: 0xf2713d,
+  dojo: 0xe05a6d,
+};
+export const NOME_DO_MUNDO: Readonly<Record<Mundo, string>> = {
+  futebol: "Futebol",
+  piratas: "Piratas",
+  monstros: "Monstros",
+  dojo: "Dojo",
+};
+export const NOME_DO_PAPEL: Readonly<Record<Papel, string>> = {
+  corpo: "Corpo a corpo",
+  distancia: "À distância",
+  tanque: "Tanque",
+  assassino: "Assassino",
+};
+
+/**
+ * Emblema do mundo (cabe em ~14 px): bola para o Futebol, caveira-xis para os Piratas,
+ * chifres para os Monstros e faixa com nó para o Dojo.
+ */
+export function desenharEmblema(g: G, mundo: Mundo, x: number, y: number, escala = 1): void {
+  const cor = COR_DO_MUNDO[mundo];
+  const r = 7 * escala;
+  g.fillStyle(0x0b0f16, 0.85);
+  g.fillCircle(x, y, r + 2 * escala);
+  g.fillStyle(cor, 1);
+  if (mundo === "futebol") {
+    g.fillCircle(x, y, r);
+    g.fillStyle(0x0b0f16, 0.9);
+    g.fillCircle(x, y, r * 0.38);
+  } else if (mundo === "piratas") {
+    g.lineStyle(3.2 * escala, cor, 1);
+    g.lineBetween(x - r * 0.75, y - r * 0.75, x + r * 0.75, y + r * 0.75);
+    g.lineBetween(x - r * 0.75, y + r * 0.75, x + r * 0.75, y - r * 0.75);
+  } else if (mundo === "monstros") {
+    g.fillTriangle(x - r, y + r * 0.7, x - r * 0.1, y + r * 0.7, x - r * 0.75, y - r);
+    g.fillTriangle(x + r, y + r * 0.7, x + r * 0.1, y + r * 0.7, x + r * 0.75, y - r);
+  } else {
+    g.fillRect(x - r, y - r * 0.32, r * 2, r * 0.64);
+    g.fillCircle(x, y, r * 0.5);
+  }
+}
 
 const LARGURA = 1200;
 const ALTURA = 675;
@@ -43,7 +90,7 @@ export function desenharCorpo(g: G, l: Readonly<Lutador>, brilho: number): void 
       : l.atordoado > 0
         ? misturar(base, 0xffffff, 0.25)
         : base;
-  const arq = l.def.arquetipo;
+  const arq = l.def.papel;
   const raio = arq === "tanque" ? 6 : 10;
   const borda = arq === "tanque" ? 6 : 3;
 
@@ -81,6 +128,8 @@ export function desenharCorpo(g: G, l: Readonly<Lutador>, brilho: number): void 
     g.fillStyle(cor, 1);
     g.fillTriangle(ox - w / 2 + 2, -h / 2 + 8, ox + w / 2 - 2, -h / 2 + 8, ox - d * 4, -h / 2 - 14);
   }
+
+  desenharEmblema(g, l.def.mundo, ox - d * (w * 0.18), h / 2 - 16, arq === "tanque" ? 1.15 : 0.9);
 
   // Olhos: visor para o atirador, olho para os outros; X quando atordoado.
   const olhoX = ox + d * (w * 0.22);
@@ -136,14 +185,14 @@ export function desenharCorpo(g: G, l: Readonly<Lutador>, brilho: number): void 
 }
 
 /** Miniatura do arquétipo para o placar (cabe em um quadrado de ~22 px). */
-export function desenharIcone(g: G, arquetipo: string, x: number, y: number, cor: number): void {
+export function desenharIcone(g: G, papel: string, x: number, y: number, cor: number): void {
   g.fillStyle(cor, 1);
-  if (arquetipo === "tanque") {
+  if (papel === "tanque") {
     g.fillRoundedRect(x - 12, y - 10, 24, 20, 3);
-  } else if (arquetipo === "distancia") {
+  } else if (papel === "distancia") {
     g.fillRoundedRect(x - 7, y - 11, 14, 22, 4);
     g.fillRect(x + 5, y - 2, 9, 5);
-  } else if (arquetipo === "assassino") {
+  } else if (papel === "assassino") {
     g.fillRoundedRect(x - 7, y - 5, 14, 16, 4);
     g.fillTriangle(x - 9, y - 4, x + 9, y - 4, x, y - 15);
   } else {

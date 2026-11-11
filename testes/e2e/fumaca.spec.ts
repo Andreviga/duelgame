@@ -24,7 +24,7 @@ const cena = (page: Page, nome: string, timeout = 10_000) =>
   page.waitForSelector(`body[data-cena="${nome}"]`, { timeout });
 
 test("do menu ao combate: escolhe o modo, compra, posiciona, vende e luta", async ({ page }) => {
-  const erros = await abrir(page, "/?semente=3");
+  const erros = await abrir(page, "/?semente=3&arena=arena-basica");
   await cena(page, "inicial");
   await page.mouse.click(450, 477); // dificuldade: fácil
   await page.mouse.click(600, 583); // jogar

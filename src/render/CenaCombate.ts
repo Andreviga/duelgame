@@ -1,8 +1,9 @@
 import Phaser from "phaser";
-import { ARENA_BASICA, CONTEXTO, espelhar, FORMACOES } from "../dados";
+import { ARENAS, CONTEXTO, espelhar, FORMACOES } from "../dados";
 import { TICKS_POR_SEGUNDO } from "../sim/constantes";
 import { criarCombate, stepCombate, TICKS_MAXIMOS } from "../sim/combate/combate";
-import type { EstadoCombate, Lado } from "../sim/combate/tipos";
+import type { Arena, EstadoCombate, Lado } from "../sim/combate/tipos";
+import { sinergiasDoJogador } from "../sim/economia/economia";
 import { avancarLaco, type Laco } from "../sim/laco";
 import { esquadroesDoConfronto } from "../sim/partida/partida";
 import type { Confronto, EstadoPartida, ResultadoConfronto } from "../sim/partida/tipos";
@@ -15,7 +16,7 @@ import {
   desenharPinos,
 } from "./desenho";
 import { Efeitos, misturar } from "./efeitos";
-import { avancarRodada, confrontoParaAssistir, HUMANO, jogo } from "./jogo";
+import { arenaAtual, avancarRodada, confrontoParaAssistir, HUMANO, jogo } from "./jogo";
 
 const LARGURA = 1200;
 const ALTURA = 675;
@@ -77,6 +78,10 @@ export class CenaCombate extends Phaser.Scene {
   private textoSub!: Phaser.GameObjects.Text;
   private textoSemente!: Phaser.GameObjects.Text;
   private textoLado: Phaser.GameObjects.Text[] = [];
+  private textoSinergia: Phaser.GameObjects.Text[] = [];
+  /** Linhas passageiras (corrente do gancho, rastro do teleporte). */
+  private linhas: { x1: number; y1: number; x2: number; y2: number; vida: number; cor: number }[] =
+    [];
   private botaoVelocidade!: Phaser.GameObjects.Text;
   private botaoDebug!: Phaser.GameObjects.Text;
 
@@ -99,6 +104,8 @@ export class CenaCombate extends Phaser.Scene {
     // A cena é reaberta a cada rodada: os objetos antigos já foram destruídos pelo Phaser.
     this.visuais = [];
     this.textoLado = [];
+    this.textoSinergia = [];
+    this.linhas = [];
     this.placar = [0, 0];
     const params = new URLSearchParams(window.location.search);
     const param = Number(params.get("semente"));
@@ -140,6 +147,11 @@ export class CenaCombate extends Phaser.Scene {
       this.textoLado.push(
         this.add
           .text(lado === 0 ? 24 : LARGURA - 24, ALTURA - 76, "", estilo(17))
+          .setOrigin(lado === 0 ? 0 : 1, 0.5),
+      );
+      this.textoSinergia.push(
+        this.add
+          .text(lado === 0 ? 20 : LARGURA - 20, ALTURA - 114, "", estilo(13, "#ffd54a"))
           .setOrigin(lado === 0 ? 0 : 1, 0.5),
       );
     }
@@ -196,6 +208,13 @@ export class CenaCombate extends Phaser.Scene {
     this.botaoVelocidade.setBackgroundColor(this.velocidade > 1 ? "#2f5c8a" : "#243049");
   }
 
+  /** Na demonstração as formações são da arena básica (a única em que os pontos delas valem). */
+  private arenaDaDemo(): Arena {
+    const basica = ARENAS[0];
+    if (!basica) throw new Error("sem arenas");
+    return basica;
+  }
+
   private nomesDoLado(lado: Lado): string {
     if (!this.ctx) return this.titulos[lado] ?? "";
     const { partida, confronto } = this.ctx;
@@ -210,8 +229,8 @@ export class CenaCombate extends Phaser.Scene {
       const { partida, confronto } = this.ctx;
       this.semente = confronto.semente;
       estado = criarCombate(
-        ARENA_BASICA,
-        esquadroesDoConfronto(partida, CONTEXTO, ARENA_BASICA, confronto),
+        arenaAtual(),
+        esquadroesDoConfronto(partida, CONTEXTO, arenaAtual(), confronto),
         confronto.semente,
       );
     } else {
@@ -222,8 +241,8 @@ export class CenaCombate extends Phaser.Scene {
       if (!fa || !fb) throw new Error("sem formações");
       this.titulos = [`Azul · ${fa.nome}`, `Laranja · ${fb.nome}`];
       estado = criarCombate(
-        ARENA_BASICA,
-        [fa.vagas, espelhar(fb.vagas, ARENA_BASICA)],
+        this.arenaDaDemo(),
+        [fa.vagas, espelhar(fb.vagas, this.arenaDaDemo())],
         this.semente,
       );
     }
@@ -332,7 +351,8 @@ export class CenaCombate extends Phaser.Scene {
     for (const ev of e.eventos) {
       if (ev.tipo === "golpe") {
         const visual = this.visuais[ev.alvo];
-        fx.faiscas(ev.x, ev.y, ev.direcao, ev.forca, cor(ev.atacante));
+        fx.faiscas(ev.x, ev.y, ev.direcao, ev.forca * (ev.critico ? 1.8 : 1), cor(ev.atacante));
+        if (ev.critico) this.anel(ev.x, ev.y, 80, 0xffd54a, 8, 300);
         fx.tremor = Math.max(fx.tremor, Math.min(14, 1 + ev.forca * 0.6));
         if (visual) {
           visual.brilho = 1;
@@ -374,16 +394,48 @@ export class CenaCombate extends Phaser.Scene {
         this.anel(ev.x, ev.y - (l?.def.altura ?? 60) / 2, 110, cor(ev.id), 4, 340);
         if (visual) {
           visual.brilho = 0.8;
-          visual.elastico = ev.habilidade === "pisao" ? 0.35 : 0.2;
+          visual.elastico = ev.habilidade === "area" ? 0.35 : 0.2;
         }
-      } else {
-        // pisão: onda de choque no chão
+      } else if (ev.tipo === "area") {
+        // onda de choque (redemoinho, erupção, tufão)
         this.anel(ev.x, ev.y - 6, ev.raio, 0xffffff, 12, 320);
         this.anel(ev.x, ev.y - 6, ev.raio * 1.25, cor(ev.id), 7, 420);
         fx.poeira(ev.x, ev.y, 22, 6);
         fx.tremor = Math.max(fx.tremor, 14);
         const visual = this.visuais[ev.id];
         if (visual) visual.elastico = -0.4;
+      } else if (ev.tipo === "teleporte") {
+        const h = (e.lutadores[ev.id]?.def.altura ?? 60) / 2;
+        this.anel(ev.deX, ev.deY - h, 46, cor(ev.id), 5, 260);
+        this.anel(ev.x, ev.y - h, 60, 0xffffff, 6, 260);
+        this.linhas.push({
+          x1: ev.deX,
+          y1: ev.deY - h,
+          x2: ev.x,
+          y2: ev.y - h,
+          vida: 1,
+          cor: cor(ev.id),
+        });
+        fx.poeira(ev.deX, ev.deY, 6, 2);
+      } else if (ev.tipo === "gancho") {
+        const eu = e.lutadores[ev.id];
+        const alvo = e.lutadores[ev.alvo];
+        if (eu && alvo) {
+          const y = eu.y - eu.def.altura / 2;
+          this.linhas.push({ x1: eu.x, y1: y, x2: ev.deX, y2: ev.deY, vida: 1, cor: 0xd8dee9 });
+          this.anel(alvo.x, alvo.y - alvo.def.altura / 2, 50, 0xffffff, 5, 240);
+        }
+        fx.tremor = Math.max(fx.tremor, 6);
+      } else if (ev.tipo === "devolveu") {
+        this.anel(ev.x, ev.y, 60, 0xffffff, 8, 260);
+        this.anel(ev.x, ev.y, 90, cor(ev.id), 5, 340);
+        fx.faiscas(ev.x, ev.y, e.lutadores[ev.id]?.direcao ?? 1, 8, cor(ev.id));
+        fx.tremor = Math.max(fx.tremor, 8);
+      } else {
+        // explosão de um monstro ao sair da arena
+        this.anel(ev.x, ev.y, ev.raio, 0xf2713d, 16, 520);
+        this.anel(ev.x, ev.y, ev.raio * 0.6, 0xffd54a, 10, 380);
+        fx.tremor = Math.max(fx.tremor, 16);
       }
     }
 
@@ -465,7 +517,7 @@ export class CenaCombate extends Phaser.Scene {
       // Preparando o pisão: vai se achatando até soltar.
       const hab = l.def.habilidade;
       const preparo =
-        hab.tipo === "pisao" && l.hab.ticks > 0 ? -0.25 * (1 - l.hab.ticks / hab.duracao) : 0;
+        hab.tipo === "area" && l.hab.ticks > 0 ? -0.25 * (1 - l.hab.ticks / hab.duracao) : 0;
       const investindo = hab.tipo === "investida" && l.hab.ticks > 0 ? -0.18 : 0;
       // No ar, estica conforme a velocidade vertical.
       const ar = l.noChao || voando ? 0 : Math.min(0.22, Math.abs(l.vy) * 0.016);
@@ -479,6 +531,19 @@ export class CenaCombate extends Phaser.Scene {
       g.setScale(sx, sy);
       g.setRotation(v.giro);
       desenharCorpo(g, l, v.brilho);
+      // Invisível: quase transparente (o adversário não consegue mirar nele).
+      g.setAlpha(l.invisivel > 0 ? 0.3 : 1);
+      if (hab.tipo === "casco" && l.hab.ticks > 0) {
+        // casco fechado: cúpula de pedra por cima
+        g.fillStyle(0x6b7a90, 0.9);
+        g.fillRoundedRect(-l.def.largura / 2 - 6, -h / 2 - 6, l.def.largura + 12, h + 8, 18);
+        g.lineStyle(4, 0xd8e4f5, 0.9);
+        g.strokeRoundedRect(-l.def.largura / 2 - 6, -h / 2 - 6, l.def.largura + 12, h + 8, 18);
+      } else if (hab.tipo === "devolver" && l.hab.ticks > 0) {
+        // luvas prontas para agarrar
+        g.lineStyle(5, 0xffffff, 0.9);
+        g.strokeCircle(l.direcao * (l.def.largura / 2 + 10), -4, 16);
+      }
 
       this.escrever(v.dano, `${Math.round(l.dano)}%`);
       v.dano.setTint(corDoDano(l.dano));
@@ -499,16 +564,34 @@ export class CenaCombate extends Phaser.Scene {
     const e = this.laco.estado;
     g.clear();
 
-    // Projéteis: traço claro com rastro na cor do dono.
+    // Linhas passageiras: corrente do gancho e rastro do teleporte.
+    for (const l of this.linhas) {
+      g.lineStyle(6 * l.vida, l.cor, l.vida);
+      g.lineBetween(l.x1, l.y1, l.x2, l.y2);
+      l.vida -= 0.08;
+    }
+    this.linhas = this.linhas.filter((l) => l.vida > 0);
+
+    // Projéteis: tiro reto é um traço; bola e bala de canhão são redondas.
     for (const p of e.projeteis) {
       const cor = corDoJogador(e.lutadores[p.dono]?.dono ?? p.lado);
-      const d = p.vx >= 0 ? 1 : -1;
-      g.lineStyle(p.altura + 2, cor, 0.35);
-      g.lineBetween(p.x - d * 46, p.y, p.x, p.y);
-      g.lineStyle(p.altura - 2, cor, 0.7);
-      g.lineBetween(p.x - d * 24, p.y, p.x, p.y);
+      const v = Math.hypot(p.vx, p.vy) || 1;
+      const ux = p.vx / v;
+      const uy = p.vy / v;
+      const redondo = p.alvo !== null || p.altura >= 16;
+      const raio = Math.max(p.largura, p.altura) / 2;
+      g.lineStyle(redondo ? raio * 1.4 : p.altura + 2, cor, 0.35);
+      g.lineBetween(p.x - ux * 46, p.y - uy * 46, p.x, p.y);
+      g.lineStyle(redondo ? raio : Math.max(2, p.altura - 2), cor, 0.7);
+      g.lineBetween(p.x - ux * 24, p.y - uy * 24, p.x, p.y);
       g.fillStyle(0xffffff, 1);
-      g.fillRoundedRect(p.x - p.largura / 2, p.y - p.altura / 2, p.largura, p.altura, 4);
+      if (redondo) {
+        g.fillCircle(p.x, p.y, raio);
+        g.fillStyle(cor, 1);
+        g.fillCircle(p.x, p.y, raio * 0.5);
+      } else {
+        g.fillRoundedRect(p.x - p.largura / 2, p.y - p.altura / 2, p.largura, p.altura, 4);
+      }
     }
 
     for (const r of this.efeitos.raios) {
@@ -576,7 +659,7 @@ export class CenaCombate extends Phaser.Scene {
       }
       // Área das habilidades em andamento.
       const hab = l.def.habilidade;
-      if (l.hab.ticks > 0 && hab.tipo === "pisao") {
+      if (l.hab.ticks > 0 && hab.tipo === "area") {
         g.lineStyle(2, 0xff3b3b, 1);
         g.strokeRect(l.x - hab.alcance, l.y - 80, hab.alcance * 2, 160);
       } else if (l.hab.ticks > 0 && hab.tipo === "investida") {
@@ -617,13 +700,15 @@ export class CenaCombate extends Phaser.Scene {
       g.fillRoundedRect(x0, ALTURA - 98, largura, 86, 12);
       doLado.forEach((l, i) => {
         const x = x0 + 26 + i * 32;
-        desenharIcone(g, l.def.arquetipo, x, ALTURA - 40, l.vivo ? corDoJogador(l.dono) : 0x2e394c);
+        desenharIcone(g, l.def.papel, x, ALTURA - 40, l.vivo ? corDoJogador(l.dono) : 0x2e394c);
         if (l.vivo) {
           // tracinho com a cor do dano
           g.fillStyle(corDoDano(l.dano), 1);
           g.fillRoundedRect(x - 11, ALTURA - 22, 22 * Math.min(1, 0.15 + l.dano / 160), 4, 2);
         }
       });
+      const ts = this.textoSinergia[lado];
+      if (ts) this.escrever(ts, this.sinergiasDoLado(lado));
       const t = this.textoLado[lado];
       if (t) {
         const vivos = doLado.filter((l) => l.vivo).length;
@@ -659,6 +744,22 @@ export class CenaCombate extends Phaser.Scene {
       this.escrever(this.textoSub, sub);
       this.textoSub.setVisible(true).setAlpha(entrada);
     }
+  }
+
+  /** Sinergias ativas dos jogadores de um lado, em uma linha. */
+  private sinergiasDoLado(lado: Lado): string {
+    if (!this.ctx) return "";
+    const { partida, confronto } = this.ctx;
+    const ids = lado === 0 ? confronto.ladoA : confronto.ladoB;
+    const nomes = new Set<string>();
+    for (const id of ids) {
+      const j = partida.economia.jogadores[id];
+      if (!j) continue;
+      for (const s of sinergiasDoJogador(j, CONTEXTO)) {
+        if (s.nivel) nomes.add(`${s.nome} ${s.quantidade}`);
+      }
+    }
+    return [...nomes].join("  ·  ");
   }
 
   private textoDoFim(v: Lado | null): { titulo: string; sub: string; cor: number } {

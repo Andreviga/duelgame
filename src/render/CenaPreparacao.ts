@@ -1,10 +1,11 @@
 import Phaser from "phaser";
-import { ARENA_BASICA, CONTEXTO, ECONOMIA, PARTIDA, personagem } from "../dados";
+import { CONTEXTO, ECONOMIA, PARTIDA, personagem } from "../dados";
 import { criarLutador } from "../sim/combate/combate";
 import type { DefPersonagem, Lado, Lutador } from "../sim/combate/tipos";
 import {
   aplicarNivel,
   limiteDeCampo,
+  sinergiasDoJogador,
   preparacaoEncerrada,
   tickPreparacao,
   valorDeVenda,
@@ -13,14 +14,18 @@ import { MENSAGENS, type Comando, type EstadoEconomia, type Unidade } from "../s
 import { TICKS_POR_SEGUNDO } from "../sim/constantes";
 import { avancarLaco, type Laco } from "../sim/laco";
 import {
+  COR_DO_MUNDO,
   corDoJogador,
   desenharArena,
+  desenharEmblema,
+  NOME_DO_MUNDO,
+  NOME_DO_PAPEL,
   desenharCorpo,
   desenharFundo,
   desenharPinos,
 } from "./desenho";
 import { comEconomia, confrontoDoJogador, estaVivo } from "../sim/partida/partida";
-import { comandoDoHumano, HUMANO, iniciarCombates, jogo, partidaAtual } from "./jogo";
+import { arenaAtual, comandoDoHumano, HUMANO, iniciarCombates, jogo, partidaAtual } from "./jogo";
 
 const LARGURA = 1200;
 const ALTURA = 675;
@@ -28,7 +33,8 @@ const FONTE = "'Trebuchet MS', 'Segoe UI', Arial, sans-serif";
 const COR_ELIXIR = 0x7ef0d0;
 
 // Enquadramento fixo da arena na parte de cima da tela.
-const ZOOM = 0.8;
+// O zoom é ajustado em `create` para o chão da arena caber sempre na mesma largura de tela.
+let ZOOM = 0.8;
 const MUNDO_X = 600;
 const MUNDO_Y = 410;
 const TELA_Y = 262;
@@ -89,10 +95,11 @@ export class CenaPreparacao extends Phaser.Scene {
     document.body.dataset["cena"] = "preparacao";
     this.laco = { estado: partidaAtual().economia, acumulado: 0 };
 
+    ZOOM = Math.min(0.8, 640 / arenaAtual().chao.largura);
     this.fundo = this.add.graphics().setDepth(0);
     desenharFundo(this.fundo, MUNDO_X, 380);
     const cenario = this.add.graphics();
-    desenharArena(cenario, ARENA_BASICA);
+    desenharArena(cenario, arenaAtual());
     this.add
       .container(LARGURA / 2 - MUNDO_X * ZOOM, TELA_Y - MUNDO_Y * ZOOM, [cenario])
       .setScale(ZOOM)
@@ -179,7 +186,7 @@ export class CenaPreparacao extends Phaser.Scene {
   private pontoMaisProximo(x: number, y: number): number | null {
     let melhor: number | null = null;
     let melhorDist = RAIO_DO_PONTO;
-    ARENA_BASICA.pontos.forEach((p, i) => {
+    arenaAtual().pontos.forEach((p, i) => {
       const d = Math.hypot(paraTelaX(p.x) - x, paraTelaY(p.y) - 26 - y);
       if (d < melhorDist) {
         melhor = i;
@@ -332,6 +339,7 @@ export class CenaPreparacao extends Phaser.Scene {
     this.desenharPainel();
     this.desenharTopo();
     this.desenharJogadores();
+    this.desenharSinergias();
     this.desenharArrasto();
 
     for (const [chave, g] of this.bonecos) if (!this.usados.has(`b:${chave}`)) g.setVisible(false);
@@ -347,7 +355,7 @@ export class CenaPreparacao extends Phaser.Scene {
     const campoCheio = eu.campo.length >= limite;
 
     // Pontos de posicionamento do jogador.
-    ARENA_BASICA.pontos.forEach((p, i) => {
+    arenaAtual().pontos.forEach((p, i) => {
       const x = paraTelaX(p.x);
       const y = paraTelaY(p.y);
       const ocupante = eu.campo.find((c) => c.ponto === i);
@@ -372,9 +380,9 @@ export class CenaPreparacao extends Phaser.Scene {
     // Aliado (2x2) e adversários desta rodada, com o campo que eles já montaram.
     const p = partidaAtual();
     const confronto = p.confrontos[confrontoDoJogador(p, HUMANO)];
-    const soma = ARENA_BASICA.chao.x * 2 + ARENA_BASICA.chao.largura;
+    const soma = arenaAtual().chao.x * 2 + arenaAtual().chao.largura;
     const mostrar = (id: number, segundo: boolean, direita: boolean): void => {
-      const pontos = segundo ? ARENA_BASICA.pontosAliado : ARENA_BASICA.pontos;
+      const pontos = segundo ? arenaAtual().pontosAliado : arenaAtual().pontos;
       for (const c of p.economia.jogadores[id]?.campo ?? []) {
         const ponto = pontos[c.ponto];
         if (!ponto) continue;
@@ -479,15 +487,30 @@ export class CenaPreparacao extends Phaser.Scene {
       g.lineStyle(3, funde ? 0xffd54a : podePagar ? corDoJogador(HUMANO) : 0x2c384f, 1);
       g.strokeRoundedRect(r.x, r.y, r.largura, r.altura, 12);
       const cx = r.x + r.largura / 2;
-      this.boneco(`carta${i}`, def, 1, 0, cx, r.y + 104, 1, podePagar ? 1 : 0.45);
-      this.rotulo(`cartaNome${i}`, cx, r.y + 124, def.nome, 17, podePagar ? 0xffffff : 0x7a879c);
-      this.gota(g, cx - 14, r.y + 150, 8);
+      const apagado = podePagar ? 1 : 0.45;
+      this.boneco(`carta${i}`, def, 1, 0, cx, r.y + 84, 0.82, apagado);
+      this.rotulo(`cartaNome${i}`, cx, r.y + 100, def.nome, 15, podePagar ? 0xffffff : 0x7a879c);
+      // mundo e papel: são eles que formam as sinergias
+      desenharEmblema(g, def.mundo, r.x + 16, r.y + 119, 0.8);
+      const mundoEPapel = this.rotulo(
+        `cartaMundo${i}`,
+        r.x + 28,
+        r.y + 119,
+        `${NOME_DO_MUNDO[def.mundo]} · ${NOME_DO_PAPEL[def.papel]}`,
+        11,
+        podePagar ? COR_DO_MUNDO[def.mundo] : 0x7a879c,
+        0,
+      );
+      // nomes compridos encolhem para caber na carta
+      mundoEPapel.setScale(Math.min(1, (r.largura - 34) / Math.max(1, mundoEPapel.width)));
+      this.rotulo(`cartaHab${i}`, cx, r.y + 136, def.habilidade.nome, 11, 0x9fb0c8);
+      this.gota(g, cx - 14, r.y + 156, 7);
       this.rotulo(
         `cartaCusto${i}`,
         cx + 8,
-        r.y + 151,
+        r.y + 157,
         String(def.custo),
-        20,
+        18,
         podePagar ? COR_ELIXIR : 0xff6b6b,
       );
       if (funde) this.rotulo(`cartaFunde${i}`, cx, r.y + 14, "FUNDE", 12, 0xffd54a);
@@ -516,6 +539,53 @@ export class CenaPreparacao extends Phaser.Scene {
       podeAtualizar,
     );
     this.botao(BOTAO_LUTAR, "LUTAR", "btLutar", 0x2f9e5b, true);
+  }
+
+  /** Sinergias do campo do jogador: as ativas em destaque, e quanto falta para o próximo degrau. */
+  private desenharSinergias(): void {
+    const g = this.painel;
+    const lista = sinergiasDoJogador(this.eu, CONTEXTO).sort(
+      (a, b) => Number(b.nivel !== null) - Number(a.nivel !== null) || b.quantidade - a.quantidade,
+    );
+    const x0 = 14;
+    this.rotulo("sinTitulo", x0, 96, "SINERGIAS", 13, 0x9fb0c8, 0);
+    if (lista.length === 0) {
+      this.rotulo("sinVazio", x0, 118, "ponha personagens em campo", 12, 0x5b6b82, 0);
+      return;
+    }
+    lista.slice(0, 7).forEach((s, i) => {
+      const y = 118 + i * 44;
+      const ativa = s.nivel !== null;
+      g.fillStyle(0x0b0f16, ativa ? 0.78 : 0.45);
+      g.fillRoundedRect(x0, y - 4, 246, 40, 8);
+      if (ativa) {
+        g.lineStyle(2, 0xffd54a, 0.9);
+        g.strokeRoundedRect(x0, y - 4, 246, 40, 8);
+      }
+      const alvo = s.proximo?.minimo ?? s.nivel?.minimo ?? 0;
+      this.rotulo(
+        `sinNome${i}`,
+        x0 + 10,
+        y + 7,
+        `${s.nome}  ${s.quantidade}/${alvo}`,
+        14,
+        ativa ? 0xffd54a : 0xcfd8e3,
+        0,
+      );
+      const descricao =
+        s.nivel?.descricao ?? `com ${s.proximo?.minimo}: ${s.proximo?.descricao ?? ""}`;
+      const t = this.rotulo(
+        `sinDesc${i}`,
+        x0 + 10,
+        y + 25,
+        descricao,
+        11,
+        ativa ? 0xffffff : 0x7a879c,
+        0,
+      );
+      // descrições longas encolhem para caber no painel
+      t.setScale(Math.min(1, 228 / Math.max(1, t.width)));
+    });
   }
 
   private desenharTopo(): void {

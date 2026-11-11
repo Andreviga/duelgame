@@ -50,7 +50,7 @@ export class CenaInicial extends Phaser.Scene {
     this.add.graphics().fillStyle(0x0b0f16, 0.55).fillRect(0, 0, LARGURA, ALTURA);
 
     // Quatro personagens de enfeite, um de cada cor.
-    ["tanque", "lutador", "assassino", "atirador"].forEach((id, i) => {
+    ["ancora", "lamina", "faisca", "maestro"].forEach((id, i) => {
       const g = this.add.graphics();
       const l = criarLutador(personagem(id), 0, i < 2 ? 0 : 1, 0, 0, 1, i);
       desenharCorpo(g, l, 0);
@@ -103,7 +103,8 @@ export class CenaInicial extends Phaser.Scene {
     const param = Number(new URLSearchParams(window.location.search).get("semente"));
     const semente =
       Number.isFinite(param) && param > 0 ? Math.floor(param) : Math.floor(Math.random() * 1e9) + 1;
-    novaPartida(jogo.modo, jogo.dificuldade, semente);
+    const arenaFixa = new URLSearchParams(window.location.search).get("arena") ?? undefined;
+    novaPartida(jogo.modo, jogo.dificuldade, semente, arenaFixa);
     if (jogo.automatico) {
       iniciarCombates();
       this.scene.start("combate");

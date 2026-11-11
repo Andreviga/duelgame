@@ -1,6 +1,7 @@
 import { jogarBot } from "../bots/bot";
 import { jogarBots } from "../bots/partida";
-import { ARENA_BASICA, CONTEXTO, PARTIDA } from "../dados";
+import { arena, CONTEXTO, IDS_DAS_ARENAS, PARTIDA } from "../dados";
+import type { Arena } from "../sim/combate/tipos";
 import { aplicar } from "../sim/economia/economia";
 import type { Comando, Resultado } from "../sim/economia/tipos";
 import {
@@ -47,15 +48,20 @@ export function partidaAtual(): EstadoPartida {
   return jogo.partida;
 }
 
+/** Arena sorteada para a partida em andamento. */
+export function arenaAtual(): Arena {
+  return arena(partidaAtual().arena);
+}
+
 /** Bots jogam a preparação assim que a rodada abre; o humano joga depois, pela tela. */
 function abrirPreparacao(p: EstadoPartida): EstadoPartida {
-  let q = jogarBots(p, CONTEXTO, ARENA_BASICA).partida;
+  let q = jogarBots(p, CONTEXTO, arena(p.arena)).partida;
   const humano = q.jogadores[HUMANO];
   if (jogo.automatico && q.fase === "preparacao" && humano && estaVivo(humano)) {
     const jogada = jogarBot(
       q.economia,
       CONTEXTO,
-      ARENA_BASICA,
+      arena(q.arena),
       { jogador: HUMANO, nivel: "medio" },
       q.rng,
     );
@@ -64,7 +70,13 @@ function abrirPreparacao(p: EstadoPartida): EstadoPartida {
   return q;
 }
 
-export function novaPartida(modo: Modo, dificuldade: NivelBot, semente: number): EstadoPartida {
+export function novaPartida(
+  modo: Modo,
+  dificuldade: NivelBot,
+  semente: number,
+  /** Arena fixa (id); sem ela, uma das arenas do jogo é sorteada. */
+  arenaFixa?: string,
+): EstadoPartida {
   jogo.modo = modo;
   jogo.dificuldade = dificuldade;
   const nomes =
@@ -72,7 +84,16 @@ export function novaPartida(modo: Modo, dificuldade: NivelBot, semente: number):
       ? ["Você", "Aliado", "Rival 1", "Rival 2"]
       : ["Você", "Rival 1", "Rival 2", "Rival 3"];
   const participantes = nomes.map((nome, i) => ({ nome, bot: i === HUMANO ? null : dificuldade }));
-  jogo.partida = abrirPreparacao(criarPartida(CONTEXTO, PARTIDA, modo, participantes, semente));
+  jogo.partida = abrirPreparacao(
+    criarPartida(
+      CONTEXTO,
+      PARTIDA,
+      modo,
+      participantes,
+      semente,
+      arenaFixa && IDS_DAS_ARENAS.includes(arenaFixa) ? [arenaFixa] : IDS_DAS_ARENAS,
+    ),
+  );
   return jogo.partida;
 }
 
@@ -91,7 +112,7 @@ export function humanoVivo(): boolean {
 
 /** Fecha a preparação e resolve todos os combates da rodada (sem tela, em milissegundos). */
 export function iniciarCombates(): void {
-  jogo.partida = combater(partidaAtual(), CONTEXTO, PARTIDA, ARENA_BASICA);
+  jogo.partida = combater(partidaAtual(), CONTEXTO, PARTIDA, arenaAtual());
 }
 
 /** Índice do confronto que a tela de combate deve mostrar: o do humano, ou o primeiro se ele já caiu. */
