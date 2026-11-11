@@ -1,6 +1,6 @@
 # PLANO.md — Auto-battler para 4 jogadores em arena de plataforma
 
-Este arquivo é a fonte da verdade do projeto. Claude Code: leia inteiro antes de qualquer ação e siga as "Regras de trabalho" à risca.
+Este arquivo é a fonte da verdade do projeto. Claude Code: leia inteiro, junto com o `ELENCO.md`, antes de qualquer ação e siga as "Regras de trabalho" à risca.
 
 ## 1. Conceito
 
@@ -33,13 +33,14 @@ O que torna o jogo diferente de outros auto-battlers: o combate é físico. Posi
 | Testes | Vitest para a simulação; Playwright para teste de fumaça no navegador |
 | Online (fase 6) | Servidor Node autoritativo com Colyseus |
 | Hospedagem | Cliente na Vercel; servidor de jogo em host com WebSocket persistente (não Vercel) |
-| Arte | Formas geométricas e cores por jogador até a fase 7 |
+| Arte | Formas geométricas e cores por jogador até a fase 7. Na fase 7: personagens 3D low-poly cartunescos renderizados no Blender como sprites 2D |
+| Conteúdo | Os 12 personagens, mundos e papéis do `ELENCO.md` |
 
 Antes de instalar qualquer dependência, confira a versão estável atual e a documentação oficial. Não confie em versões de memória.
 
 ## 3. Propriedade intelectual
 
-Nada de nomes, personagens, sprites, sons, cartas ou textos de Clash Royale, Super Smash Bros. ou qualquer outro jogo. Tudo original. Assets de terceiros só com licença livre (CC0 ou equivalente), registrados em `CREDITOS.md`.
+Nada de nomes, personagens, sprites, sons, cartas ou textos de Clash Royale, Super Smash Bros., Pokémon, animes ou qualquer outra obra. Nada de nome, rosto ou uniforme de pessoas e clubes reais. Os personagens são arquétipos originais (ver regra de originalidade no `ELENCO.md`). Assets de terceiros só com licença livre (CC0 ou equivalente), registrados em `CREDITOS.md`.
 
 ## 4. Arquitetura (regras que valem para todas as fases)
 
@@ -129,8 +130,8 @@ testes/
 **Marco: jogo jogável sozinho.**
 
 ### Fase 5 — Conteúdo e balanceamento
-- 12 a 16 personagens, com custos de 2 a 5 de elixir.
-- Sinergias: cada personagem tem duas características; reunir personagens da mesma característica dá bônus ao esquadrão.
+- Os 12 personagens do `ELENCO.md`, cada um com sua habilidade, em JSON.
+- Sinergias de mundo e de papel conforme o `ELENCO.md`, com bônus em 2 e em 3 personagens.
 - 2 ou 3 arenas com formatos diferentes de plataforma.
 - Ferramenta de simulação em lote: milhares de partidas entre bots, com relatório de taxa de vitória por personagem, sinergia e arena.
 
@@ -145,18 +146,67 @@ testes/
 
 **Pronto quando:** quatro pessoas em redes diferentes jogam uma partida inteira e todos veem o mesmo combate.
 
-### Fase 7 — Acabamento
-- Arte original, animações, efeitos, som e música.
-- Ajuste de tela e toque para celular.
-- Tutorial curto, menu, opções.
+### Fase 7 — Arte dos personagens
+
+O jogo continua 2D. O 3D existe só como origem dos sprites.
+
+**7A. Pipeline com um personagem piloto (Lâmina).**
+- Script `ferramentas/arte/render_sprites.py`, rodado com o Blender em segundo plano (`blender -b arquivo.blend -P render_sprites.py`). Confira a versão do Blender instalada e a documentação da API dessa versão antes de escrever.
+- Entrada: um `.blend` por personagem em `arte/fontes/`, com o esqueleto e uma ação por animação.
+- Padrão fixo para todos: câmera lateral ortográfica, personagem virado para a direita, mesma luz, mesmo enquadramento, pés na mesma linha de base, fundo transparente, quadro de 256x256.
+- Animações obrigatórias (nome da ação = nome da animação): `parado` (8 quadros, em laço), `andar` (8, em laço, 8 poses distintas), `pular` (4), `cair` (2, em laço), `atacar` (6), `habilidade` (8), `atingido` (3), `arremessado` (4, em laço), `nocaute` (6). 12 quadros por segundo.
+- Script `ferramentas/arte/montar_atlas.ts`: junta os quadros em um atlas por personagem (`public/sprites/<id>.png` + `<id>.json` no formato de atlas do Phaser) e valida: todas as animações presentes, número de quadros certo, nenhum quadro vazio, nenhum quadro repetido dentro de `andar`.
+- No jogo: o render troca o retângulo pelo sprite, espelha quando o personagem vira para a esquerda e escolhe a animação pelo estado da simulação. A simulação não muda. Cor do jogador aparece em um anel no chão e no contorno, não na roupa.
+
+**Pronto quando:** `npm run arte` gera o atlas do Lâmina do zero, a validação passa, e ele aparece animado em um combate ao lado dos retângulos.
+
+**7B. Elenco completo.** Repetir para os outros 11, na ordem: humanoides primeiro (Dojo, Piratas, Futebol), Monstros por último. Um personagem por vez, com aprovação visual do André em cada um.
+
+**Pronto quando:** os 12 atlas passam na validação e nenhum retângulo sobra em combate.
+
+Tarefas que são do André, não do Claude Code: abrir o Blender, baixar os packs, aprovar o visual. O Claude Code escreve os scripts e diz exatamente o que precisa receber.
+
+### Fase 8 — Impacto e interface
+- Efeitos: faísca de acerto, poeira, rastro de arremesso, explosão de nocaute, tremor de câmera e pausa curta no acerto forte.
+- Som: efeitos para acerto, habilidade, nocaute, compra, fusão; música de preparação e de combate. Só arquivos com licença livre, registrados em `CREDITOS.md`.
+- Interface: cartas da loja com retrato do personagem, custo, mundo e papel; indicador de sinergias ativas; arenas com cenário.
+- Tutorial de 3 rodadas guiadas, menu, opções (volume, velocidade).
+
+**Pronto quando:** uma pessoa que nunca viu o jogo entende por que ganhou ou perdeu uma rodada sem explicação.
+
+### Fase 9 — Celular e lançamento
+- Layout e toque para celular em pé e deitado; alvo de toque mínimo de 44 px.
+- Desempenho: 60 quadros por segundo em celular intermediário com 16 personagens em combate.
+- Tratamento de erro e de queda de conexão em todas as telas.
+- Teste com pelo menos 8 pessoas de fora; corrigir os 5 problemas mais citados.
+- Publicação do cliente e do servidor; página de créditos acessível pelo menu.
+
+**Pronto quando:** todos os itens da seção 9 ("Definição de 100%") estão marcados.
 
 ## 7. Fora de escopo (até o André pedir)
 
-Controle direto dos personagens em combate, loja de dinheiro real, moedas, progressão entre partidas, ranking, contas de usuário, pareamento público, replay, chat, 3D, versão para lojas de aplicativo.
+Controle direto dos personagens em combate, loja de dinheiro real, moedas, progressão entre partidas, ranking, contas de usuário, pareamento público, replay, chat, render 3D em tempo real, versão para lojas de aplicativo.
 
 ## 8. Riscos conhecidos
 
 - **IA em arena de plataforma:** personagens presos, pulando sem parar ou caindo sozinhos estragam o jogo. É o risco técnico principal; por isso as fases 1 e 2 vêm antes de qualquer economia.
 - **Combate ilegível:** com 8 a 16 personagens se arremessando, o jogador precisa entender por que ganhou ou perdeu. Cores por jogador, câmera e efeitos claros desde cedo.
 - **Aleatoriedade demais:** o arremesso amplifica pequenas diferenças. Se o resultado parecer sorte, reduzir variação antes de criar conteúdo.
-- **Arte:** é o maior gargalo fora do código. Fica para o fim de propósito.
+- **Arte:** é o maior gargalo fora do código. Fica para o fim de propósito, e começa por um único personagem piloto para provar o pipeline antes de produzir os outros 11.
+
+## 9. Definição de 100%
+
+O jogo só é considerado pronto quando tudo abaixo for verdade. Claude Code: mantenha esta lista em `ESTADO.md` e marque cada item com a evidência (teste, comando ou data do teste jogado).
+
+- [ ] `npm run test`, `lint` e `build` passam sem aviso.
+- [ ] Teste de determinismo: 1.000 combates repetidos com a mesma semente dão resultado idêntico.
+- [ ] 10.000 combates simulados terminam sem personagem preso e sem estourar o tempo máximo.
+- [ ] Nenhum personagem, mundo ou papel passa de 55% de vitória na simulação em lote.
+- [ ] Partida completa contra 3 bots nos dois modos, do menu à tela de resultado, sem erro no console.
+- [ ] Partida online completa com 4 pessoas em redes diferentes, com uma reconexão no meio.
+- [ ] Os 12 personagens com todas as animações; nenhum retângulo ou texto provisório na tela.
+- [ ] Som e efeitos em todos os eventos da Fase 8.
+- [ ] Jogável no celular por toque, a 60 quadros por segundo.
+- [ ] Tutorial concluído por uma pessoa de fora sem ajuda.
+- [ ] `CREDITOS.md` lista cada asset de terceiros com fonte e licença, e nada no jogo viola a seção 3.
+
