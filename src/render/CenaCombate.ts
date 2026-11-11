@@ -15,6 +15,14 @@ import {
   desenharIcone,
   desenharPinos,
 } from "./desenho";
+import spritesJson from "../dados/sprites.json";
+import {
+  animacaoDoLutador,
+  ESPEC,
+  nomeDoQuadro,
+  quadroDeNocaute,
+  TICKS_DE_NOCAUTE,
+} from "./animacao";
 import { Efeitos, misturar } from "./efeitos";
 import { arenaAtual, avancarRodada, confrontoParaAssistir, meuNumero, jogo } from "./jogo";
 
@@ -24,10 +32,18 @@ const FONTE = "'Trebuchet MS', 'Segoe UI', Arial, sans-serif";
 const MS_ENTRE_RODADAS = 3800;
 const LADOS: readonly Lado[] = [0, 1];
 const VELOCIDADES = [1, 2, 4];
+const SPRITES: readonly string[] = spritesJson;
+/** O sprite é desenhado um pouco maior que a caixa de colisão, para a arma e os gestos aparecerem. */
+const FOLGA_DO_SPRITE = 1.2;
 
 /** Estado só visual de cada lutador (não existe na simulação). */
 interface Visual {
   corpo: Phaser.GameObjects.Graphics;
+  /** Sprite do personagem (quando ele tem atlas) e as quatro cópias que formam o contorno. */
+  sprite: Phaser.GameObjects.Image | null;
+  contorno: Phaser.GameObjects.Image[];
+  /** Onde e quando saiu da arena, para mostrar o nocaute. */
+  saida: { x: number; y: number; tick: number } | null;
   dano: Phaser.GameObjects.Text;
   debug: Phaser.GameObjects.Text;
   /** Esticar (+) ou achatar (-) no eixo vertical; volta a zero sozinho. */
@@ -97,6 +113,15 @@ export class CenaCombate extends Phaser.Scene {
 
   constructor() {
     super("combate");
+  }
+
+  preload(): void {
+    // Atlas dos personagens que já têm sprite (os outros continuam como formas geométricas).
+    for (const id of SPRITES) {
+      if (this.textures.exists(id)) continue;
+      this.load.atlas(id, `sprites/${id}.png`, `sprites/${id}.json`);
+      this.load.json(`${id}:atlas`, `sprites/${id}.json`);
+    }
   }
 
   create(): void {
@@ -252,6 +277,8 @@ export class CenaCombate extends Phaser.Scene {
 
     for (const v of this.visuais) {
       v.corpo.destroy();
+      v.sprite?.destroy();
+      for (const c of v.contorno) c.destroy();
       v.dano.destroy();
       v.debug.destroy();
     }
@@ -272,9 +299,21 @@ export class CenaCombate extends Phaser.Scene {
       const debug = this.add
         .text(0, 0, "", { fontFamily: "monospace", fontSize: "13px", color: "#ffe9a8" })
         .setOrigin(0.5);
-      this.mundo.add([corpo, dano, debug]);
+      // Personagem com atlas: quatro cópias deslocadas, pintadas com a cor do jogador, fazem o contorno.
+      const id = estado.lutadores[i]?.def.id ?? "";
+      const temSprite = this.textures.exists(id);
+      const contorno = temSprite
+        ? [0, 1, 2, 3].map(() =>
+            this.add.image(0, 0, id, "parado_0").setTintMode(Phaser.TintModes.FILL),
+          )
+        : [];
+      const sprite = temSprite ? this.add.image(0, 0, id, "parado_0") : null;
+      this.mundo.add([...contorno, ...(sprite ? [sprite] : []), corpo, dano, debug]);
       this.visuais.push({
         corpo,
+        sprite,
+        contorno,
+        saida: null,
         dano,
         debug,
         elastico: 0,
@@ -346,6 +385,15 @@ export class CenaCombate extends Phaser.Scene {
     this.atualizarCamera(ms);
     desenharFundo(this.fundo, this.cam.x, this.cam.y);
     desenharArena(this.cenario, this.laco.estado.arena);
+    // Anel no chão com a cor do jogador, para os personagens com sprite.
+    for (const l of this.laco.estado.lutadores) {
+      if (!l.vivo || !this.visuais[l.id]?.sprite) continue;
+      const cor = corDoJogador(l.dono);
+      this.cenario.fillStyle(cor, l.noChao ? 0.35 : 0.15);
+      this.cenario.fillEllipse(l.x, l.y - 1, l.def.largura * 1.5, 12);
+      this.cenario.lineStyle(3, cor, l.noChao ? 0.95 : 0.4);
+      this.cenario.strokeEllipse(l.x, l.y - 1, l.def.largura * 1.5, 12);
+    }
     this.desenharLutadores(ms);
     this.desenharEfeitos();
     this.desenharMarcas();
@@ -381,6 +429,8 @@ export class CenaCombate extends Phaser.Scene {
         const x = Math.min(lim.direita, Math.max(lim.esquerda, ev.x));
         const y = Math.min(lim.fundo, Math.max(lim.topo, ev.y));
         const ang = Math.atan2(e.arena.chao.y - 150 - y, 600 - x);
+        const visualDaSaida = this.visuais[ev.id];
+        if (visualDaSaida) visualDaSaida.saida = { x, y, tick: e.tick };
         const lado = e.lutadores[ev.id]?.lado ?? 0;
         fx.explosao(x, y, ang, cor(ev.id));
         const acabou = !e.lutadores.some((l) => l.vivo && l.lado === lado);
@@ -515,6 +565,7 @@ export class CenaCombate extends Phaser.Scene {
       g.clear();
       v.dano.setVisible(l.vivo);
       v.debug.setVisible(l.vivo && this.debug);
+      if (v.sprite) this.desenharSprite(l, v, e.tick);
       if (!l.vivo) continue;
 
       v.elastico *= Math.pow(0.8, quadros);
@@ -542,7 +593,7 @@ export class CenaCombate extends Phaser.Scene {
       g.setPosition(l.x + tremX, l.y - (h / 2) * sy + tremY);
       g.setScale(sx, sy);
       g.setRotation(v.giro);
-      desenharCorpo(g, l, v.brilho);
+      if (!v.sprite) desenharCorpo(g, l, v.brilho);
       // Invisível: quase transparente (o adversário não consegue mirar nele).
       g.setAlpha(l.invisivel > 0 ? 0.3 : 1);
       if (hab.tipo === "casco" && l.hab.ticks > 0) {
@@ -569,6 +620,53 @@ export class CenaCombate extends Phaser.Scene {
         v.debug.setScale(escalaTexto);
       }
     }
+  }
+
+  /** Mostra o quadro de sprite que corresponde ao estado do lutador (ou o nocaute, depois que ele sai). */
+  private desenharSprite(l: EstadoCombate["lutadores"][number], v: Visual, tick: number): void {
+    const sprite = v.sprite;
+    if (!sprite) return;
+    const depoisDaSaida = v.saida ? tick - v.saida.tick : 0;
+    const visivel = l.vivo || (v.saida !== null && depoisDaSaida <= TICKS_DE_NOCAUTE);
+    sprite.setVisible(visivel);
+    for (const c of v.contorno) c.setVisible(visivel);
+    if (!visivel) return;
+
+    const quadro = l.vivo ? animacaoDoLutador(l, tick) : quadroDeNocaute(depoisDaSaida);
+    const x = l.vivo ? l.x : (v.saida?.x ?? l.x);
+    const y = l.vivo ? l.y : (v.saida?.y ?? l.y);
+    const meta: unknown = this.cache.json.get(`${l.def.id}:atlas`);
+    const altura =
+      (meta as { meta?: { alturaDoPersonagem?: number } } | undefined)?.meta?.alturaDoPersonagem ??
+      180;
+    const escala = (l.def.altura / altura) * FOLGA_DO_SPRITE;
+    const esquerda = l.direcao === -1;
+    const alfa = l.invisivel > 0 ? 0.3 : 1;
+    const posicionar = (img: Phaser.GameObjects.Image, dx: number, dy: number): void => {
+      img.setFrame(nomeDoQuadro(quadro));
+      // A origem fica na linha dos pés; ao espelhar, o Phaser espelha em torno dela.
+      img.setOrigin(0.5, ESPEC.linhaDeBase);
+      img.setPosition(x + dx, y + dy);
+      img.setScale(escala);
+      img.setFlipX(esquerda);
+      img.setAlpha(alfa);
+    };
+    const borda = 2.2;
+    const deslocamentos = [
+      [-borda, 0],
+      [borda, 0],
+      [0, -borda],
+      [0, borda],
+    ] as const;
+    v.contorno.forEach((c, i) => {
+      const [dx, dy] = deslocamentos[i] ?? [0, 0];
+      posicionar(c, dx, dy);
+      c.setTint(corDoJogador(l.dono));
+    });
+    posicionar(sprite, 0, 0);
+    // Clarão branco no instante em que leva o golpe.
+    if (v.brilho > 0.45) sprite.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
+    else sprite.setTint(0xffffff).setTintMode(Phaser.TintModes.MULTIPLY);
   }
 
   private desenharEfeitos(): void {
