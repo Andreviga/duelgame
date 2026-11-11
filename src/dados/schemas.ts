@@ -1,21 +1,38 @@
+import type { ConfigSinergias, DefSinergia, EfeitosDeSinergia } from "../sim/economia/sinergias";
 import type { ConfigEconomia } from "../sim/economia/tipos";
 import type { ConfigPartida } from "../sim/partida/tipos";
 import type {
   Arena,
-  Arquetipo,
   DefAtaque,
   DefHabilidade,
   DefImpacto,
   DefPersonagem,
   DefProjetil,
   Esquadrao,
+  Mundo,
+  Papel,
   Plataforma,
   Ret,
   TipoHabilidade,
 } from "../sim/combate/tipos";
 
-const ARQUETIPOS: readonly Arquetipo[] = ["corpo", "distancia", "tanque", "assassino"];
-const HABILIDADES: readonly TipoHabilidade[] = ["investida", "rajada", "pisao", "salto"];
+const PAPEIS: readonly Papel[] = ["corpo", "distancia", "tanque", "assassino"];
+const MUNDOS: readonly Mundo[] = ["futebol", "piratas", "monstros", "dojo"];
+const HABILIDADES: readonly TipoHabilidade[] = [
+  "investida",
+  "area",
+  "bola",
+  "devolver",
+  "carrinho",
+  "gancho",
+  "canhao",
+  "cadeia",
+  "casco",
+  "teleporte",
+  "tufao",
+];
+/** Habilidades que disparam projétil: o personagem precisa ter um projétil definido. */
+const HABILIDADES_DE_TIRO: readonly TipoHabilidade[] = ["bola", "canhao"];
 
 /** Validação simples dos JSON de conteúdo. Erros dizem o caminho do campo com problema. */
 export class ErroDeDados extends Error {}
@@ -181,8 +198,8 @@ export function validarPersonagem(json: unknown, caminho = "personagem"): DefPer
     recarga: inteiro(a, "recarga", ca),
     ...(projetil ? { projetil } : {}),
   };
-  const arquetipo = umDe(o, "arquetipo", caminho, ARQUETIPOS);
-  if (arquetipo === "distancia" && !projetil) {
+  const papel = umDe(o, "papel", caminho, PAPEIS);
+  if (papel === "distancia" && !projetil) {
     throw new ErroDeDados(`${ca}.projetil: personagem à distância precisa de projétil`);
   }
   const ch = `${caminho}.habilidade`;
@@ -190,16 +207,23 @@ export function validarPersonagem(json: unknown, caminho = "personagem"): DefPer
   const habilidade: DefHabilidade = {
     ...impacto(h, ch, true),
     tipo: umDe(h, "tipo", ch, HABILIDADES),
+    nome: texto(h, "nome", ch),
     recarga: inteiro(h, "recarga", ch),
     alcance: num(h, "alcance", ch, "positivo"),
     velocidade: num(h, "velocidade", ch, "naoNegativo"),
     duracao: inteiro(h, "duracao", ch),
     quantidade: inteiro(h, "quantidade", ch),
   };
+  if (HABILIDADES_DE_TIRO.includes(habilidade.tipo) && !projetil) {
+    throw new ErroDeDados(
+      `${ch}.tipo: a habilidade "${habilidade.tipo}" precisa de ${ca}.projetil`,
+    );
+  }
   return {
     id: texto(o, "id", caminho),
     nome: texto(o, "nome", caminho),
-    arquetipo,
+    mundo: umDe(o, "mundo", caminho, MUNDOS),
+    papel,
     custo: inteiro(o, "custo", caminho),
     largura: num(o, "largura", caminho, "positivo"),
     altura: num(o, "altura", caminho, "positivo"),
@@ -308,5 +332,78 @@ export function validarPartida(json: unknown): ConfigPartida {
     danoBase: num(o, "danoBase", c, "naoNegativo"),
     danoPorSobrevivente: num(o, "danoPorSobrevivente", c, "naoNegativo"),
     rodadasPorDanoExtra: inteiro(o, "rodadasPorDanoExtra", c),
+  };
+}
+
+const EFEITOS_NUMERICOS = [
+  "velocidade",
+  "peso",
+  "dano",
+  "alcance",
+  "velocidadeDeAtaque",
+  "recargaHabilidade",
+  "arremessoHorizontal",
+  "primeiroGolpe",
+  "protecaoVizinhos",
+  "elixirAoVencer",
+] as const;
+const EFEITOS_LOGICOS = ["primeiroCritico", "perfura", "explosaoAoSair", "invisivel"] as const;
+
+function validarEfeitos(json: unknown, caminho: string): EfeitosDeSinergia {
+  const o = obj(json, caminho);
+  const efeitos: Record<string, number | boolean> = {};
+  for (const [chave, valor] of Object.entries(o)) {
+    if ((EFEITOS_NUMERICOS as readonly string[]).includes(chave)) {
+      efeitos[chave] = num(o, chave, caminho, "positivo");
+    } else if ((EFEITOS_LOGICOS as readonly string[]).includes(chave)) {
+      if (typeof valor !== "boolean") {
+        throw new ErroDeDados(`${caminho}.${chave}: esperava true ou false`);
+      }
+      efeitos[chave] = valor;
+    } else {
+      throw new ErroDeDados(`${caminho}.${chave}: efeito desconhecido`);
+    }
+  }
+  return efeitos;
+}
+
+function validarSinergia(json: unknown, caminho: string): DefSinergia {
+  const o = obj(json, caminho);
+  let anterior = 0;
+  const niveis = lista(o["niveis"], `${caminho}.niveis`, 1).map((n, i) => {
+    const cn = `${caminho}.niveis[${i}]`;
+    const no = obj(n, cn);
+    const minimo = inteiro(no, "minimo", cn);
+    if (minimo <= anterior) throw new ErroDeDados(`${cn}.minimo: os degraus devem crescer`);
+    anterior = minimo;
+    return {
+      minimo,
+      descricao: texto(no, "descricao", cn),
+      efeitos: validarEfeitos(no["efeitos"], `${cn}.efeitos`),
+    };
+  });
+  return { nome: texto(o, "nome", caminho), niveis };
+}
+
+export function validarSinergias(json: unknown): ConfigSinergias {
+  const c = "sinergias";
+  const o = obj(json, c);
+  const mundos = obj(o["mundos"], `${c}.mundos`);
+  const papeis = obj(o["papeis"], `${c}.papeis`);
+  const ex = obj(o["explosao"], `${c}.explosao`);
+  const grupo = <T extends string>(origem: Obj, chaves: readonly T[], caminho: string) =>
+    Object.fromEntries(
+      chaves.map((k) => [k, validarSinergia(origem[k], `${caminho}.${k}`)]),
+    ) as Record<T, DefSinergia>;
+  return {
+    mundos: grupo(mundos, MUNDOS, `${c}.mundos`),
+    papeis: grupo(papeis, PAPEIS, `${c}.papeis`),
+    raioVizinho: num(o, "raioVizinho", c, "positivo"),
+    ticksInvisivel: inteiro(o, "ticksInvisivel", c),
+    multiplicadorCritico: num(o, "multiplicadorCritico", c, "positivo"),
+    explosao: {
+      raio: num(ex, "raio", `${c}.explosao`, "positivo"),
+      dano: num(ex, "dano", `${c}.explosao`, "positivo"),
+    },
   };
 }

@@ -10,7 +10,7 @@ import {
 } from "../src/sim/combate/combate";
 import type { DefPersonagem, Evento } from "../src/sim/combate/tipos";
 
-const def = personagem("lutador");
+const def = personagem("lamina");
 const duelo = (semente: number, a: DefPersonagem = def, b: DefPersonagem = def) =>
   criarDuelo(arena, a, b, semente);
 

@@ -1,5 +1,5 @@
 import { proximo, type EstadoAleatorio } from "../sim/aleatorio";
-import type { Arena, Arquetipo, DefPersonagem } from "../sim/combate/tipos";
+import type { Arena, Papel, DefPersonagem } from "../sim/combate/tipos";
 import { aplicar, copiasDoNivel, limiteDeCampo } from "../sim/economia/economia";
 import type {
   Comando,
@@ -32,13 +32,8 @@ export interface JogadaDoBot {
   readonly recusados: number;
 }
 
-const ORDEM_TANQUE_NA_FRENTE: readonly Arquetipo[] = ["tanque", "corpo", "assassino", "distancia"];
-const ORDEM_ATIRADOR_PROTEGIDO: readonly Arquetipo[] = [
-  "tanque",
-  "distancia",
-  "corpo",
-  "assassino",
-];
+const ORDEM_TANQUE_NA_FRENTE: readonly Papel[] = ["tanque", "corpo", "assassino", "distancia"];
+const ORDEM_ATIRADOR_PROTEGIDO: readonly Papel[] = ["tanque", "distancia", "corpo", "assassino"];
 
 function unidadesDe(j: EstadoJogador): Unidade[] {
   return [...j.campo.map((c) => c.unidade), ...j.banco];
@@ -117,12 +112,12 @@ export function jogarBot(
     }
     if (cartas.length > 0 && minhas.length < limite + folga) {
       // Prefere um arquétipo que ainda não tem; depois, a carta mais cara.
-      const arquetipos = new Set(minhas.map((u) => def(u.personagem)?.arquetipo));
+      const papeis = new Set(minhas.map((u) => def(u.personagem)?.papel));
       const ordenadas = [...cartas].sort((a, b) => {
         const da = def(a.carta);
         const db = def(b.carta);
-        const novoA = da && !arquetipos.has(da.arquetipo) ? 1 : 0;
-        const novoB = db && !arquetipos.has(db.arquetipo) ? 1 : 0;
+        const novoA = da && !papeis.has(da.papel) ? 1 : 0;
+        const novoB = db && !papeis.has(db.papel) ? 1 : 0;
         return novoB - novoA || (db?.custo ?? 0) - (da?.custo ?? 0) || a.i - b.i;
       });
       const escolha = ordenadas[0];
@@ -168,11 +163,11 @@ export function jogarBot(
 
   type Plano = Map<number, number>; // unidade -> ponto
 
-  const planoPorOrdem = (ordem: readonly Arquetipo[]): Plano => {
+  const planoPorOrdem = (ordem: readonly Papel[]): Plano => {
     const pontos = [...porFrente(noChao), ...porFrente(altos)];
     const fila = titulares().sort((a, b) => {
-      const ra = ordem.indexOf(def(a.personagem)?.arquetipo ?? "corpo");
-      const rb = ordem.indexOf(def(b.personagem)?.arquetipo ?? "corpo");
+      const ra = ordem.indexOf(def(a.personagem)?.papel ?? "corpo");
+      const rb = ordem.indexOf(def(b.personagem)?.papel ?? "corpo");
       return ra - rb || poder(b) - poder(a) || a.id - b.id;
     });
     return new Map(fila.flatMap((u, i) => (pontos[i] === undefined ? [] : [[u.id, pontos[i]]])));
@@ -185,7 +180,7 @@ export function jogarBot(
     const plano: Plano = new Map();
     const fila = titulares().sort((a, b) => poder(b) - poder(a) || a.id - b.id);
     for (const u of fila) {
-      const arq = def(u.personagem)?.arquetipo;
+      const arq = def(u.personagem)?.papel;
       const querAlto = arq === "distancia" || arq === "assassino";
       const ponto =
         (querAlto ? livresAltos.shift() : undefined) ?? livresChao.shift() ?? livresAltos.shift();

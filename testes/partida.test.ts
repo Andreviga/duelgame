@@ -51,7 +51,7 @@ function rodadaDecidida(p: EstadoPartida, fortes: number[]): EstadoPartida {
     q = comCampo(
       q,
       i,
-      fortes.includes(i) ? [u(900 + i * 10, "tanque", 3), u(901 + i * 10, "lutador", 3)] : [],
+      fortes.includes(i) ? [u(900 + i * 10, "ancora", 3), u(901 + i * 10, "lamina", 3)] : [],
     );
   });
   return concluirRodada(combater(q, ctx, cfg, arena), ctx);
@@ -267,7 +267,7 @@ describe("modo 2x2", () => {
         [2, 3],
       ],
     ]);
-    for (let i = 0; i < 4; i++) p = comCampo(p, i, [u(100 + i, "lutador")]);
+    for (let i = 0; i < 4; i++) p = comCampo(p, i, [u(100 + i, "lamina")]);
     const c = p.confrontos[0];
     if (!c) throw new Error("sem confronto");
     const [a, b] = esquadroesDoConfronto(p, ctx, arena, c);
@@ -346,7 +346,7 @@ describe("bots", () => {
       ...p.economia,
       jogadores: p.economia.jogadores.map((j, i) =>
         i === 0
-          ? { ...j, elixir: 2, loja: ["tanque", "lutador", "atirador"], banco: [u(500, "lutador")] }
+          ? { ...j, elixir: 4, loja: ["ancora", "lamina", "canhoneiro"], banco: [u(500, "lamina")] }
           : j,
       ),
     };
@@ -356,7 +356,7 @@ describe("bots", () => {
       ...(comFusao.economia.jogadores[0]?.campo ?? []).map((c) => c.unidade),
       ...(comFusao.economia.jogadores[0]?.banco ?? []),
     ];
-    expect(todas).toEqual([u(500, "lutador", 2)]);
+    expect(todas).toEqual([u(500, "lamina", 2)]);
   });
 
   it("o bot médio deixa o tanque na frente e o atirador atrás", () => {
@@ -366,7 +366,7 @@ describe("bots", () => {
       rodada: 3,
       jogadores: p.economia.jogadores.map((j, i) =>
         i === 0
-          ? { ...j, elixir: 0, banco: [u(500, "atirador"), u(501, "tanque"), u(502, "lutador")] }
+          ? { ...j, elixir: 0, banco: [u(500, "canhoneiro"), u(501, "ancora"), u(502, "lamina")] }
           : j,
       ),
     };
@@ -376,8 +376,8 @@ describe("bots", () => {
     const x = (personagem: string) =>
       arena.pontos[campo.find((c) => c.unidade.personagem === personagem)?.ponto ?? -1]?.x ?? 0;
     expect(campo).toHaveLength(3);
-    expect(x("tanque")).toBeGreaterThan(x("lutador"));
-    expect(x("lutador")).toBeGreaterThan(x("atirador"));
+    expect(x("ancora")).toBeGreaterThan(x("lamina"));
+    expect(x("lamina")).toBeGreaterThan(x("canhoneiro"));
   });
 
   it("bot de jogador eliminado ou humano não joga", () => {

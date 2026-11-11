@@ -41,10 +41,14 @@ export interface ResultadoConfronto {
   readonly ticks: number;
   /** Vida que o lado perdedor perde (0 em empate). */
   readonly dano: number;
+  /** Elixir extra de sinergia para cada jogador do lado vencedor (id do jogador -> elixir). */
+  readonly elixirExtra: Readonly<Record<number, number>>;
 }
 
 export interface EstadoPartida {
   readonly modo: Modo;
+  /** Id da arena sorteada para a partida inteira. */
+  readonly arena: string;
   readonly fase: "preparacao" | "combate" | "fim";
   readonly economia: EstadoEconomia;
   /** Gerador próprio da partida (pareamento, sementes dos combates, bots). */

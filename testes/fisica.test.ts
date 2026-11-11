@@ -4,7 +4,7 @@ import { criarLutador } from "../src/sim/combate/combate";
 import { foraDosLimites, moverLutador } from "../src/sim/combate/fisica";
 import type { Entrada, Evento, Lutador } from "../src/sim/combate/tipos";
 
-const def = personagem("lutador");
+const def = personagem("lamina");
 const NADA: Entrada = {
   mover: 0,
   pular: false,

@@ -121,18 +121,18 @@ describe("rodada", () => {
 
 describe("comprar", () => {
   it("tira o elixir, esvazia a carta e põe a unidade no banco", () => {
-    const e = com(nova(), { loja: ["lutador", "tanque", "atirador"], elixir: 10 });
+    const e = com(nova(), { loja: ["lamina", "ancora", "canhoneiro"], elixir: 10 });
     const r = ok(e, { tipo: "comprar", jogador: 0, carta: 1 });
     const j = eu(r.estado);
-    expect(j.elixir).toBe(10 - personagem("tanque").custo);
-    expect(j.loja).toEqual(["lutador", null, "atirador"]);
-    expect(j.banco).toEqual([u(e.proximoId, "tanque")]);
+    expect(j.elixir).toBe(10 - personagem("ancora").custo);
+    expect(j.loja).toEqual(["lamina", null, "canhoneiro"]);
+    expect(j.banco).toEqual([u(e.proximoId, "ancora")]);
     expect(r.estado.proximoId).toBe(e.proximoId + 1);
     expect(eu(e).banco).toEqual([]); // o estado antigo não mudou
   });
 
   it("inválidos: carta vazia, índice fora, sem elixir, banco cheio, jogador errado", () => {
-    const e = com(nova(), { loja: ["lutador", null, "tanque"], elixir: 2 });
+    const e = com(nova(), { loja: ["lamina", null, "ancora"], elixir: 4 }); // dá para a Lâmina (4), não para a Âncora (5)
     expect(erro(e, { tipo: "comprar", jogador: 0, carta: 1 })).toBe("carta_invalida");
     expect(erro(e, { tipo: "comprar", jogador: 0, carta: 7 })).toBe("carta_invalida");
     expect(erro(e, { tipo: "comprar", jogador: 0, carta: -1 })).toBe("carta_invalida");
@@ -140,38 +140,38 @@ describe("comprar", () => {
     expect(erro(e, { tipo: "comprar", jogador: 3, carta: 0 })).toBe("jogador_invalido");
     expect(erro(e, { tipo: "comprar", jogador: 0.5, carta: 0 })).toBe("jogador_invalido");
     // banco cheio de unidades que não se fundem entre si nem com a carta comprada
-    const banco = [1, 2, 3, 4].map((n) => u(100 + n, "atirador", n));
+    const banco = [1, 2, 3, 4].map((n) => u(100 + n, "canhoneiro", n));
     while (banco.length < config.tamanhoBanco)
-      banco.push(u(200 + banco.length, "tanque", banco.length - 3));
+      banco.push(u(200 + banco.length, "ancora", banco.length - 3));
     const cheio = com(e, { banco });
     expect(erro(cheio, { tipo: "comprar", jogador: 0, carta: 0 })).toBe("banco_cheio");
   });
 
   it("com o banco cheio, ainda dá para comprar se a compra fundir", () => {
     const banco = [
-      u(100, "lutador"),
-      ...Array.from({ length: config.tamanhoBanco - 1 }, (_, i) => u(101 + i, "tanque", 4)),
+      u(100, "lamina"),
+      ...Array.from({ length: config.tamanhoBanco - 1 }, (_, i) => u(101 + i, "ancora", 4)),
     ];
-    const e = com(nova(), { loja: ["lutador", null, null], elixir: 5, banco });
+    const e = com(nova(), { loja: ["lamina", null, null], elixir: 5, banco });
     const r = ok(e, { tipo: "comprar", jogador: 0, carta: 0 });
     expect(eu(r.estado).banco).toHaveLength(config.tamanhoBanco);
-    expect(eu(r.estado).banco[0]).toEqual(u(100, "lutador", 2));
+    expect(eu(r.estado).banco[0]).toEqual(u(100, "lamina", 2));
   });
 });
 
 describe("fusão", () => {
   it("dois iguais do mesmo nível viram um de nível maior", () => {
-    const e = com(nova(), { loja: ["lutador", null, null], elixir: 9, banco: [u(50, "lutador")] });
+    const e = com(nova(), { loja: ["lamina", null, null], elixir: 9, banco: [u(50, "lamina")] });
     const r = ok(e, { tipo: "comprar", jogador: 0, carta: 0 });
-    expect(eu(r.estado).banco).toEqual([u(50, "lutador", 2)]);
-    expect(r.fusoes).toEqual([{ personagem: "lutador", nivel: 2, unidade: 50 }]);
+    expect(eu(r.estado).banco).toEqual([u(50, "lamina", 2)]);
+    expect(r.fusoes).toEqual([{ personagem: "lamina", nivel: 2, unidade: 50 }]);
   });
 
   it("funde em cadeia: 1+1 vira 2, que com outro 2 vira 3", () => {
     const e = com(nova(), {
-      loja: ["lutador", null, null],
+      loja: ["lamina", null, null],
       elixir: 9,
-      banco: [u(50, "lutador"), u(51, "lutador", 2)],
+      banco: [u(50, "lamina"), u(51, "lamina", 2)],
     });
     const r = ok(e, { tipo: "comprar", jogador: 0, carta: 0 });
     expect(eu(r.estado).banco.map((x) => x.nivel)).toEqual([3]);
@@ -180,30 +180,30 @@ describe("fusão", () => {
 
   it("quem está em campo é quem fica, no mesmo ponto", () => {
     const e = com(nova(), {
-      loja: ["lutador", null, null],
+      loja: ["lamina", null, null],
       elixir: 9,
-      campo: [{ unidade: u(50, "lutador"), ponto: 3 }],
+      campo: [{ unidade: u(50, "lamina"), ponto: 3 }],
     });
     const j = eu(ok(e, { tipo: "comprar", jogador: 0, carta: 0 }).estado);
     expect(j.banco).toEqual([]);
-    expect(j.campo).toEqual([{ unidade: u(50, "lutador", 2), ponto: 3 }]);
+    expect(j.campo).toEqual([{ unidade: u(50, "lamina", 2), ponto: 3 }]);
   });
 
   it("não funde personagens diferentes, níveis diferentes, nem o nível máximo", () => {
     const max = config.nivelMaximo;
     const e = com(nova(), {
-      loja: ["lutador", "tanque", null],
+      loja: ["lamina", "ancora", null],
       elixir: 20,
-      banco: [u(50, "lutador", 2), u(51, "tanque", max), u(52, "tanque", max)],
+      banco: [u(50, "lamina", 2), u(51, "ancora", max), u(52, "ancora", max)],
     });
     const r1 = ok(e, { tipo: "comprar", jogador: 0, carta: 0 });
     expect(r1.fusoes).toEqual([]);
     expect(eu(r1.estado).banco).toHaveLength(4);
-    expect(eu(r1.estado).banco.filter((x) => x.personagem === "tanque")).toHaveLength(2);
+    expect(eu(r1.estado).banco.filter((x) => x.personagem === "ancora")).toHaveLength(2);
   });
 
   it("nível maior tem mais dano e mais peso, e é mais difícil de arremessar", () => {
-    const base = personagem("lutador");
+    const base = personagem("lamina");
     const n3 = aplicarNivel(base, 3, config);
     expect(aplicarNivel(base, 1, config)).toBe(base);
     expect(n3.ataque.dano).toBeCloseTo(base.ataque.dano * (config.multiplicadores.dano[2] ?? 0));
@@ -225,23 +225,23 @@ describe("vender", () => {
   it("devolve o elixir e as cartas para o baralho; vale para banco e campo", () => {
     const e = com(nova(), {
       elixir: 0,
-      banco: [u(50, "tanque")],
-      campo: [{ unidade: u(51, "lutador", 3), ponto: 0 }],
+      banco: [u(50, "ancora")],
+      campo: [{ unidade: u(51, "lamina", 3), ponto: 0 }],
     });
-    const antes = e.baralho["lutador"] ?? 0;
+    const antes = e.baralho["lamina"] ?? 0;
     const r1 = ok(e, { tipo: "vender", jogador: 0, unidade: 50 });
-    expect(eu(r1.estado).elixir).toBe(personagem("tanque").custo);
+    expect(eu(r1.estado).elixir).toBe(personagem("ancora").custo);
     expect(eu(r1.estado).banco).toEqual([]);
     const r2 = ok(r1.estado, { tipo: "vender", jogador: 0, unidade: 51 });
     expect(eu(r2.estado).campo).toEqual([]);
-    expect(r2.estado.baralho["lutador"]).toBe(antes + 4);
-    expect(valorDeVenda(ctx, u(51, "lutador", 3))).toBe(
-      Math.floor(personagem("lutador").custo * 4 * config.reembolsoNiveisMaiores),
+    expect(r2.estado.baralho["lamina"]).toBe(antes + 4);
+    expect(valorDeVenda(ctx, u(51, "lamina", 3))).toBe(
+      Math.floor(personagem("lamina").custo * 4 * config.reembolsoNiveisMaiores),
     );
   });
 
   it("o elixir da venda respeita o teto", () => {
-    const e = com(nova(), { elixir: config.tetoElixir, banco: [u(50, "tanque")] });
+    const e = com(nova(), { elixir: config.tetoElixir, banco: [u(50, "ancora")] });
     expect(eu(ok(e, { tipo: "vender", jogador: 0, unidade: 50 }).estado).elixir).toBe(
       config.tetoElixir,
     );
@@ -279,11 +279,11 @@ describe("atualizar a loja", () => {
 
 describe("posicionar e recolher", () => {
   const base = () =>
-    com(nova(), { banco: [u(50, "lutador"), u(51, "tanque"), u(52, "atirador")] }, { rodada: 1 });
+    com(nova(), { banco: [u(50, "lamina"), u(51, "ancora"), u(52, "canhoneiro")] }, { rodada: 1 });
 
   it("leva do banco para um ponto livre", () => {
     const j = eu(ok(base(), { tipo: "posicionar", jogador: 0, unidade: 51, ponto: 4 }).estado);
-    expect(j.campo).toEqual([{ unidade: u(51, "tanque"), ponto: 4 }]);
+    expect(j.campo).toEqual([{ unidade: u(51, "ancora"), ponto: 4 }]);
     expect(j.banco.map((x) => x.id)).toEqual([50, 52]);
   });
 
@@ -342,7 +342,7 @@ describe("posicionar e recolher", () => {
     expect(erro(e, { tipo: "recolher", jogador: 0, unidade: 999 })).toBe("unidade_invalida");
     const cheio = com(e, {
       banco: Array.from({ length: config.tamanhoBanco }, (_, i) =>
-        u(200 + i, "assassino", (i % 4) + 1),
+        u(200 + i, "sombra", (i % 4) + 1),
       ),
     });
     expect(erro(cheio, { tipo: "recolher", jogador: 0, unidade: 50 })).toBe("banco_cheio");
@@ -353,8 +353,8 @@ describe("do campo para o combate", () => {
   it("monta o esquadrão nos pontos da arena, espelhado no lado direito e com os níveis", () => {
     const e = com(nova(), {
       campo: [
-        { unidade: u(50, "tanque", 2), ponto: 4 },
-        { unidade: u(51, "atirador"), ponto: 0 },
+        { unidade: u(50, "ancora", 2), ponto: 4 },
+        { unidade: u(51, "canhoneiro"), ponto: 0 },
       ],
     });
     const p0 = arena.pontos[0];
@@ -362,10 +362,10 @@ describe("do campo para o combate", () => {
     if (!p0 || !p4) throw new Error("arena sem pontos");
     const esq = montarEsquadrao(eu(e), ctx, arena, 0);
     expect(esq.map((v) => [v.def.id, v.x, v.y, v.nivel])).toEqual([
-      ["tanque", p4.x, p4.y, 2],
-      ["atirador", p0.x, p0.y, 1],
+      ["ancora", p4.x, p4.y, 2],
+      ["canhoneiro", p0.x, p0.y, 1],
     ]);
-    expect(esq[0]?.def.peso).toBeGreaterThan(personagem("tanque").peso);
+    expect(esq[0]?.def.peso).toBeGreaterThan(personagem("ancora").peso);
     const dir = montarEsquadrao(eu(e), ctx, arena, 1);
     expect(dir[0]?.x).toBe(arena.chao.x * 2 + arena.chao.largura - p4.x);
     const combate = criarCombate(arena, [esq, dir], 1);

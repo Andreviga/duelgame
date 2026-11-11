@@ -1,0 +1,171 @@
+{
+  "raioVizinho": 150,
+  "ticksInvisivel": 120,
+  "multiplicadorCritico": 1.75,
+  "explosao": {
+    "raio": 650,
+    "dano": 14
+  },
+  "mundos": {
+    "futebol": {
+      "nome": "Futebol",
+      "niveis": [
+        {
+          "minimo": 2,
+          "descricao": "+15% de velocidade de movimento",
+          "efeitos": {
+            "velocidade": 1.15
+          }
+        },
+        {
+          "minimo": 3,
+          "descricao": "Ataques ganham +20% de arremesso horizontal",
+          "efeitos": {
+            "velocidade": 1.15,
+            "arremessoHorizontal": 1.2
+          }
+        }
+      ]
+    },
+    "piratas": {
+      "nome": "Piratas",
+      "niveis": [
+        {
+          "minimo": 2,
+          "descricao": "+1 de elixir ao vencer a rodada",
+          "efeitos": {
+            "elixirAoVencer": 1
+          }
+        },
+        {
+          "minimo": 3,
+          "descricao": "O primeiro golpe de cada pirata causa dano dobrado",
+          "efeitos": {
+            "elixirAoVencer": 1,
+            "primeiroGolpe": 2
+          }
+        }
+      ]
+    },
+    "monstros": {
+      "nome": "Monstros",
+      "niveis": [
+        {
+          "minimo": 2,
+          "descricao": "+15% de peso",
+          "efeitos": {
+            "peso": 1.15
+          }
+        },
+        {
+          "minimo": 3,
+          "descricao": "Ao sair da arena, o monstro explode e fere os inimigos",
+          "efeitos": {
+            "peso": 1.15,
+            "explosaoAoSair": true
+          }
+        }
+      ]
+    },
+    "dojo": {
+      "nome": "Dojo",
+      "niveis": [
+        {
+          "minimo": 2,
+          "descricao": "+15% de velocidade de ataque",
+          "efeitos": {
+            "velocidadeDeAtaque": 1.15
+          }
+        },
+        {
+          "minimo": 3,
+          "descricao": "Habilidades carregam 30% mais rápido",
+          "efeitos": {
+            "velocidadeDeAtaque": 1.15,
+            "recargaHabilidade": 1.3
+          }
+        }
+      ]
+    }
+  },
+  "papeis": {
+    "corpo": {
+      "nome": "Corpo a corpo",
+      "niveis": [
+        {
+          "minimo": 2,
+          "descricao": "+10% de dano",
+          "efeitos": {
+            "dano": 1.1
+          }
+        },
+        {
+          "minimo": 3,
+          "descricao": "+25% de dano",
+          "efeitos": {
+            "dano": 1.25
+          }
+        }
+      ]
+    },
+    "distancia": {
+      "nome": "À distância",
+      "niveis": [
+        {
+          "minimo": 2,
+          "descricao": "+10% de alcance",
+          "efeitos": {
+            "alcance": 1.1
+          }
+        },
+        {
+          "minimo": 3,
+          "descricao": "Projéteis atravessam o primeiro alvo",
+          "efeitos": {
+            "alcance": 1.1,
+            "perfura": true
+          }
+        }
+      ]
+    },
+    "tanque": {
+      "nome": "Tanque",
+      "niveis": [
+        {
+          "minimo": 2,
+          "descricao": "Aliados vizinhos recebem 10% menos arremesso",
+          "efeitos": {
+            "protecaoVizinhos": 0.1
+          }
+        },
+        {
+          "minimo": 3,
+          "descricao": "Aliados vizinhos recebem 25% menos arremesso",
+          "efeitos": {
+            "protecaoVizinhos": 0.25
+          }
+        }
+      ]
+    },
+    "assassino": {
+      "nome": "Assassino",
+      "niveis": [
+        {
+          "minimo": 2,
+          "descricao": "O primeiro ataque é sempre crítico",
+          "efeitos": {
+            "primeiroCritico": true
+          }
+        },
+        {
+          "minimo": 3,
+          "descricao": "Começa invisível e volta a ficar após cada nocaute",
+          "efeitos": {
+            "primeiroCritico": true,
+            "invisivel": true
+          }
+        }
+      ]
+    }
+  }
+}

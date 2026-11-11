@@ -34,15 +34,19 @@ describe("schemas de dados", () => {
       /ataque\.inicio/,
     );
     expect(() => validarPersonagem({ ...base, nome: "" })).toThrow(/nome/);
-    expect(() => validarPersonagem({ ...base, arquetipo: "mago" })).toThrow(/arquetipo/);
+    expect(() => validarPersonagem({ ...base, papel: "mago" })).toThrow(/papel/);
     expect(() =>
       validarPersonagem({ ...base, habilidade: { ...base?.habilidade, tipo: "voar" } }),
     ).toThrow(/habilidade\.tipo/);
   });
 
-  it("personagem à distância precisa de projétil", () => {
-    const base = personagensJson[0];
-    expect(() => validarPersonagem({ ...base, arquetipo: "distancia" })).toThrow(/projetil/);
+  it("personagem à distância e habilidade de tiro precisam de projétil", () => {
+    const corpo = personagensJson.find((p) => p.papel === "corpo");
+    expect(() => validarPersonagem({ ...corpo, papel: "distancia" })).toThrow(/projetil/);
+    expect(() =>
+      validarPersonagem({ ...corpo, habilidade: { ...corpo?.habilidade, tipo: "canhao" } }),
+    ).toThrow(/projetil/);
+    expect(() => validarPersonagem({ ...corpo, mundo: "marte" })).toThrow(/mundo/);
   });
 
   it("recusa ponto de posicionamento fora do lado esquerdo ou solto no ar", () => {
@@ -74,7 +78,7 @@ describe("schemas de dados", () => {
       validarFormacoes(com({ personagem: "dragao", x: 300, y: 520 }), personagens, arena),
     ).toThrow(/desconhecido/);
     expect(() =>
-      validarFormacoes(com({ personagem: "tanque", x: 900, y: 520 }), personagens, arena),
+      validarFormacoes(com({ personagem: "ancora", x: 900, y: 520 }), personagens, arena),
     ).toThrow(/metade esquerda/);
   });
 });

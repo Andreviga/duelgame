@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "lote": "vitest run --config ferramentas/vitest.config.ts --silent=false --reporter=basic 2>&1 | grep -v \"^ *$\"",
     "lint": "tsc --noEmit && eslint . && prettier --check .",
     "format": "prettier --write ."
   },

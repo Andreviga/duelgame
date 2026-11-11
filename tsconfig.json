@@ -16,5 +16,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "testes"]
+  "include": ["src", "testes", "ferramentas/lote.ts"]
 }

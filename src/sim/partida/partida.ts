@@ -6,7 +6,9 @@ import {
   iniciarRodada,
   montarEsquadrao,
   removerJogador,
+  sinergiasDoJogador,
 } from "../economia/economia";
+import { elixirAoVencer } from "../economia/sinergias";
 import type { Contexto, EstadoEconomia } from "../economia/tipos";
 import type {
   ConfigPartida,
@@ -126,6 +128,8 @@ export function criarPartida(
   modo: Modo,
   participantes: readonly Participante[],
   semente: number,
+  /** Arenas possíveis; uma é sorteada para a partida inteira. */
+  arenas: readonly string[] = ["arena-basica"],
 ): EstadoPartida {
   if (participantes.length !== JOGADORES_POR_PARTIDA) {
     throw new Error(`a partida precisa de ${JOGADORES_POR_PARTIDA} jogadores`);
@@ -138,11 +142,14 @@ export function criarPartida(
     eliminadoNaRodada: null,
     ultimoAdversario: null,
   }));
+  const sorteio = proximo(criarAleatorio((semente ^ 0x9e3779b9) >>> 0));
+  const arena = arenas[Math.floor(sorteio.valor * arenas.length)] ?? "arena-basica";
   const inicial: EstadoPartida = {
     modo,
+    arena,
     fase: "preparacao",
     economia: criarEconomia(ctx, jogadores.length, semente),
-    rng: criarAleatorio((semente ^ 0x9e3779b9) >>> 0),
+    rng: sorteio.rng,
     jogadores,
     confrontos: [],
     resultados: [],
@@ -196,7 +203,15 @@ export function combater(
     const vencedor = final.fim?.vencedor ?? null;
     const dano =
       vencedor === null ? 0 : danoDaDerrota(cfg, sobreviventes[vencedor], p.economia.rodada);
-    return { vencedor, sobreviventes, ticks: final.fim?.tick ?? 0, dano };
+    // Sinergias que rendem elixir ao vencer (o fantasma não ganha nada).
+    const elixirExtra: Record<number, number> = {};
+    const vencedores = vencedor === 0 ? c.ladoA : vencedor === 1 && !c.fantasma ? c.ladoB : [];
+    for (const id of vencedores) {
+      const j = p.economia.jogadores[id];
+      const extra = j ? elixirAoVencer(sinergiasDoJogador(j, ctx)) : 0;
+      if (extra > 0) elixirExtra[id] = extra;
+    }
+    return { vencedor, sobreviventes, ticks: final.fim?.tick ?? 0, dano, elixirExtra };
   });
   return { ...p, fase: "combate", resultados };
 }
@@ -253,6 +268,22 @@ export function concluirRodada(p: EstadoPartida, ctx: Contexto): EstadoPartida {
   });
 
   let economia = p.economia;
+  // Elixir de sinergia para quem venceu.
+  const ganhos = new Map<number, number>();
+  for (const r of p.resultados) {
+    for (const [id, extra] of Object.entries(r.elixirExtra)) {
+      ganhos.set(Number(id), (ganhos.get(Number(id)) ?? 0) + extra);
+    }
+  }
+  if (ganhos.size > 0) {
+    economia = {
+      ...economia,
+      jogadores: economia.jogadores.map((j, i) => ({
+        ...j,
+        elixir: Math.min(ctx.config.tetoElixir, j.elixir + (ganhos.get(i) ?? 0)),
+      })),
+    };
+  }
   jogadores.forEach((j, i) => {
     if (j.eliminadoNaRodada === null && j.vida <= 0) {
       j.eliminadoNaRodada = rodada;

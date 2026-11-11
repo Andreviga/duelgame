@@ -1,5 +1,6 @@
 import type { EstadoAleatorio } from "../aleatorio";
 import type { DefPersonagem } from "../combate/tipos";
+import type { ConfigSinergias } from "./sinergias";
 
 export interface ConfigEconomia {
   /** Elixir ganho na rodada r: base + porRodada × r, limitado a ganhoMaximo. */
@@ -32,6 +33,7 @@ export interface ConfigEconomia {
 export interface Contexto {
   readonly config: ConfigEconomia;
   readonly personagens: readonly DefPersonagem[];
+  readonly sinergias: ConfigSinergias;
   /** Quantos pontos de posicionamento a arena tem para cada jogador. */
   readonly pontos: number;
 }

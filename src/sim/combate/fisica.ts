@@ -118,7 +118,9 @@ export function moverLutador(l: Lutador, entrada: Entrada, arena: Arena, eventos
     l.noChao = true;
     l.emPlataforma = emPlataforma;
     l.pulosRestantes = 2;
-    if (l.atordoado === 0) l.lancado = false;
+    // Só deixa de contar como arremessado quando recupera o controle: fora do atordoamento
+    // e sem estar mais deslizando com a velocidade do golpe.
+    if (l.atordoado === 0 && Math.abs(l.vx) <= def.velocidade + 0.5) l.lancado = false;
   } else {
     // Saiu do apoio sem pular: sobra só o pulo no ar.
     if (estavaNoChao && l.pulosRestantes > 1) l.pulosRestantes = 1;

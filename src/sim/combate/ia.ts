@@ -1,4 +1,4 @@
-import type { Arena, Entrada, EstadoIA, Lutador } from "./tipos";
+import type { Arena, Entrada, EstadoIA, Lutador, Projetil } from "./tipos";
 
 export interface Decisao {
   readonly ia: EstadoIA;
@@ -17,6 +17,8 @@ const VANTAGEM_PARA_TROCAR = 70;
 /** Diferença de altura em que um tiro reto ainda acerta. */
 const ALINHADO = 40;
 const PENALIDADE_FORA = 500;
+/** O tufão só vale a pena quando algum inimigo já acumulou este dano. */
+const DANO_PARA_TUFAO = 30;
 
 function sinal(n: number): -1 | 0 | 1 {
   return n > 0 ? 1 : n < 0 ? -1 : 0;
@@ -43,22 +45,22 @@ function distancia(a: L, b: L, arena: Arena): number {
 
 /**
  * Escolha de alvo, por arquétipo:
- *  - assassino: caça os atiradores inimigos (a retaguarda); sem atirador, o mais próximo;
+ *  - assassino: caça os inimigos que lutam à distância (a retaguarda); sem eles, o mais próximo;
  *  - à distância: quem tem a maior porcentagem dentro do alcance; ninguém ao alcance, o mais próximo;
  *  - corpo a corpo e tanque: o mais próximo.
- * Quem está fora do chão da arena (arremessado) conta como bem mais longe: é melhor
+ * Quem está invisível não pode ser escolhido. Quem está fora do chão da arena (arremessado) conta como bem mais longe: é melhor
  * bater em quem está ao alcance do que esperar na beirada.
  * O alvo atual é mantido enquanto outro não estiver bem mais perto.
  */
 export function escolherAlvo(l: L, todos: readonly L[], arena: Arena): L | null {
-  const inimigos = todos.filter((o) => o.vivo && o.lado !== l.lado);
+  const inimigos = todos.filter((o) => o.vivo && o.lado !== l.lado && o.invisivel === 0);
   if (inimigos.length === 0) return null;
 
   let candidatos = inimigos;
-  if (l.def.arquetipo === "assassino") {
-    const atiradores = inimigos.filter((o) => o.def.arquetipo === "distancia");
+  if (l.def.papel === "assassino") {
+    const atiradores = inimigos.filter((o) => o.def.papel === "distancia");
     if (atiradores.length > 0) candidatos = atiradores;
-  } else if (l.def.arquetipo === "distancia") {
+  } else if (l.def.papel === "distancia") {
     const aoAlcance = inimigos.filter(
       (o) => distancia(l, o, arena) - Math.abs(o.y - l.y) <= l.def.ataque.alcance,
     );
@@ -84,39 +86,111 @@ export function escolherAlvo(l: L, todos: readonly L[], arena: Arena): L | null 
   return melhor;
 }
 
-/** A habilidade pode ser usada agora contra este alvo? */
-export function podeUsarHabilidade(l: L, alvo: L, todos: readonly L[], arena: Arena): boolean {
+/**
+ * A habilidade pode ser usada agora? Devolve o alvo dela (ou `alvo: null` para as que não miram
+ * em ninguém), ou `null` se não é hora de usar. O combate chama esta mesma função ao executar,
+ * para a IA e a execução concordarem sobre quem é o alvo.
+ */
+export function alvoDaHabilidade(
+  l: L,
+  todos: readonly L[],
+  arena: Arena,
+  projeteis: readonly Readonly<Projetil>[],
+): { alvo: L | null } | null {
   const hab = l.def.habilidade;
-  if (l.habRecarga > 0 || !l.noChao) return false;
+  if (l.habRecarga > 0) return null;
   const esq = arena.chao.x;
   const dir = arena.chao.x + arena.chao.largura;
-  const dx = alvo.x - l.x;
-  const dy = alvo.y - l.y;
-  const dist = Math.abs(dx);
-  const sentido = dx >= 0 ? 1 : -1;
+  const vivos = todos.filter((o) => o.vivo && o.lado !== l.lado);
+  const visiveis = vivos.filter((o) => o.invisivel === 0);
+  // Em cima da arena: dentro da largura do chão e não caindo por baixo dele.
+  const sobreChao = (o: L): boolean => o.x > esq && o.x < dir && o.y <= arena.chao.y + 1;
+  const dx = (o: L): number => Math.abs(o.x - l.x);
+  const dy = (o: L): number => Math.abs(o.y - l.y);
+  const atual = visiveis.find((o) => o.id === l.alvo) ?? null;
+  const maisDistante = (lista: L[]): L | null =>
+    lista.reduce<L | null>((m, o) => (!m || dx(o) > dx(m) ? o : m), null);
+
   switch (hab.tipo) {
     case "investida": {
+      if (!atual || !l.noChao) return null;
+      const sentido = atual.x >= l.x ? 1 : -1;
       const fim = l.x + sentido * hab.velocidade * hab.duracao;
-      return (
-        Math.abs(dy) < ALINHADO &&
-        dist > 90 &&
-        dist <= hab.alcance &&
+      const ok =
+        dy(atual) < ALINHADO &&
+        dx(atual) > 90 &&
+        dx(atual) <= hab.alcance &&
         fim > esq + MARGEM_BEIRADA &&
-        fim < dir - MARGEM_BEIRADA
-      );
+        fim < dir - MARGEM_BEIRADA;
+      return ok ? { alvo: atual } : null;
     }
-    case "rajada":
-      return Math.abs(dy) < ALINHADO && dist <= hab.alcance && dist > 80;
-    case "pisao":
-      return todos.some(
-        (o) =>
-          o.vivo &&
-          o.lado !== l.lado &&
-          Math.abs(o.x - l.x) < hab.alcance * 0.8 &&
-          Math.abs(o.y - l.y) < 70,
+    case "area":
+      return l.noChao && vivos.some((o) => dx(o) < hab.alcance * 0.8 && dy(o) < 70)
+        ? { alvo: null }
+        : null;
+    case "bola":
+      return atual && dx(atual) + dy(atual) <= hab.alcance ? { alvo: atual } : null;
+    case "devolver": {
+      const meio = l.y - l.def.altura / 2;
+      const vindo = projeteis.some(
+        (p) =>
+          p.lado !== l.lado &&
+          Math.abs(p.x - l.x) < 300 &&
+          Math.abs(p.y - meio) < 90 &&
+          (p.alvo === l.id || Math.sign(p.vx) === Math.sign(l.x - p.x)),
       );
-    case "salto":
-      return alvo.noChao && alvo.x > esq && alvo.x < dir && dist > 110 && dist <= hab.alcance;
+      return vindo ? { alvo: null } : null;
+    }
+    case "carrinho": {
+      if (!l.noChao) return null;
+      const alvo = maisDistante(
+        visiveis.filter(
+          (o) => sobreChao(o) && o.noChao && dy(o) < ALINHADO && dx(o) > 80 && dx(o) <= hab.alcance,
+        ),
+      );
+      return alvo ? { alvo } : null;
+    }
+    case "gancho": {
+      if (!l.noChao) return null;
+      const alvo = maisDistante(
+        visiveis.filter(
+          (o) => o.atordoado === 0 && dy(o) < 220 && dx(o) > 130 && dx(o) <= hab.alcance,
+        ),
+      );
+      return alvo ? { alvo } : null;
+    }
+    case "canhao":
+      return atual && l.noChao && dy(atual) < ALINHADO && dx(atual) > 80 && dx(atual) <= hab.alcance
+        ? { alvo: atual }
+        : null;
+    case "cadeia": {
+      const alvo = visiveis
+        .filter((o) => sobreChao(o) && dx(o) + dy(o) <= hab.alcance)
+        .reduce<L | null>((m, o) => (!m || dx(o) + dy(o) < dx(m) + dy(m) ? o : m), null);
+      return alvo ? { alvo } : null;
+    }
+    case "casco": {
+      const ameaca = vivos.some(
+        (o) =>
+          dx(o) < 120 && dy(o) < 70 && (o.ataque.fase === "inicio" || o.ataque.fase === "ativo"),
+      );
+      return l.noChao && ameaca ? { alvo: null } : null;
+    }
+    case "teleporte": {
+      if (!l.noChao) return null;
+      const alvo = visiveis
+        .filter((o) => sobreChao(o) && o.noChao && dx(o) > 90 && dx(o) <= hab.alcance)
+        .reduce<L | null>(
+          (m, o) =>
+            !m || o.def.peso < m.def.peso || (o.def.peso === m.def.peso && o.id < m.id) ? o : m,
+          null,
+        );
+      return alvo ? { alvo } : null;
+    }
+    case "tufao": {
+      const emCena = vivos.filter((o) => sobreChao(o) && dx(o) <= hab.alcance);
+      return l.noChao && emCena.some((o) => o.dano >= DANO_PARA_TUFAO) ? { alvo: null } : null;
+    }
   }
 }
 
@@ -135,7 +209,13 @@ export function podeUsarHabilidade(l: L, alvo: L, todos: readonly L[], arena: Ar
  *  - caso contrário                 -> aproximar (anda, pula, desce de plataforma)
  * `sorteio` é um número em [0, 1) vindo do gerador com semente.
  */
-export function decidir(l: L, todos: readonly L[], arena: Arena, sorteio: number): Decisao {
+export function decidir(
+  l: L,
+  todos: readonly L[],
+  arena: Arena,
+  sorteio: number,
+  projeteis: readonly Readonly<Projetil>[] = [],
+): Decisao {
   if (l.atordoado > 0) return { ia: "recuperar", entrada: entrada({}), alvo: l.alvo };
   const chao = arena.chao;
   const esq = chao.x;
@@ -197,7 +277,9 @@ export function decidir(l: L, todos: readonly L[], arena: Arena, sorteio: number
       if (l.noChao) pular = true;
       else if (l.vy > -1 && l.pulosRestantes > 0 && sorteio < 0.5) pular = true;
     } else if (dy > 45 && l.noChao && l.emPlataforma) {
-      descer = true;
+      // Só desce se cair em cima do chão; numa plataforma que passa da beirada, anda para dentro antes.
+      if (l.x > esq + MARGEM_BEIRADA && l.x < dir - MARGEM_BEIRADA) descer = true;
+      else mover = l.x < centro ? 1 : -1;
     } else if (
       !atira &&
       l.noChao &&
@@ -213,7 +295,7 @@ export function decidir(l: L, todos: readonly L[], arena: Arena, sorteio: number
   if (l.ataque.fase !== "nenhum") {
     ia = "atacar";
     if (!l.noChao && Math.abs(dxMover) > 10) mover = sinal(dxMover);
-  } else if (podeUsarHabilidade(l, alvo, todos, arena)) {
+  } else if (alvoDaHabilidade(l, todos, arena, projeteis)) {
     ia = "habilidade";
     habilidade = sorteio < CHANCE_DE_REAGIR;
     encarar = sentido;
@@ -239,7 +321,8 @@ export function decidir(l: L, todos: readonly L[], arena: Arena, sorteio: number
   if (l.impulso > 0 && !l.noChao) pular = false;
 
   // Proteção de beirada: no chão não anda para fora; no ar corrige para dentro.
-  if (l.noChao && !l.emPlataforma) {
+  // (Vale também em plataformas que passam da largura do chão: não anda mais para fora.)
+  if (l.noChao) {
     if (mover < 0 && l.x <= esq + MARGEM_BEIRADA) mover = 0;
     if (mover > 0 && l.x >= dir - MARGEM_BEIRADA) mover = 0;
   } else if (!l.noChao) {

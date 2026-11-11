@@ -1,6 +1,7 @@
 import { criarAleatorio, proximo, type EstadoAleatorio } from "../aleatorio";
 import { TICKS_POR_SEGUNDO } from "../constantes";
 import type { Arena, DefPersonagem, Esquadrao } from "../combate/tipos";
+import { aplicarSinergias, sinergiasEmCampo, type SinergiaAtiva } from "./sinergias";
 import type {
   Comando,
   ConfigEconomia,
@@ -348,7 +349,19 @@ export function aplicarNivel(
   };
 }
 
-/** Transforma o campo do jogador em um esquadrão pronto para o combate. */
+/** Sinergias do campo de um jogador (personagens diferentes de cada mundo e papel). */
+export function sinergiasDoJogador(jogador: EstadoJogador, ctx: Contexto): SinergiaAtiva[] {
+  const defs = jogador.campo.flatMap((c) => {
+    const d = definicao(ctx, c.unidade.personagem);
+    return d ? [d] : [];
+  });
+  return sinergiasEmCampo(defs, ctx.sinergias);
+}
+
+/**
+ * Transforma o campo do jogador em um esquadrão pronto para o combate:
+ * aplica o nível de fusão e as sinergias de cada personagem.
+ */
 export function montarEsquadrao(
   jogador: EstadoJogador,
   ctx: Contexto,
@@ -358,17 +371,24 @@ export function montarEsquadrao(
   opcoes: { dono?: number; segundo?: boolean } = {},
 ): Esquadrao {
   const soma = arena.chao.x * 2 + arena.chao.largura;
+  const ativas = sinergiasDoJogador(jogador, ctx);
   const vagas = [];
   for (const c of [...jogador.campo].sort((a, b) => a.unidade.id - b.unidade.id)) {
-    const def = definicao(ctx, c.unidade.personagem);
+    const base = definicao(ctx, c.unidade.personagem);
     const ponto = (opcoes.segundo ? arena.pontosAliado : arena.pontos)[c.ponto];
-    if (!def || !ponto) continue;
+    if (!base || !ponto) continue;
+    const { def, bonus } = aplicarSinergias(
+      aplicarNivel(base, c.unidade.nivel, ctx.config),
+      ativas,
+      ctx.sinergias,
+    );
     vagas.push({
-      def: aplicarNivel(def, c.unidade.nivel, ctx.config),
+      def,
       x: lado === 0 ? ponto.x : soma - ponto.x,
       y: ponto.y,
       nivel: c.unidade.nivel,
       dono: opcoes.dono ?? lado,
+      bonus,
     });
   }
   return vagas;

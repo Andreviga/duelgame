@@ -6,7 +6,7 @@ import {
 } from "../src/sim/combate/arremesso";
 import { personagem } from "../src/dados";
 
-const ataque = { ...personagem("lutador").ataque, arremessoBase: 5, arremessoCrescimento: 0.1 };
+const ataque = { ...personagem("lamina").ataque, arremessoBase: 5, arremessoCrescimento: 0.1 };
 
 describe("fórmula de arremesso", () => {
   it("com 0% e peso de referência, é a força base", () => {

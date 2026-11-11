@@ -65,17 +65,36 @@ export interface DefAtaque extends DefImpacto {
   readonly projetil?: DefProjetil;
 }
 
-export type TipoHabilidade = "investida" | "rajada" | "pisao" | "salto";
+export type TipoHabilidade =
+  | "investida"
+  | "area"
+  | "bola"
+  | "devolver"
+  | "carrinho"
+  | "gancho"
+  | "canhao"
+  | "cadeia"
+  | "casco"
+  | "teleporte"
+  | "tufao";
 
 /**
  * Habilidade com tempo de recarga. O sentido de cada campo depende do tipo:
  *  - investida: corre `duracao` ticks a `velocidade`, acertando quem estiver no caminho; `alcance` é a distância máxima para usar.
- *  - rajada:    dispara `quantidade` projéteis, um a cada `duracao` ticks, a `velocidade`; `alcance` é a distância máxima.
- *  - pisao:     prepara por `duracao` ticks e arremessa todos os inimigos a até `alcance` de distância.
- *  - salto:     pula com velocidade vertical `velocidade` e cai atrás do alvo; `alcance` é a distância máxima.
+ *  - area:      prepara por `duracao` ticks e arremessa todos os inimigos a até `alcance` de distância.
+ *  - bola:      dispara, a `velocidade`, um projétil que persegue o alvo e quica entre até `quantidade` inimigos a até `alcance` um do outro.
+ *  - devolver:  por `duracao` ticks, agarra o próximo projétil inimigo e o devolve com `quantidade` vezes o arremesso.
+ *  - carrinho:  desliza a `velocidade`, por até `duracao` ticks, até o inimigo mais distante (a até `alcance`) e o arremessa.
+ *  - gancho:    puxa para perto o inimigo mais distante (a até `alcance`), que fica atordoado por `duracao` ticks.
+ *  - canhao:    dispara, a `velocidade`, um projétil grande e lento com arremesso alto; `alcance` é a distância máxima.
+ *  - cadeia:    salta entre até `quantidade` inimigos (a até `alcance`), um a cada `duracao` ticks, acertando cada um.
+ *  - casco:     fica imóvel e imune a arremesso por `duracao` ticks.
+ *  - teleporte: reaparece atrás do inimigo de menor peso (a até `alcance`).
+ *  - tufao:     empurra todos os inimigos a até `alcance` para a borda mais próxima.
  */
 export interface DefHabilidade extends DefImpacto {
   readonly tipo: TipoHabilidade;
+  readonly nome: string;
   readonly recarga: number;
   readonly alcance: number;
   readonly velocidade: number;
@@ -83,12 +102,14 @@ export interface DefHabilidade extends DefImpacto {
   readonly quantidade: number;
 }
 
-export type Arquetipo = "corpo" | "distancia" | "tanque" | "assassino";
+export type Papel = "corpo" | "distancia" | "tanque" | "assassino";
+export type Mundo = "futebol" | "piratas" | "monstros" | "dojo";
 
 export interface DefPersonagem {
   readonly id: string;
   readonly nome: string;
-  readonly arquetipo: Arquetipo;
+  readonly mundo: Mundo;
+  readonly papel: Papel;
   /** Preço na loja, em elixir. */
   readonly custo: number;
   readonly largura: number;
@@ -104,6 +125,38 @@ export interface DefPersonagem {
   readonly habilidade: DefHabilidade;
 }
 
+/**
+ * Efeitos de sinergia que agem durante o combate. Os que só mudam atributos
+ * (velocidade, peso, dano, alcance, recargas) já vêm aplicados em `def`.
+ */
+export interface BonusDeCombate {
+  /** Multiplicador da parte horizontal do arremesso que este personagem causa. */
+  readonly arremessoHorizontal: number;
+  /** Multiplicador de dano do primeiro golpe da rodada (1 = sem bônus). */
+  readonly primeiroGolpe: number;
+  /** Os projéteis atravessam o primeiro alvo. */
+  readonly perfura: boolean;
+  /** Fração de arremesso a menos para quem está a até `raioVizinho` de um tanque aliado. */
+  readonly protecaoVizinhos: number;
+  readonly raioVizinho: number;
+  /** Ao sair da arena, causa este dano aos inimigos a até `raioExplosao` (0 = não explode). */
+  readonly danoExplosao: number;
+  readonly raioExplosao: number;
+  /** Ticks de invisibilidade no começo da rodada e depois de cada nocaute (0 = nunca). */
+  readonly ticksInvisivel: number;
+}
+
+export const SEM_BONUS: BonusDeCombate = {
+  arremessoHorizontal: 1,
+  primeiroGolpe: 1,
+  perfura: false,
+  protecaoVizinhos: 0,
+  raioVizinho: 0,
+  danoExplosao: 0,
+  raioExplosao: 0,
+  ticksInvisivel: 0,
+};
+
 export type EstadoIA =
   "procurar" | "aproximar" | "atacar" | "habilidade" | "recuar" | "recuperar" | "voltar";
 export type FaseAtaque = "nenhum" | "inicio" | "ativo" | "recuperacao";
@@ -117,6 +170,7 @@ export interface Lutador {
   readonly nivel: number;
   /** Jogador dono do personagem (para cores e placar). Sem partida, é igual ao lado. */
   readonly dono: number;
+  readonly bonus: BonusDeCombate;
   /** Posição: `x` é o centro, `y` é a base (os pés). */
   x: number;
   y: number;
@@ -129,7 +183,7 @@ export interface Lutador {
   /** Ticks em que ignora plataformas, para descer por elas. */
   ignorarPlataforma: number;
   pulosRestantes: number;
-  /** Ticks em que a velocidade horizontal não obedece à entrada (investida, salto). */
+  /** Ticks em que a velocidade horizontal não obedece à entrada (investida, carrinho). */
   impulso: number;
   /** Dano acumulado, em porcentagem. */
   dano: number;
@@ -140,9 +194,15 @@ export interface Lutador {
   ataque: { fase: FaseAtaque; ticks: number; acertou: boolean };
   recarga: number;
   recuarDepois: boolean;
-  /** Habilidade em andamento: ticks restantes, quem já foi atingido e disparos que faltam. */
-  hab: { ticks: number; atingidos: readonly number[]; restante: number };
+  /** Habilidade em andamento: ticks restantes, quem já foi atingido, usos que faltam e o alvo. */
+  hab: { ticks: number; atingidos: readonly number[]; restante: number; alvo: number | null };
   habRecarga: number;
+  /** Golpes acertados nesta rodada (o primeiro pode ter bônus de sinergia). */
+  golpes: number;
+  /** Ticks em que não pode ser escolhido como alvo. */
+  invisivel: number;
+  /** Quem acertou por último (leva o crédito se este personagem sair da arena). */
+  ultimoAtacante: number | null;
   /** Id do alvo atual, ou null. */
   alvo: number | null;
   ia: EstadoIA;
@@ -151,15 +211,28 @@ export interface Lutador {
 
 export interface Projetil extends DefImpacto {
   readonly id: number;
-  readonly lado: Lado;
-  readonly dono: number;
+  lado: Lado;
+  dono: number;
   /** Centro do projétil. */
   x: number;
   y: number;
-  readonly vx: number;
+  vx: number;
+  vy: number;
+  readonly velocidade: number;
   readonly largura: number;
   readonly altura: number;
   vida: number;
+  /** Persegue este lutador (bola que quica, projétil devolvido); null anda em linha reta. */
+  alvo: number | null;
+  /** Quantas vezes ainda pula para outro inimigo depois de acertar. */
+  quiques: number;
+  /** Distância máxima para achar o próximo inimigo ao quicar. */
+  readonly raioDeBusca: number;
+  /** Quantos alvos ainda atravessa. */
+  perfura: number;
+  atingidos: readonly number[];
+  /** Multiplicador de arremesso (o projétil devolvido volta mais forte). */
+  multiplicador: number;
 }
 
 /** O que a IA quer fazer neste tick. A física decide o que acontece. */
@@ -182,6 +255,8 @@ export type Evento =
       readonly y: number;
       readonly forca: number;
       readonly direcao: -1 | 1;
+      /** O golpe teve bônus de primeiro golpe (crítico). */
+      readonly critico: boolean;
     }
   | {
       readonly tipo: "saida";
@@ -214,7 +289,30 @@ export type Evento =
       readonly y: number;
     }
   | {
-      readonly tipo: "pisao";
+      readonly tipo: "area";
+      readonly id: number;
+      readonly x: number;
+      readonly y: number;
+      readonly raio: number;
+    }
+  | {
+      readonly tipo: "teleporte";
+      readonly id: number;
+      readonly deX: number;
+      readonly deY: number;
+      readonly x: number;
+      readonly y: number;
+    }
+  | {
+      readonly tipo: "gancho";
+      readonly id: number;
+      readonly alvo: number;
+      readonly deX: number;
+      readonly deY: number;
+    }
+  | { readonly tipo: "devolveu"; readonly id: number; readonly x: number; readonly y: number }
+  | {
+      readonly tipo: "explosao";
       readonly id: number;
       readonly x: number;
       readonly y: number;
@@ -235,6 +333,7 @@ export interface Vaga {
   readonly y: number;
   readonly nivel?: number;
   readonly dono?: number;
+  readonly bonus?: BonusDeCombate;
 }
 export type Esquadrao = readonly Vaga[];
 
