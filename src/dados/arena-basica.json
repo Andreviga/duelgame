@@ -1,0 +1,16 @@
+{
+  "id": "arena-basica",
+  "nome": "Arena básica",
+  "gravidade": 0.6,
+  "chao": { "x": 200, "y": 520, "largura": 800, "altura": 40 },
+  "plataformas": [
+    { "x": 290, "y": 400, "largura": 190 },
+    { "x": 720, "y": 400, "largura": 190 },
+    { "x": 505, "y": 290, "largura": 190 }
+  ],
+  "limites": { "esquerda": -250, "direita": 1450, "topo": -350, "fundo": 900 },
+  "nascimentos": [
+    { "x": 380, "y": 520 },
+    { "x": 820, "y": 520 }
+  ]
+}

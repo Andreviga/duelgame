@@ -1,0 +1,26 @@
+[
+  {
+    "id": "lutador",
+    "nome": "Lutador",
+    "largura": 40,
+    "altura": 60,
+    "peso": 100,
+    "velocidade": 4.2,
+    "aceleracao": 0.7,
+    "aceleracaoAr": 0.35,
+    "pulo": 13,
+    "puloDuplo": 12,
+    "quedaMaxima": 12,
+    "ataque": {
+      "dano": 9,
+      "alcance": 46,
+      "inicio": 8,
+      "ativo": 4,
+      "recuperacao": 12,
+      "recarga": 16,
+      "arremessoBase": 5,
+      "arremessoCrescimento": 0.13,
+      "anguloGraus": 38
+    }
+  }
+]
