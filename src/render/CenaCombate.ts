@@ -16,7 +16,7 @@ import {
   desenharPinos,
 } from "./desenho";
 import { Efeitos, misturar } from "./efeitos";
-import { arenaAtual, avancarRodada, confrontoParaAssistir, HUMANO, jogo } from "./jogo";
+import { arenaAtual, avancarRodada, confrontoParaAssistir, meuNumero, jogo } from "./jogo";
 
 const LARGURA = 1200;
 const ALTURA = 675;
@@ -113,6 +113,7 @@ export class CenaCombate extends Phaser.Scene {
     this.debug = params.has("debug");
     const v = Number(params.get("velocidade"));
     if (VELOCIDADES.includes(v)) this.velocidade = v;
+    if (jogo.online) this.velocidade = 1;
 
     const partida = params.has("demo") ? null : jogo.partida;
     if (partida) {
@@ -191,6 +192,7 @@ export class CenaCombate extends Phaser.Scene {
   }
 
   private trocarVelocidade(): void {
+    if (jogo.online) return; // online todos assistem no mesmo passo
     const i = VELOCIDADES.indexOf(this.velocidade);
     this.velocidade = VELOCIDADES[(i + 1) % VELOCIDADES.length] ?? 1;
     this.atualizarBotoes();
@@ -297,6 +299,12 @@ export class CenaCombate extends Phaser.Scene {
 
   override update(_tempo: number, delta: number): void {
     const ms = Math.min(delta, 50);
+    // Online o servidor dá um tempo fixo para o combate: a câmera lenta e a pausa no golpe
+    // esticariam a luta e ela seria cortada antes do fim.
+    if (jogo.online) {
+      this.cameraLenta = 0;
+      this.pausaGolpe = 0;
+    }
     const escala = (this.cameraLenta > 0 ? 0.22 : 1) * this.velocidade;
     this.cameraLenta = Math.max(0, this.cameraLenta - ms);
 
@@ -319,10 +327,14 @@ export class CenaCombate extends Phaser.Scene {
         if (esperado && esperado.vencedor !== fim.vencedor) {
           console.error("combate divergiu da simulação", esperado, fim);
         }
+        // Online: avisa o servidor do resultado que este cliente viu.
+        if (this.ctx) jogo.online?.conferir(this.ctx.partida.economia.rodada, fim.vencedor);
       }
       this.msDesdeFim += ms * this.velocidade;
       if (this.msDesdeFim > MS_ENTRE_RODADAS) {
         if (this.ctx) {
+          // Online, é o servidor que abre a rodada seguinte: a tela só espera.
+          if (jogo.online) return;
           this.scene.start(avancarRodada());
           return;
         }
@@ -778,9 +790,9 @@ export class CenaCombate extends Phaser.Scene {
     }
     const { confronto, resultado } = this.ctx;
     if (v === null) return { titulo: "EMPATE", sub: `${motivo}ninguém perde vida`, cor: 0xffffff };
-    const meuLado: Lado | null = confronto.ladoA.includes(HUMANO)
+    const meuLado: Lado | null = confronto.ladoA.includes(meuNumero())
       ? 0
-      : confronto.ladoB.includes(HUMANO) && !confronto.fantasma
+      : confronto.ladoB.includes(meuNumero()) && !confronto.fantasma
         ? 1
         : null;
     const dano = resultado?.dano ?? 0;

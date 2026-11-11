@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { estaVivo } from "../sim/partida/partida";
 import { corDoJogador, desenharFundo } from "./desenho";
 import { ALTURA, criarTexto, dentro, desenharBotao, LARGURA, type Ret } from "./interface";
-import { HUMANO, jogo, NOME_DO_NIVEL, partidaAtual } from "./jogo";
+import { meuNumero, jogo, NOME_DO_NIVEL, partidaAtual, sairDaSalaOnline } from "./jogo";
 
 const DE_NOVO: Ret = { x: 450, y: 560, largura: 300, altura: 64 };
 const POSICOES = ["1º", "2º", "3º", "4º"];
@@ -21,10 +21,12 @@ export class CenaResultado extends Phaser.Scene {
     this.add.graphics().fillStyle(0x0b0f16, 0.6).fillRect(0, 0, LARGURA, ALTURA);
     const g = this.add.graphics();
 
-    const humano = p.jogadores[HUMANO];
+    const humano = p.jogadores[meuNumero()];
     const duplas = p.modo === "duplas";
-    const venceu = duplas ? humano !== undefined && estaVivo(humano) : classificacao[0] === HUMANO;
-    const posicao = classificacao.indexOf(HUMANO);
+    const venceu = duplas
+      ? humano !== undefined && estaVivo(humano)
+      : classificacao[0] === meuNumero();
+    const posicao = classificacao.indexOf(meuNumero());
     const titulo = venceu
       ? "VOCÊ VENCEU!"
       : duplas
@@ -50,7 +52,7 @@ export class CenaResultado extends Phaser.Scene {
       g.fillRoundedRect(x, y, 540, 64, 12);
       g.fillStyle(corDoJogador(id), 1);
       g.fillRoundedRect(x, y, 10, 64, 4);
-      if (id === HUMANO) {
+      if (id === meuNumero()) {
         g.lineStyle(3, 0xffd54a, 1);
         g.strokeRoundedRect(x, y, 540, 64, 12);
       }
@@ -79,6 +81,7 @@ export class CenaResultado extends Phaser.Scene {
     );
     this.input.on("pointerdown", (ponteiro: Phaser.Input.Pointer) => {
       if (dentro(DE_NOVO, ponteiro.x, ponteiro.y)) {
+        if (jogo.online) void sairDaSalaOnline();
         jogo.partida = null;
         jogo.automatico = false;
         jogo.automaticoJaRodou = true;

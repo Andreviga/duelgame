@@ -13,9 +13,13 @@ import {
   estaVivo,
 } from "../sim/partida/partida";
 import type { EstadoPartida, Modo, NivelBot } from "../sim/partida/tipos";
+import { ConexaoOnline, type Ouvintes } from "../rede/cliente";
+import type { ComandoDoCliente, InfoDaSala, Visao } from "../rede/protocolo";
 
-/** O jogador humano é sempre o primeiro. */
-export const HUMANO = 0;
+/** Número do jogador desta máquina: 0 contra bots; online, a vaga que o servidor deu. */
+export function meuNumero(): number {
+  return jogo.eu;
+}
 
 export const NOME_DO_NIVEL: Readonly<Record<NivelBot, string>> = {
   facil: "Fácil",
@@ -35,12 +39,30 @@ export const jogo: {
   automatico: boolean;
   /** O modo automático vale para uma partida só; depois o menu volta ao normal. */
   automaticoJaRodou: boolean;
+  eu: number;
+  /** Conexão com a sala online, ou null jogando contra bots nesta máquina. */
+  online: ConexaoOnline | null;
+  sala: InfoDaSala | null;
+  /** Momento (performance.now) em que a fase atual acaba, segundo o servidor. */
+  prazo: number;
+  conexaoCaiu: boolean;
+  /** Trocar de tela; definido em main.ts. */
+  irPara: (cena: string) => void;
+  /** Mostrar um erro vindo do servidor na tela atual. */
+  aoErro: (erro: string) => void;
 } = {
   partida: null,
   modo: "todos",
   dificuldade: "medio",
   automatico: false,
   automaticoJaRodou: false,
+  eu: 0,
+  online: null,
+  sala: null,
+  prazo: 0,
+  conexaoCaiu: false,
+  irPara: () => undefined,
+  aoErro: () => undefined,
 };
 
 export function partidaAtual(): EstadoPartida {
@@ -56,13 +78,13 @@ export function arenaAtual(): Arena {
 /** Bots jogam a preparação assim que a rodada abre; o humano joga depois, pela tela. */
 function abrirPreparacao(p: EstadoPartida): EstadoPartida {
   let q = jogarBots(p, CONTEXTO, arena(p.arena)).partida;
-  const humano = q.jogadores[HUMANO];
+  const humano = q.jogadores[jogo.eu];
   if (jogo.automatico && q.fase === "preparacao" && humano && estaVivo(humano)) {
     const jogada = jogarBot(
       q.economia,
       CONTEXTO,
       arena(q.arena),
-      { jogador: HUMANO, nivel: "medio" },
+      { jogador: jogo.eu, nivel: "medio" },
       q.rng,
     );
     q = { ...comEconomia(q, jogada.economia), rng: jogada.rng };
@@ -79,11 +101,14 @@ export function novaPartida(
 ): EstadoPartida {
   jogo.modo = modo;
   jogo.dificuldade = dificuldade;
+  jogo.eu = 0;
+  jogo.online = null;
+  jogo.sala = null;
   const nomes =
     modo === "duplas"
       ? ["Você", "Aliado", "Rival 1", "Rival 2"]
       : ["Você", "Rival 1", "Rival 2", "Rival 3"];
-  const participantes = nomes.map((nome, i) => ({ nome, bot: i === HUMANO ? null : dificuldade }));
+  const participantes = nomes.map((nome, i) => ({ nome, bot: i === jogo.eu ? null : dificuldade }));
   jogo.partida = abrirPreparacao(
     criarPartida(
       CONTEXTO,
@@ -97,8 +122,18 @@ export function novaPartida(
   return jogo.partida;
 }
 
-/** Comando do jogador humano na preparação. */
-export function comandoDoHumano(comando: Comando): Resultado {
+/**
+ * Comando do jogador humano na preparação.
+ * Contra bots, a simulação responde na hora. Online, o comando vai para o servidor e
+ * devolve null: o estado novo (ou o erro) chega depois, por mensagem.
+ */
+export function comandoDoHumano(comando: Comando): Resultado | null {
+  if (jogo.online) {
+    const { jogador: _jogador, ...resto } = comando;
+    void _jogador;
+    jogo.online.comando(resto as ComandoDoCliente);
+    return null;
+  }
   const p = partidaAtual();
   const r = aplicar(p.economia, CONTEXTO, comando);
   if (r.ok) jogo.partida = comEconomia(p, r.estado);
@@ -106,7 +141,7 @@ export function comandoDoHumano(comando: Comando): Resultado {
 }
 
 export function humanoVivo(): boolean {
-  const j = partidaAtual().jogadores[HUMANO];
+  const j = partidaAtual().jogadores[jogo.eu];
   return j !== undefined && estaVivo(j);
 }
 
@@ -117,7 +152,7 @@ export function iniciarCombates(): void {
 
 /** Índice do confronto que a tela de combate deve mostrar: o do humano, ou o primeiro se ele já caiu. */
 export function confrontoParaAssistir(): number {
-  const i = confrontoDoJogador(partidaAtual(), HUMANO);
+  const i = confrontoDoJogador(partidaAtual(), jogo.eu);
   return i >= 0 ? i : 0;
 }
 
@@ -136,4 +171,83 @@ export function avancarRodada(): "preparacao" | "combate" | "resultado" {
   if (humanoVivo() && !jogo.automatico) return "preparacao";
   iniciarCombates();
   return "combate";
+}
+
+// ---------- online ----------
+
+/** Tela que corresponde ao que o servidor acabou de mandar. */
+function cenaDaVisao(v: Visao): string {
+  const p = v.partida;
+  if (!p) return "sala";
+  if (p.fase === "fim") return "resultado";
+  return p.fase === "combate" ? "combate" : "preparacao";
+}
+
+let chaveDaCena = "";
+
+function ouvintes(): Ouvintes {
+  return {
+    aoVisao: (v) => {
+      jogo.partida = v.partida;
+      jogo.eu = v.eu;
+      jogo.sala = v.sala;
+      jogo.modo = v.sala.modo;
+      jogo.dificuldade = v.sala.dificuldade;
+      jogo.prazo = performance.now() + v.msRestantes;
+      // Troca de tela só quando muda a fase ou a rodada; no resto do tempo a tela atual se redesenha.
+      const chave = `${cenaDaVisao(v)}:${v.partida?.economia.rodada ?? 0}`;
+      if (chave !== chaveDaCena) {
+        chaveDaCena = chave;
+        jogo.irPara(cenaDaVisao(v));
+      }
+    },
+    aoErro: (erro) => jogo.aoErro(erro),
+    aoCair: () => {
+      jogo.conexaoCaiu = true;
+    },
+    aoVoltar: () => {
+      jogo.conexaoCaiu = false;
+    },
+    aoSair: () => {
+      const estavaJogando = jogo.online !== null;
+      jogo.online = null;
+      jogo.conexaoCaiu = false;
+      chaveDaCena = "";
+      // Se a partida já acabou, a tela de resultado continua; senão, volta para o menu.
+      if (estavaJogando && jogo.partida?.fase !== "fim") {
+        jogo.partida = null;
+        jogo.sala = null;
+        jogo.irPara("inicial");
+      }
+    },
+  };
+}
+
+export async function criarSalaOnline(nome: string): Promise<void> {
+  chaveDaCena = "";
+  jogo.online = await ConexaoOnline.criar(
+    { nome, modo: jogo.modo, dificuldade: jogo.dificuldade },
+    ouvintes(),
+  );
+}
+
+export async function entrarNaSalaOnline(codigo: string, nome: string): Promise<void> {
+  chaveDaCena = "";
+  jogo.online = await ConexaoOnline.entrar(codigo, nome, ouvintes());
+}
+
+/** Ao abrir o jogo: se a página foi recarregada no meio de uma partida online, volta para ela. */
+export async function retomarSalaOnline(): Promise<boolean> {
+  chaveDaCena = "";
+  jogo.online = await ConexaoOnline.retomar(ouvintes());
+  return jogo.online !== null;
+}
+
+export async function sairDaSalaOnline(): Promise<void> {
+  const conexao = jogo.online;
+  jogo.online = null;
+  jogo.sala = null;
+  jogo.partida = null;
+  chaveDaCena = "";
+  await conexao?.sair();
 }

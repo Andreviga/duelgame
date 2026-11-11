@@ -10,7 +10,13 @@ import {
   tickPreparacao,
   valorDeVenda,
 } from "../sim/economia/economia";
-import { MENSAGENS, type Comando, type EstadoEconomia, type Unidade } from "../sim/economia/tipos";
+import {
+  MENSAGENS,
+  type Comando,
+  type Erro,
+  type EstadoEconomia,
+  type Unidade,
+} from "../sim/economia/tipos";
 import { TICKS_POR_SEGUNDO } from "../sim/constantes";
 import { avancarLaco, type Laco } from "../sim/laco";
 import {
@@ -25,7 +31,14 @@ import {
   desenharPinos,
 } from "./desenho";
 import { comEconomia, confrontoDoJogador, estaVivo } from "../sim/partida/partida";
-import { arenaAtual, comandoDoHumano, HUMANO, iniciarCombates, jogo, partidaAtual } from "./jogo";
+import {
+  arenaAtual,
+  comandoDoHumano,
+  meuNumero,
+  iniciarCombates,
+  jogo,
+  partidaAtual,
+} from "./jogo";
 
 const LARGURA = 1200;
 const ALTURA = 675;
@@ -94,6 +107,7 @@ export class CenaPreparacao extends Phaser.Scene {
 
     document.body.dataset["cena"] = "preparacao";
     this.laco = { estado: partidaAtual().economia, acumulado: 0 };
+    jogo.aoErro = (erro) => this.avisar(MENSAGENS[erro as Erro] ?? erro, 0xff6b6b);
 
     ZOOM = Math.min(0.8, 640 / arenaAtual().chao.largura);
     this.fundo = this.add.graphics().setDepth(0);
@@ -118,34 +132,60 @@ export class CenaPreparacao extends Phaser.Scene {
   }
 
   private get estado(): EstadoEconomia {
-    return this.laco.estado;
+    return partidaAtual().economia;
   }
 
   private get eu() {
-    const j = this.estado.jogadores[HUMANO];
+    const j = this.estado.jogadores[meuNumero()];
     if (!j) throw new Error("sem jogador");
     return j;
   }
 
-  /** Lado da arena em que o jogador luta nesta rodada (0 = esquerda, o lado do humano). */
-  private ladoDoJogador(jogador: number): Lado {
+  private meuConfronto() {
     const p = partidaAtual();
-    const confronto = p.confrontos[confrontoDoJogador(p, HUMANO)];
+    return p.confrontos[confrontoDoJogador(p, meuNumero())];
+  }
+
+  /** Lado da arena em que o jogador luta nesta rodada (0 = esquerda). Online, pode ser o direito. */
+  private ladoDoJogador(jogador: number): Lado {
+    const confronto = this.meuConfronto();
     return confronto?.ladoB.includes(jogador) && !confronto.ladoA.includes(jogador) ? 1 : 0;
+  }
+
+  /** Posição na tela de um dos meus pontos. */
+  private telaX(x: number): number {
+    return paraTelaX(this.xNoLado(x, this.meuLado()));
+  }
+
+  private meuLado(): Lado {
+    return this.ladoDoJogador(meuNumero());
+  }
+
+  /** Posição horizontal, no mundo, de um ponto de posicionamento para quem luta no lado dado. */
+  private xNoLado(x: number, lado: Lado): number {
+    const chao = arenaAtual().chao;
+    return lado === 0 ? x : chao.x * 2 + chao.largura - x;
+  }
+
+  /** Pontos em que eu posiciono: os do aliado se eu for o segundo jogador do meu lado (2x2). */
+  private meusPontos() {
+    const confronto = this.meuConfronto();
+    const doMeuLado = (this.meuLado() === 0 ? confronto?.ladoA : confronto?.ladoB) ?? [];
+    return doMeuLado.indexOf(meuNumero()) > 0 ? arenaAtual().pontosAliado : arenaAtual().pontos;
   }
 
   private avisar(texto: string, cor = 0xffd54a): void {
     this.aviso = { texto, ms: 1900, cor };
   }
 
-  /** Envia um comando para a simulação e mostra o erro ou a fusão, se houver. */
+  /** Envia um comando para a simulação (ou para o servidor) e mostra o erro ou a fusão, se houver. */
   private comando(c: Comando): void {
     const r = comandoDoHumano(c);
+    if (!r) return; // online: a resposta chega depois, pelo servidor
     if (!r.ok) {
       this.avisar(MENSAGENS[r.erro], 0xff6b6b);
       return;
     }
-    this.laco = { ...this.laco, estado: r.estado };
     const fusao = r.fusoes.at(-1);
     if (fusao) this.avisar(`Fusão! ${personagem(fusao.personagem).nome} nível ${fusao.nivel}`);
   }
@@ -186,8 +226,8 @@ export class CenaPreparacao extends Phaser.Scene {
   private pontoMaisProximo(x: number, y: number): number | null {
     let melhor: number | null = null;
     let melhorDist = RAIO_DO_PONTO;
-    arenaAtual().pontos.forEach((p, i) => {
-      const d = Math.hypot(paraTelaX(p.x) - x, paraTelaY(p.y) - 26 - y);
+    this.meusPontos().forEach((p, i) => {
+      const d = Math.hypot(this.telaX(p.x) - x, paraTelaY(p.y) - 26 - y);
       if (d < melhorDist) {
         melhor = i;
         melhorDist = d;
@@ -198,11 +238,12 @@ export class CenaPreparacao extends Phaser.Scene {
 
   private aoApertar(x: number, y: number): void {
     if (this.eu.pronto) return;
-    if (dentro(BOTAO_ATUALIZAR, x, y)) return this.comando({ tipo: "atualizar", jogador: HUMANO });
-    if (dentro(BOTAO_LUTAR, x, y)) return this.comando({ tipo: "pronto", jogador: HUMANO });
+    if (dentro(BOTAO_ATUALIZAR, x, y))
+      return this.comando({ tipo: "atualizar", jogador: meuNumero() });
+    if (dentro(BOTAO_LUTAR, x, y)) return this.comando({ tipo: "pronto", jogador: meuNumero() });
     for (let i = 0; i < this.eu.loja.length; i++) {
       if (this.eu.loja[i] !== null && dentro(this.retDaCarta(i), x, y)) {
-        return this.comando({ tipo: "comprar", jogador: HUMANO, carta: i });
+        return this.comando({ tipo: "comprar", jogador: meuNumero(), carta: i });
       }
     }
     this.eu.banco.forEach((u, i) => {
@@ -221,13 +262,13 @@ export class CenaPreparacao extends Phaser.Scene {
     const ponto = this.pontoMaisProximo(x, y);
     if (ponto !== null) {
       const jaLa = this.eu.campo.some((c) => c.ponto === ponto && c.unidade.id === id);
-      if (!jaLa) this.comando({ tipo: "posicionar", jogador: HUMANO, unidade: id, ponto });
+      if (!jaLa) this.comando({ tipo: "posicionar", jogador: meuNumero(), unidade: id, ponto });
     } else if (dentro(this.areaDaLoja(), x, y)) {
       const valor = valorDeVenda(CONTEXTO, a.unidade);
-      this.comando({ tipo: "vender", jogador: HUMANO, unidade: id });
+      this.comando({ tipo: "vender", jogador: meuNumero(), unidade: id });
       this.avisar(`Vendido por ${valor} de elixir`, COR_ELIXIR);
     } else if (dentro(this.areaDoBanco(), x, y) && a.origem === "campo") {
-      this.comando({ tipo: "recolher", jogador: HUMANO, unidade: id });
+      this.comando({ tipo: "recolher", jogador: meuNumero(), unidade: id });
     }
   }
 
@@ -323,12 +364,19 @@ export class CenaPreparacao extends Phaser.Scene {
 
   override update(_tempo: number, delta: number): void {
     const ms = Math.min(delta, 50);
-    this.laco = avancarLaco(this.laco, ms, tickPreparacao);
-    jogo.partida = comEconomia(partidaAtual(), this.laco.estado);
-    if (preparacaoEncerrada(this.estado)) {
-      iniciarCombates();
-      this.scene.start("combate");
-      return;
+    if (!jogo.online) {
+      // Contra bots o relógio da preparação anda aqui; online, quem manda é o servidor.
+      this.laco = avancarLaco(
+        { estado: this.estado, acumulado: this.laco.acumulado },
+        ms,
+        tickPreparacao,
+      );
+      jogo.partida = comEconomia(partidaAtual(), this.laco.estado);
+      if (preparacaoEncerrada(this.estado)) {
+        iniciarCombates();
+        this.scene.start("combate");
+        return;
+      }
     }
     this.aviso.ms = Math.max(0, this.aviso.ms - ms);
 
@@ -355,13 +403,13 @@ export class CenaPreparacao extends Phaser.Scene {
     const campoCheio = eu.campo.length >= limite;
 
     // Pontos de posicionamento do jogador.
-    arenaAtual().pontos.forEach((p, i) => {
-      const x = paraTelaX(p.x);
+    this.meusPontos().forEach((p, i) => {
+      const x = this.telaX(p.x);
       const y = paraTelaY(p.y);
       const ocupante = eu.campo.find((c) => c.ponto === i);
       const destaque = alvo === i;
       const bloqueado = !ocupante && campoCheio && arrastando?.origem === "banco";
-      const cor = bloqueado ? 0xff6b6b : corDoJogador(HUMANO);
+      const cor = bloqueado ? 0xff6b6b : corDoJogador(meuNumero());
       const alfa = arrastando ? (destaque ? 1 : 0.7) : ocupante ? 0.35 : 0.5;
       g.lineStyle(destaque ? 5 : 3, cor, alfa);
       g.strokeEllipse(x, y - 2, destaque ? 62 : 52, destaque ? 20 : 16);
@@ -371,7 +419,15 @@ export class CenaPreparacao extends Phaser.Scene {
       }
       if (ocupante && arrastando?.unidade.id !== ocupante.unidade.id) {
         const def = personagem(ocupante.unidade.personagem);
-        this.boneco(`campo${ocupante.unidade.id}`, def, ocupante.unidade.nivel, 0, x, y, ZOOM);
+        this.boneco(
+          `campo${ocupante.unidade.id}`,
+          def,
+          ocupante.unidade.nivel,
+          meuNumero(),
+          x,
+          y,
+          ZOOM,
+        );
         const altura = aplicarNivel(def, ocupante.unidade.nivel, ECONOMIA).altura * ZOOM;
         desenharPinos(g, x, y - altura - 12, ocupante.unidade.nivel, 4);
       }
@@ -379,14 +435,14 @@ export class CenaPreparacao extends Phaser.Scene {
 
     // Aliado (2x2) e adversários desta rodada, com o campo que eles já montaram.
     const p = partidaAtual();
-    const confronto = p.confrontos[confrontoDoJogador(p, HUMANO)];
-    const soma = arenaAtual().chao.x * 2 + arenaAtual().chao.largura;
-    const mostrar = (id: number, segundo: boolean, direita: boolean): void => {
+    const confronto = p.confrontos[confrontoDoJogador(p, meuNumero())];
+    const mostrar = (id: number, segundo: boolean, lado: Lado): void => {
+      if (id === meuNumero()) return;
       const pontos = segundo ? arenaAtual().pontosAliado : arenaAtual().pontos;
       for (const c of p.economia.jogadores[id]?.campo ?? []) {
         const ponto = pontos[c.ponto];
         if (!ponto) continue;
-        const x = paraTelaX(direita ? soma - ponto.x : ponto.x);
+        const x = paraTelaX(this.xNoLado(ponto.x, lado));
         const y = paraTelaY(ponto.y);
         const def = personagem(c.unidade.personagem);
         this.boneco(`outro${id}:${c.unidade.id}`, def, c.unidade.nivel, id, x, y, ZOOM, 0.85);
@@ -394,29 +450,24 @@ export class CenaPreparacao extends Phaser.Scene {
         desenharPinos(g, x, y - altura - 12, c.unidade.nivel, 4);
       }
     };
-    confronto?.ladoA.forEach((id, i) => {
-      if (id !== HUMANO) mostrar(id, i > 0, false);
-    });
-    confronto?.ladoB.forEach((id, i) => mostrar(id, i > 0, true));
-    const rivais = (confronto?.ladoB ?? []).map((id) => p.jogadores[id]?.nome ?? "?").join(" + ");
+    confronto?.ladoA.forEach((id, i) => mostrar(id, i > 0, 0));
+    confronto?.ladoB.forEach((id, i) => mostrar(id, i > 0, 1));
+    const meuLado = this.meuLado();
+    const outros = (meuLado === 0 ? confronto?.ladoB : confronto?.ladoA) ?? [];
+    const rivais = outros.map((id) => p.jogadores[id]?.nome ?? "?").join(" + ");
     const titulo = confronto?.fantasma
       ? `CÓPIA DE ${rivais.toUpperCase()}`
       : `CONTRA ${rivais.toUpperCase()}`;
-    this.rotulo(
-      "advTitulo",
-      paraTelaX(820),
-      86,
-      titulo,
-      14,
-      corDoJogador(confronto?.ladoB[0] ?? 1),
-    );
+    const xMeu = paraTelaX(this.xNoLado(380, meuLado));
+    const xDeles = paraTelaX(this.xNoLado(820, meuLado));
+    this.rotulo("advTitulo", xDeles, 86, titulo, 14, corDoJogador(outros[0] ?? 1));
     this.rotulo(
       "meuTitulo",
-      paraTelaX(380),
+      xMeu,
       86,
       `SEU CAMPO  ${eu.campo.length}/${limite}`,
       14,
-      campoCheio ? 0xffd54a : corDoJogador(HUMANO),
+      campoCheio ? 0xffd54a : corDoJogador(meuNumero()),
     );
   }
 
@@ -451,7 +502,7 @@ export class CenaPreparacao extends Phaser.Scene {
         `banco${u.id}`,
         personagem(u.personagem),
         u.nivel,
-        0,
+        meuNumero(),
         r.x + r.largura / 2,
         r.y + r.altura - 18,
         0.85,
@@ -484,11 +535,11 @@ export class CenaPreparacao extends Phaser.Scene {
       g.fillRoundedRect(r.x, r.y + 4, r.largura, r.altura, 12);
       g.fillStyle(podePagar ? 0x26324a : 0x1a2130, 1);
       g.fillRoundedRect(r.x, r.y, r.largura, r.altura, 12);
-      g.lineStyle(3, funde ? 0xffd54a : podePagar ? corDoJogador(HUMANO) : 0x2c384f, 1);
+      g.lineStyle(3, funde ? 0xffd54a : podePagar ? corDoJogador(meuNumero()) : 0x2c384f, 1);
       g.strokeRoundedRect(r.x, r.y, r.largura, r.altura, 12);
       const cx = r.x + r.largura / 2;
       const apagado = podePagar ? 1 : 0.45;
-      this.boneco(`carta${i}`, def, 1, 0, cx, r.y + 84, 0.82, apagado);
+      this.boneco(`carta${i}`, def, 1, meuNumero(), cx, r.y + 84, 0.82, apagado);
       this.rotulo(`cartaNome${i}`, cx, r.y + 100, def.nome, 15, podePagar ? 0xffffff : 0x7a879c);
       // mundo e papel: são eles que formam as sinergias
       desenharEmblema(g, def.mundo, r.x + 16, r.y + 119, 0.8);
@@ -589,7 +640,9 @@ export class CenaPreparacao extends Phaser.Scene {
   }
 
   private desenharTopo(): void {
-    const segundos = Math.ceil(this.estado.ticksRestantes / TICKS_POR_SEGUNDO);
+    const segundos = jogo.online
+      ? Math.max(0, Math.ceil((jogo.prazo - performance.now()) / 1000))
+      : Math.ceil(this.estado.ticksRestantes / TICKS_POR_SEGUNDO);
     const modo = jogo.modo === "duplas" ? "2x2" : "Todos contra todos";
     this.rotulo("rodada", 24, 30, `Rodada ${this.estado.rodada}`, 24, 0xe8eef7, 0);
     this.rotulo("modo", 24, 56, modo, 13, 0x9fb0c8, 0);
@@ -601,7 +654,14 @@ export class CenaPreparacao extends Phaser.Scene {
       36,
       segundos <= 5 ? 0xff6b6b : 0xe8eef7,
     );
-    this.rotulo("tempoLegenda", LARGURA / 2, 60, "preparação", 13, 0x9fb0c8);
+    const eu = partidaAtual().jogadores[meuNumero()];
+    const legenda =
+      eu && !estaVivo(eu)
+        ? "você foi eliminado · assistindo"
+        : jogo.online && this.eu.pronto
+          ? "aguardando os outros jogadores…"
+          : "preparação";
+    this.rotulo("tempoLegenda", LARGURA / 2, 60, legenda, 13, 0x9fb0c8);
     if (this.aviso.ms > 0) {
       const t = this.rotulo(
         "aviso",
@@ -621,7 +681,7 @@ export class CenaPreparacao extends Phaser.Scene {
   private desenharJogadores(): void {
     const p = partidaAtual();
     const g = this.painel;
-    const confronto = p.confrontos[confrontoDoJogador(p, HUMANO)];
+    const confronto = p.confrontos[confrontoDoJogador(p, meuNumero())];
     const x0 = LARGURA - 214;
     p.jogadores.forEach((j, i) => {
       const y = 100 + i * 56;
@@ -698,7 +758,7 @@ export class CenaPreparacao extends Phaser.Scene {
       "arrasto",
       personagem(a.unidade.personagem),
       a.unidade.nivel,
-      0,
+      meuNumero(),
       a.x,
       a.y + 30,
       0.95,

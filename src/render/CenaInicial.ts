@@ -4,7 +4,15 @@ import { criarLutador } from "../sim/combate/combate";
 import type { Modo, NivelBot } from "../sim/partida/tipos";
 import { desenharArena, desenharCorpo, desenharFundo } from "./desenho";
 import { ALTURA, criarTexto, dentro, desenharBotao, LARGURA, type Ret } from "./interface";
-import { iniciarCombates, jogo, NOME_DO_NIVEL, novaPartida } from "./jogo";
+import {
+  criarSalaOnline,
+  entrarNaSalaOnline,
+  iniciarCombates,
+  jogo,
+  NOME_DO_NIVEL,
+  novaPartida,
+  retomarSalaOnline,
+} from "./jogo";
 
 const MODOS: { modo: Modo; titulo: string; descricao: string; ret: Ret }[] = [
   {
@@ -23,11 +31,15 @@ const MODOS: { modo: Modo; titulo: string; descricao: string; ret: Ret }[] = [
 const NIVEIS: { nivel: NivelBot; ret: Ret }[] = (["facil", "medio", "dificil"] as const).map(
   (nivel, i) => ({ nivel, ret: { x: 372 + i * 156, y: 452, largura: 144, altura: 50 } }),
 );
-const JOGAR: Ret = { x: 470, y: 548, largura: 260, altura: 70 };
+const JOGAR: Ret = { x: 470, y: 528, largura: 260, altura: 62 };
+const CRIAR_SALA: Ret = { x: 350, y: 606, largura: 240, altura: 46 };
+const ENTRAR_NA_SALA: Ret = { x: 610, y: 606, largura: 240, altura: 46 };
+const CHAVE_DO_NOME = "arena:nome";
 
 /** Tela inicial: escolha de modo e de dificuldade dos bots. */
 export class CenaInicial extends Phaser.Scene {
   private g!: Phaser.GameObjects.Graphics;
+  private aviso!: Phaser.GameObjects.Text;
 
   constructor() {
     super("inicial");
@@ -83,20 +95,59 @@ export class CenaInicial extends Phaser.Scene {
         20,
       ).setDepth(2);
     }
-    criarTexto(this, JOGAR.x + JOGAR.largura / 2, JOGAR.y + JOGAR.altura / 2, "JOGAR", 34).setDepth(
-      2,
-    );
+    const meioDoJogar = JOGAR.y + JOGAR.altura / 2;
+    criarTexto(this, JOGAR.x + JOGAR.largura / 2, meioDoJogar, "JOGAR", 32).setDepth(2);
+    criarTexto(this, JOGAR.x + JOGAR.largura + 20, meioDoJogar, "contra bots", 14, 0x9fb0c8, 0);
+    for (const [ret, rotulo] of [
+      [CRIAR_SALA, "Criar sala online"],
+      [ENTRAR_NA_SALA, "Entrar com código"],
+    ] as const) {
+      criarTexto(this, ret.x + ret.largura / 2, ret.y + ret.altura / 2, rotulo, 18).setDepth(2);
+    }
+    this.aviso = criarTexto(this, LARGURA / 2, 664, "", 14, 0xff6b6b).setDepth(2);
     this.desenhar();
 
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => this.aoApertar(p.x, p.y));
     if (jogo.automatico) this.comecar();
+    // Recarregou a página no meio de uma partida online? Volta para ela.
+    else void retomarSalaOnline();
   }
 
   private aoApertar(x: number, y: number): void {
     for (const m of MODOS) if (dentro(m.ret, x, y)) jogo.modo = m.modo;
     for (const n of NIVEIS) if (dentro(n.ret, x, y)) jogo.dificuldade = n.nivel;
     if (dentro(JOGAR, x, y)) return this.comecar();
+    if (dentro(CRIAR_SALA, x, y)) return void this.online(false);
+    if (dentro(ENTRAR_NA_SALA, x, y)) return void this.online(true);
     this.desenhar();
+  }
+
+  /** Cria uma sala ou entra em uma pelo código. Nome e código são pedidos em caixas simples do navegador. */
+  private async online(entrar: boolean): Promise<void> {
+    const params = new URLSearchParams(window.location.search);
+    const guardado = window.localStorage.getItem(CHAVE_DO_NOME) ?? "";
+    const nome = params.get("nome") ?? window.prompt("Seu nome na partida:", guardado);
+    if (nome === null) return;
+    window.localStorage.setItem(CHAVE_DO_NOME, nome);
+    try {
+      if (entrar) {
+        const codigo = params.get("codigo") ?? window.prompt("Código da sala (4 letras):", "");
+        if (!codigo) return;
+        this.aviso.setText("entrando na sala…").setTint(0x9fb0c8);
+        await entrarNaSalaOnline(codigo, nome);
+      } else {
+        this.aviso.setText("criando a sala…").setTint(0x9fb0c8);
+        await criarSalaOnline(nome);
+      }
+    } catch {
+      this.aviso
+        .setText(
+          entrar
+            ? "Não deu para entrar: confira o código (a sala pode estar cheia ou já ter começado)."
+            : "Não deu para falar com o servidor de jogo.",
+        )
+        .setTint(0xff6b6b);
+    }
   }
 
   private comecar(): void {
@@ -118,5 +169,7 @@ export class CenaInicial extends Phaser.Scene {
     for (const m of MODOS) desenharBotao(this.g, m.ret, 0x26324a, jogo.modo === m.modo);
     for (const n of NIVEIS) desenharBotao(this.g, n.ret, 0x26324a, jogo.dificuldade === n.nivel);
     desenharBotao(this.g, JOGAR, 0x2f9e5b);
+    desenharBotao(this.g, CRIAR_SALA, 0x2f5c8a);
+    desenharBotao(this.g, ENTRAR_NA_SALA, 0x2f5c8a);
   }
 }
