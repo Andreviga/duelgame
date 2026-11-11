@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "lint": "eslint . && prettier --check .",
+    "lint": "tsc --noEmit && eslint . && prettier --check .",
     "format": "prettier --write ."
   },
   "dependencies": {
