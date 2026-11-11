@@ -1,9 +1,8 @@
 import Phaser from "phaser";
-import { ARENA_BASICA, CONTEXTO, ECONOMIA, personagem } from "../dados";
+import { ARENA_BASICA, CONTEXTO, ECONOMIA, PARTIDA, personagem } from "../dados";
 import { criarLutador } from "../sim/combate/combate";
 import type { DefPersonagem, Lado, Lutador } from "../sim/combate/tipos";
 import {
-  aplicar,
   aplicarNivel,
   limiteDeCampo,
   preparacaoEncerrada,
@@ -13,8 +12,15 @@ import {
 import { MENSAGENS, type Comando, type EstadoEconomia, type Unidade } from "../sim/economia/tipos";
 import { TICKS_POR_SEGUNDO } from "../sim/constantes";
 import { avancarLaco, type Laco } from "../sim/laco";
-import { CORES, desenharArena, desenharCorpo, desenharFundo, desenharPinos } from "./desenho";
-import { adversarioDaRodada, jogo, novaSessao, type Sessao } from "./sessao";
+import {
+  corDoJogador,
+  desenharArena,
+  desenharCorpo,
+  desenharFundo,
+  desenharPinos,
+} from "./desenho";
+import { comEconomia, confrontoDoJogador, estaVivo } from "../sim/partida/partida";
+import { comandoDoHumano, HUMANO, iniciarCombates, jogo, partidaAtual } from "./jogo";
 
 const LARGURA = 1200;
 const ALTURA = 675;
@@ -60,7 +66,6 @@ const dentro = (r: Ret, x: number, y: number): boolean =>
  * Toda ação vira um comando da simulação (`aplicar`); a tela só desenha o estado.
  */
 export class CenaPreparacao extends Phaser.Scene {
-  private sessao!: Sessao;
   private laco!: Laco<EstadoEconomia>;
   private fundo!: Phaser.GameObjects.Graphics;
   private painel!: Phaser.GameObjects.Graphics;
@@ -81,10 +86,8 @@ export class CenaPreparacao extends Phaser.Scene {
     this.rotulos = new Map();
     this.arrasto = null;
 
-    const param = Number(new URLSearchParams(window.location.search).get("semente"));
-    const semente = Number.isFinite(param) && param > 0 ? Math.floor(param) : 1;
-    this.sessao = jogo.sessao ?? novaSessao(semente);
-    this.laco = { estado: this.sessao.economia, acumulado: 0 };
+    document.body.dataset["cena"] = "preparacao";
+    this.laco = { estado: partidaAtual().economia, acumulado: 0 };
 
     this.fundo = this.add.graphics().setDepth(0);
     desenharFundo(this.fundo, MUNDO_X, 380);
@@ -105,11 +108,6 @@ export class CenaPreparacao extends Phaser.Scene {
       }
     });
     this.input.on("pointerup", (p: Phaser.Input.Pointer) => this.aoSoltar(p.x, p.y));
-
-    const ultimo = this.sessao.ultimo;
-    if (ultimo === 0) this.avisar("Vitória!", CORES[0]);
-    else if (ultimo === 1) this.avisar("Derrota", CORES[1]);
-    else if (ultimo === null) this.avisar("Empate", 0xffffff);
   }
 
   private get estado(): EstadoEconomia {
@@ -117,9 +115,16 @@ export class CenaPreparacao extends Phaser.Scene {
   }
 
   private get eu() {
-    const j = this.estado.jogadores[0];
+    const j = this.estado.jogadores[HUMANO];
     if (!j) throw new Error("sem jogador");
     return j;
+  }
+
+  /** Lado da arena em que o jogador luta nesta rodada (0 = esquerda, o lado do humano). */
+  private ladoDoJogador(jogador: number): Lado {
+    const p = partidaAtual();
+    const confronto = p.confrontos[confrontoDoJogador(p, HUMANO)];
+    return confronto?.ladoB.includes(jogador) && !confronto.ladoA.includes(jogador) ? 1 : 0;
   }
 
   private avisar(texto: string, cor = 0xffd54a): void {
@@ -128,13 +133,12 @@ export class CenaPreparacao extends Phaser.Scene {
 
   /** Envia um comando para a simulação e mostra o erro ou a fusão, se houver. */
   private comando(c: Comando): void {
-    const r = aplicar(this.estado, CONTEXTO, c);
+    const r = comandoDoHumano(c);
     if (!r.ok) {
       this.avisar(MENSAGENS[r.erro], 0xff6b6b);
       return;
     }
     this.laco = { ...this.laco, estado: r.estado };
-    this.sessao.economia = r.estado;
     const fusao = r.fusoes.at(-1);
     if (fusao) this.avisar(`Fusão! ${personagem(fusao.personagem).nome} nível ${fusao.nivel}`);
   }
@@ -187,11 +191,11 @@ export class CenaPreparacao extends Phaser.Scene {
 
   private aoApertar(x: number, y: number): void {
     if (this.eu.pronto) return;
-    if (dentro(BOTAO_ATUALIZAR, x, y)) return this.comando({ tipo: "atualizar", jogador: 0 });
-    if (dentro(BOTAO_LUTAR, x, y)) return this.comando({ tipo: "pronto", jogador: 0 });
+    if (dentro(BOTAO_ATUALIZAR, x, y)) return this.comando({ tipo: "atualizar", jogador: HUMANO });
+    if (dentro(BOTAO_LUTAR, x, y)) return this.comando({ tipo: "pronto", jogador: HUMANO });
     for (let i = 0; i < this.eu.loja.length; i++) {
       if (this.eu.loja[i] !== null && dentro(this.retDaCarta(i), x, y)) {
-        return this.comando({ tipo: "comprar", jogador: 0, carta: i });
+        return this.comando({ tipo: "comprar", jogador: HUMANO, carta: i });
       }
     }
     this.eu.banco.forEach((u, i) => {
@@ -210,13 +214,13 @@ export class CenaPreparacao extends Phaser.Scene {
     const ponto = this.pontoMaisProximo(x, y);
     if (ponto !== null) {
       const jaLa = this.eu.campo.some((c) => c.ponto === ponto && c.unidade.id === id);
-      if (!jaLa) this.comando({ tipo: "posicionar", jogador: 0, unidade: id, ponto });
+      if (!jaLa) this.comando({ tipo: "posicionar", jogador: HUMANO, unidade: id, ponto });
     } else if (dentro(this.areaDaLoja(), x, y)) {
       const valor = valorDeVenda(CONTEXTO, a.unidade);
-      this.comando({ tipo: "vender", jogador: 0, unidade: id });
+      this.comando({ tipo: "vender", jogador: HUMANO, unidade: id });
       this.avisar(`Vendido por ${valor} de elixir`, COR_ELIXIR);
     } else if (dentro(this.areaDoBanco(), x, y) && a.origem === "campo") {
-      this.comando({ tipo: "recolher", jogador: 0, unidade: id });
+      this.comando({ tipo: "recolher", jogador: HUMANO, unidade: id });
     }
   }
 
@@ -227,7 +231,7 @@ export class CenaPreparacao extends Phaser.Scene {
     chave: string,
     def: DefPersonagem,
     nivel: number,
-    lado: Lado,
+    dono: number,
     x: number,
     y: number,
     escala: number,
@@ -239,10 +243,12 @@ export class CenaPreparacao extends Phaser.Scene {
       g = this.add.graphics();
       this.bonecos.set(chave, g);
     }
-    const idModelo = `${def.id}:${nivel}:${lado}`;
+    const idModelo = `${def.id}:${nivel}:${dono}`;
     let modelo = this.modelos.get(idModelo);
     if (!modelo) {
-      modelo = criarLutador(aplicarNivel(def, nivel, ECONOMIA), 0, lado, 0, 0, nivel);
+      // Aliados olham para a direita; adversários, para a esquerda.
+      const lado: Lado = this.ladoDoJogador(dono);
+      modelo = criarLutador(aplicarNivel(def, nivel, ECONOMIA), 0, lado, 0, 0, nivel, dono);
       this.modelos.set(idModelo, modelo);
     }
     this.usados.add(`b:${chave}`);
@@ -311,8 +317,9 @@ export class CenaPreparacao extends Phaser.Scene {
   override update(_tempo: number, delta: number): void {
     const ms = Math.min(delta, 50);
     this.laco = avancarLaco(this.laco, ms, tickPreparacao);
-    this.sessao.economia = this.laco.estado;
+    jogo.partida = comEconomia(partidaAtual(), this.laco.estado);
     if (preparacaoEncerrada(this.estado)) {
+      iniciarCombates();
       this.scene.start("combate");
       return;
     }
@@ -324,6 +331,7 @@ export class CenaPreparacao extends Phaser.Scene {
     this.desenharArenaEUnidades();
     this.desenharPainel();
     this.desenharTopo();
+    this.desenharJogadores();
     this.desenharArrasto();
 
     for (const [chave, g] of this.bonecos) if (!this.usados.has(`b:${chave}`)) g.setVisible(false);
@@ -345,7 +353,7 @@ export class CenaPreparacao extends Phaser.Scene {
       const ocupante = eu.campo.find((c) => c.ponto === i);
       const destaque = alvo === i;
       const bloqueado = !ocupante && campoCheio && arrastando?.origem === "banco";
-      const cor = bloqueado ? 0xff6b6b : CORES[0];
+      const cor = bloqueado ? 0xff6b6b : corDoJogador(HUMANO);
       const alfa = arrastando ? (destaque ? 1 : 0.7) : ocupante ? 0.35 : 0.5;
       g.lineStyle(destaque ? 5 : 3, cor, alfa);
       g.strokeEllipse(x, y - 2, destaque ? 62 : 52, destaque ? 20 : 16);
@@ -361,23 +369,46 @@ export class CenaPreparacao extends Phaser.Scene {
       }
     });
 
-    // Prévia do adversário desta rodada, no lado direito.
+    // Aliado (2x2) e adversários desta rodada, com o campo que eles já montaram.
+    const p = partidaAtual();
+    const confronto = p.confrontos[confrontoDoJogador(p, HUMANO)];
     const soma = ARENA_BASICA.chao.x * 2 + ARENA_BASICA.chao.largura;
-    adversarioDaRodada(this.estado.rodada).forEach((v, i) => {
-      const x = paraTelaX(soma - v.x);
-      const y = paraTelaY(v.y);
-      const nivel = v.nivel ?? 1;
-      this.boneco(`adv${i}`, personagem(v.def.id), nivel, 1, x, y, ZOOM, 0.8);
-      desenharPinos(g, x, y - v.def.altura * ZOOM - 12, nivel, 4);
+    const mostrar = (id: number, segundo: boolean, direita: boolean): void => {
+      const pontos = segundo ? ARENA_BASICA.pontosAliado : ARENA_BASICA.pontos;
+      for (const c of p.economia.jogadores[id]?.campo ?? []) {
+        const ponto = pontos[c.ponto];
+        if (!ponto) continue;
+        const x = paraTelaX(direita ? soma - ponto.x : ponto.x);
+        const y = paraTelaY(ponto.y);
+        const def = personagem(c.unidade.personagem);
+        this.boneco(`outro${id}:${c.unidade.id}`, def, c.unidade.nivel, id, x, y, ZOOM, 0.85);
+        const altura = aplicarNivel(def, c.unidade.nivel, ECONOMIA).altura * ZOOM;
+        desenharPinos(g, x, y - altura - 12, c.unidade.nivel, 4);
+      }
+    };
+    confronto?.ladoA.forEach((id, i) => {
+      if (id !== HUMANO) mostrar(id, i > 0, false);
     });
-    this.rotulo("advTitulo", paraTelaX(820), 86, "ADVERSÁRIO DESTA RODADA", 14, CORES[1]);
+    confronto?.ladoB.forEach((id, i) => mostrar(id, i > 0, true));
+    const rivais = (confronto?.ladoB ?? []).map((id) => p.jogadores[id]?.nome ?? "?").join(" + ");
+    const titulo = confronto?.fantasma
+      ? `CÓPIA DE ${rivais.toUpperCase()}`
+      : `CONTRA ${rivais.toUpperCase()}`;
+    this.rotulo(
+      "advTitulo",
+      paraTelaX(820),
+      86,
+      titulo,
+      14,
+      corDoJogador(confronto?.ladoB[0] ?? 1),
+    );
     this.rotulo(
       "meuTitulo",
       paraTelaX(380),
       86,
       `SEU CAMPO  ${eu.campo.length}/${limite}`,
       14,
-      campoCheio ? 0xffd54a : CORES[0],
+      campoCheio ? 0xffd54a : corDoJogador(HUMANO),
     );
   }
 
@@ -445,7 +476,7 @@ export class CenaPreparacao extends Phaser.Scene {
       g.fillRoundedRect(r.x, r.y + 4, r.largura, r.altura, 12);
       g.fillStyle(podePagar ? 0x26324a : 0x1a2130, 1);
       g.fillRoundedRect(r.x, r.y, r.largura, r.altura, 12);
-      g.lineStyle(3, funde ? 0xffd54a : podePagar ? CORES[0] : 0x2c384f, 1);
+      g.lineStyle(3, funde ? 0xffd54a : podePagar ? corDoJogador(HUMANO) : 0x2c384f, 1);
       g.strokeRoundedRect(r.x, r.y, r.largura, r.altura, 12);
       const cx = r.x + r.largura / 2;
       this.boneco(`carta${i}`, def, 1, 0, cx, r.y + 104, 1, podePagar ? 1 : 0.45);
@@ -488,9 +519,10 @@ export class CenaPreparacao extends Phaser.Scene {
   }
 
   private desenharTopo(): void {
-    const s = this.sessao;
     const segundos = Math.ceil(this.estado.ticksRestantes / TICKS_POR_SEGUNDO);
+    const modo = jogo.modo === "duplas" ? "2x2" : "Todos contra todos";
     this.rotulo("rodada", 24, 30, `Rodada ${this.estado.rodada}`, 24, 0xe8eef7, 0);
+    this.rotulo("modo", 24, 56, modo, 13, 0x9fb0c8, 0);
     this.rotulo(
       "tempo",
       LARGURA / 2,
@@ -500,15 +532,6 @@ export class CenaPreparacao extends Phaser.Scene {
       segundos <= 5 ? 0xff6b6b : 0xe8eef7,
     );
     this.rotulo("tempoLegenda", LARGURA / 2, 60, "preparação", 13, 0x9fb0c8);
-    this.rotulo(
-      "placar",
-      LARGURA - 24,
-      30,
-      `${s.vitorias} ${s.vitorias === 1 ? "vitória" : "vitórias"} · ${s.derrotas} ${s.derrotas === 1 ? "derrota" : "derrotas"}`,
-      16,
-      0x9fb0c8,
-      1,
-    );
     if (this.aviso.ms > 0) {
       const t = this.rotulo(
         "aviso",
@@ -522,6 +545,51 @@ export class CenaPreparacao extends Phaser.Scene {
       );
       t.setAlpha(Math.min(1, this.aviso.ms / 300));
     }
+  }
+
+  /** Lista dos quatro jogadores, com vida e elixir, no canto direito. */
+  private desenharJogadores(): void {
+    const p = partidaAtual();
+    const g = this.painel;
+    const confronto = p.confrontos[confrontoDoJogador(p, HUMANO)];
+    const x0 = LARGURA - 214;
+    p.jogadores.forEach((j, i) => {
+      const y = 100 + i * 56;
+      const vivo = estaVivo(j);
+      const rival = confronto?.ladoB.includes(i) && !confronto.fantasma;
+      g.fillStyle(0x0b0f16, vivo ? 0.72 : 0.4);
+      g.fillRoundedRect(x0, y, 200, 48, 10);
+      if (rival) {
+        g.lineStyle(2, 0xffd54a, 0.9);
+        g.strokeRoundedRect(x0, y, 200, 48, 10);
+      }
+      g.fillStyle(vivo ? corDoJogador(i) : 0x3a4558, 1);
+      g.fillRoundedRect(x0, y, 7, 48, 3);
+      const nome = j.bot ? `${j.nome}` : j.nome;
+      this.rotulo(`jNome${i}`, x0 + 18, y + 15, nome, 15, vivo ? 0xffffff : 0x6b7890, 0);
+      if (!vivo) {
+        this.rotulo(`jFora${i}`, x0 + 18, y + 35, "eliminado", 12, 0x6b7890, 0);
+        return;
+      }
+      // barra de vida
+      const fracao = Math.max(0, j.vida / PARTIDA.vidaInicial);
+      g.fillStyle(0x1b2333, 1);
+      g.fillRoundedRect(x0 + 18, y + 29, 96, 9, 4);
+      g.fillStyle(fracao > 0.5 ? 0x5fd67a : fracao > 0.25 ? 0xffd54a : 0xff6b6b, 1);
+      g.fillRoundedRect(x0 + 18, y + 29, Math.max(4, 96 * fracao), 9, 4);
+      this.rotulo(`jVida${i}`, x0 + 122, y + 33, `♥ ${j.vida}`, 13, 0xffffff, 0);
+      this.gota(g, x0 + 172, y + 16, 5);
+      this.rotulo(
+        `jElixir${i}`,
+        x0 + 180,
+        y + 16,
+        String(p.economia.jogadores[i]?.elixir ?? 0),
+        13,
+        COR_ELIXIR,
+        0,
+      );
+      if (rival) this.rotulo(`jRival${i}`, x0 + 192, y + 36, "rival", 11, 0xffd54a, 1);
+    });
   }
 
   private desenharArrasto(): void {
