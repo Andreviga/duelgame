@@ -1,39 +1,47 @@
 import Phaser from "phaser";
-import { ARENA_BASICA, espelhar, FORMACOES } from "../dados";
+import { ARENA_BASICA, CONTEXTO, espelhar, FORMACOES } from "../dados";
 import { TICKS_POR_SEGUNDO } from "../sim/constantes";
 import { criarCombate, stepCombate, TICKS_MAXIMOS } from "../sim/combate/combate";
 import type { EstadoCombate, Lado } from "../sim/combate/tipos";
 import { avancarLaco, type Laco } from "../sim/laco";
+import { esquadroesDoConfronto } from "../sim/partida/partida";
+import type { Confronto, EstadoPartida, ResultadoConfronto } from "../sim/partida/tipos";
 import {
-  CORES,
+  corDoJogador,
   desenharArena,
   desenharCorpo,
   desenharFundo,
   desenharIcone,
   desenharPinos,
-  NOMES,
 } from "./desenho";
-import { concluirRodada, esquadroesDaRodada, jogo, sementeDoCombate } from "./sessao";
 import { Efeitos, misturar } from "./efeitos";
+import { avancarRodada, confrontoParaAssistir, HUMANO, jogo } from "./jogo";
 
 const LARGURA = 1200;
 const ALTURA = 675;
 const FONTE = "'Trebuchet MS', 'Segoe UI', Arial, sans-serif";
 const MS_ENTRE_RODADAS = 3800;
 const LADOS: readonly Lado[] = [0, 1];
+const VELOCIDADES = [1, 2, 4];
 
 /** Estado só visual de cada lutador (não existe na simulação). */
 interface Visual {
   corpo: Phaser.GameObjects.Graphics;
   dano: Phaser.GameObjects.Text;
   debug: Phaser.GameObjects.Text;
-  placar: Phaser.GameObjects.Text;
   /** Esticar (+) ou achatar (-) no eixo vertical; volta a zero sozinho. */
   elastico: number;
   brilho: number;
   giro: number;
   tremer: number;
   pulso: number;
+}
+
+/** O que a tela precisa saber da partida para mostrar este combate. */
+interface Contexto {
+  partida: EstadoPartida;
+  confronto: Confronto;
+  resultado: ResultadoConfronto | undefined;
 }
 
 function corDoDano(dano: number): number {
@@ -44,13 +52,13 @@ function corDoDano(dano: number): number {
 }
 
 /**
- * Cena do combate de esquadrões. Só lê o estado da simulação e desenha; os efeitos
- * (pausa no golpe, câmera lenta, tremor, partículas) são todos do render.
+ * Cena do combate. Só lê o estado da simulação e desenha; os efeitos (pausa no golpe,
+ * câmera lenta, tremor, partículas) são todos do render.
+ * Dentro de uma partida mostra um confronto da rodada; com `?demo`, roda combates 4x4 soltos.
  */
 export class CenaCombate extends Phaser.Scene {
   private semente = 1;
-  /** Sessão de jogo (preparação + combate). Sem ela, a cena roda em modo demonstração. */
-  private sessao: typeof jogo.sessao = null;
+  private ctx: Contexto | null = null;
   private laco!: Laco<EstadoCombate>;
   private ultimoTick = -1;
   private efeitos = new Efeitos();
@@ -68,12 +76,12 @@ export class CenaCombate extends Phaser.Scene {
   private textoFaixa!: Phaser.GameObjects.Text;
   private textoSub!: Phaser.GameObjects.Text;
   private textoSemente!: Phaser.GameObjects.Text;
-  private textoFormacao: Phaser.GameObjects.Text[] = [];
+  private textoLado: Phaser.GameObjects.Text[] = [];
   private botaoVelocidade!: Phaser.GameObjects.Text;
   private botaoDebug!: Phaser.GameObjects.Text;
 
   private placar = [0, 0];
-  private formacoes = ["", ""];
+  private titulos = ["", ""];
   private velocidade = 1;
   private debug = false;
   private pausaGolpe = 0;
@@ -87,16 +95,26 @@ export class CenaCombate extends Phaser.Scene {
   }
 
   create(): void {
-    // A cena pode ser reaberta várias vezes: os objetos antigos já foram destruídos pelo Phaser.
+    document.body.dataset["cena"] = "combate";
+    // A cena é reaberta a cada rodada: os objetos antigos já foram destruídos pelo Phaser.
     this.visuais = [];
-    this.textoFormacao = [];
+    this.textoLado = [];
     this.placar = [0, 0];
     const params = new URLSearchParams(window.location.search);
-    this.sessao = params.has("demo") ? null : jogo.sessao;
     const param = Number(params.get("semente"));
     this.semente = Number.isFinite(param) && param > 0 ? Math.floor(param) : 1;
     this.debug = params.has("debug");
-    this.velocidade = params.get("velocidade") === "2" ? 2 : 1;
+    const v = Number(params.get("velocidade"));
+    if (VELOCIDADES.includes(v)) this.velocidade = v;
+
+    const partida = params.has("demo") ? null : jogo.partida;
+    if (partida) {
+      const i = confrontoParaAssistir();
+      const confronto = partida.confrontos[i];
+      this.ctx = confronto ? { partida, confronto, resultado: partida.resultados[i] } : null;
+    } else {
+      this.ctx = null;
+    }
 
     this.fundo = this.add.graphics();
     this.cenario = this.add.graphics();
@@ -119,28 +137,18 @@ export class CenaCombate extends Phaser.Scene {
       .text(LARGURA / 2, 66, "", { fontFamily: FONTE, fontSize: "16px", color: "#9fb0c8" })
       .setOrigin(0.5);
     for (const lado of LADOS) {
-      this.textoFormacao.push(
+      this.textoLado.push(
         this.add
-          .text(lado === 0 ? 24 : LARGURA - 24, ALTURA - 108, "", {
-            fontFamily: FONTE,
-            fontSize: "14px",
-            color: "#ffffff",
-            fontStyle: "bold",
-          })
-          .setOrigin(lado === 0 ? 0 : 1, 0.5)
-          .setTint(CORES[lado]),
+          .text(lado === 0 ? 24 : LARGURA - 24, ALTURA - 76, "", estilo(17))
+          .setOrigin(lado === 0 ? 0 : 1, 0.5),
       );
     }
     this.textoFaixa = this.add
-      .text(LARGURA / 2, ALTURA / 2 - 50, "", estilo(88))
+      .text(LARGURA / 2, ALTURA / 2 - 50, "", estilo(80))
       .setOrigin(0.5)
       .setVisible(false);
     this.textoSub = this.add
-      .text(LARGURA / 2, ALTURA / 2 + 26, "", {
-        fontFamily: FONTE,
-        fontSize: "20px",
-        color: "#cfd8e3",
-      })
+      .text(LARGURA / 2, ALTURA / 2 + 26, "", estilo(20, "#cfd8e3"))
       .setOrigin(0.5)
       .setVisible(false);
     this.textoSemente = this.add
@@ -171,7 +179,8 @@ export class CenaCombate extends Phaser.Scene {
   }
 
   private trocarVelocidade(): void {
-    this.velocidade = this.velocidade === 1 ? 2 : 1;
+    const i = VELOCIDADES.indexOf(this.velocidade);
+    this.velocidade = VELOCIDADES[(i + 1) % VELOCIDADES.length] ?? 1;
     this.atualizarBotoes();
   }
 
@@ -184,23 +193,34 @@ export class CenaCombate extends Phaser.Scene {
     this.botaoVelocidade.setText(`Velocidade ${this.velocidade}x`);
     this.botaoDebug.setText(this.debug ? "Depuração: ligada" : "Depuração: desligada");
     this.botaoDebug.setBackgroundColor(this.debug ? "#7a2f3a" : "#243049");
-    this.botaoVelocidade.setBackgroundColor(this.velocidade === 2 ? "#2f5c8a" : "#243049");
+    this.botaoVelocidade.setBackgroundColor(this.velocidade > 1 ? "#2f5c8a" : "#243049");
+  }
+
+  private nomesDoLado(lado: Lado): string {
+    if (!this.ctx) return this.titulos[lado] ?? "";
+    const { partida, confronto } = this.ctx;
+    const ids = lado === 0 ? confronto.ladoA : confronto.ladoB;
+    const nomes = ids.map((id) => partida.jogadores[id]?.nome ?? "?").join(" + ");
+    return lado === 1 && confronto.fantasma ? `Cópia de ${nomes}` : nomes;
   }
 
   private iniciarRodada(): void {
     let estado: EstadoCombate;
-    if (this.sessao) {
-      this.formacoes = ["Você", `Rodada ${this.sessao.economia.rodada}`];
-      this.placar = [this.sessao.vitorias, this.sessao.derrotas];
-      this.semente = sementeDoCombate(this.sessao);
-      estado = criarCombate(ARENA_BASICA, esquadroesDaRodada(this.sessao), this.semente);
+    if (this.ctx) {
+      const { partida, confronto } = this.ctx;
+      this.semente = confronto.semente;
+      estado = criarCombate(
+        ARENA_BASICA,
+        esquadroesDoConfronto(partida, CONTEXTO, ARENA_BASICA, confronto),
+        confronto.semente,
+      );
     } else {
       // Demonstração: a cada rodada muda a formação de um dos lados, para comparar posições.
       const n = this.semente - 1;
       const fa = FORMACOES[n % FORMACOES.length];
       const fb = FORMACOES[Math.floor(n / FORMACOES.length) % FORMACOES.length];
       if (!fa || !fb) throw new Error("sem formações");
-      this.formacoes = [fa.nome, fb.nome];
+      this.titulos = [`Azul · ${fa.nome}`, `Laranja · ${fb.nome}`];
       estado = criarCombate(
         ARENA_BASICA,
         [fa.vagas, espelhar(fb.vagas, ARENA_BASICA)],
@@ -213,12 +233,10 @@ export class CenaCombate extends Phaser.Scene {
       v.corpo.destroy();
       v.dano.destroy();
       v.debug.destroy();
-      v.placar.destroy();
     }
     this.visuais = [];
     this.mundo.remove([this.fx, this.marcas]);
-    const porLado = [0, 0];
-    for (const l of estado.lutadores) {
+    for (let i = 0; i < estado.lutadores.length; i++) {
       const corpo = this.add.graphics();
       const dano = this.add
         .text(0, 0, "0%", {
@@ -234,23 +252,10 @@ export class CenaCombate extends Phaser.Scene {
         .text(0, 0, "", { fontFamily: "monospace", fontSize: "13px", color: "#ffe9a8" })
         .setOrigin(0.5);
       this.mundo.add([corpo, dano, debug]);
-      const indice = porLado[l.lado] ?? 0;
-      porLado[l.lado] = indice + 1;
-      const placar = this.add
-        .text(this.xDoPlacar(l.lado, indice) + 18, ALTURA - 52, "0%", {
-          fontFamily: FONTE,
-          fontSize: "24px",
-          color: "#ffffff",
-          fontStyle: "bold",
-          stroke: "#0b0f16",
-          strokeThickness: 5,
-        })
-        .setOrigin(0, 0.5);
       this.visuais.push({
         corpo,
         dano,
         debug,
-        placar,
         elastico: 0,
         brilho: 0,
         giro: 0,
@@ -269,15 +274,6 @@ export class CenaCombate extends Phaser.Scene {
     this.textoFaixa.setVisible(false);
     this.textoSub.setVisible(false);
     this.escrever(this.textoSemente, `semente ${this.semente}`);
-    for (const lado of LADOS) {
-      const t = this.textoFormacao[lado];
-      if (t) this.escrever(t, `${NOMES[lado]} · ${this.formacoes[lado]}`);
-    }
-  }
-
-  /** Posição horizontal do espaço de um lutador no placar de baixo. */
-  private xDoPlacar(lado: Lado, indice: number): number {
-    return lado === 0 ? 34 + indice * 104 : LARGURA - 34 - 3 * 104 - 70 + indice * 104;
   }
 
   override update(_tempo: number, delta: number): void {
@@ -299,12 +295,16 @@ export class CenaCombate extends Phaser.Scene {
         if (fim.vencedor !== null) {
           this.placar[fim.vencedor] = (this.placar[fim.vencedor] ?? 0) + 1;
         }
+        // Conferência: o combate assistido tem de dar o mesmo resultado do que foi simulado sem tela.
+        const esperado = this.ctx?.resultado;
+        if (esperado && esperado.vencedor !== fim.vencedor) {
+          console.error("combate divergiu da simulação", esperado, fim);
+        }
       }
       this.msDesdeFim += ms * this.velocidade;
       if (this.msDesdeFim > MS_ENTRE_RODADAS) {
-        if (this.sessao) {
-          concluirRodada(this.sessao, fim.vencedor);
-          this.scene.start("preparacao");
+        if (this.ctx) {
+          this.scene.start(avancarRodada());
           return;
         }
         this.semente++;
@@ -327,18 +327,18 @@ export class CenaCombate extends Phaser.Scene {
     this.ultimoTick = e.tick;
     let continuar = true;
     const fx = this.efeitos;
+    const cor = (id: number): number => corDoJogador(e.lutadores[id]?.dono ?? 0);
 
     for (const ev of e.eventos) {
       if (ev.tipo === "golpe") {
-        const atacante = e.lutadores[ev.atacante];
         const visual = this.visuais[ev.alvo];
-        fx.faiscas(ev.x, ev.y, ev.direcao, ev.forca, CORES[atacante?.lado ?? 0]);
+        fx.faiscas(ev.x, ev.y, ev.direcao, ev.forca, cor(ev.atacante));
         fx.tremor = Math.max(fx.tremor, Math.min(14, 1 + ev.forca * 0.6));
         if (visual) {
           visual.brilho = 1;
           visual.pulso = 1;
         }
-        // Só os golpes fortes param o tempo; com oito lutando, pausar em todo golpe trava a luta.
+        // Só os golpes fortes param o tempo; com muitos lutando, pausar em todo golpe trava a luta.
         if (ev.forca >= 9) {
           if (visual) visual.tremer = 1;
           this.pausaGolpe = Math.max(this.pausaGolpe, Math.min(120, ev.forca * 5));
@@ -350,7 +350,7 @@ export class CenaCombate extends Phaser.Scene {
         const y = Math.min(lim.fundo, Math.max(lim.topo, ev.y));
         const ang = Math.atan2(e.arena.chao.y - 150 - y, 600 - x);
         const lado = e.lutadores[ev.id]?.lado ?? 0;
-        fx.explosao(x, y, ang, CORES[lado]);
+        fx.explosao(x, y, ang, cor(ev.id));
         const acabou = !e.lutadores.some((l) => l.vivo && l.lado === lado);
         this.cameraLenta = acabou ? 750 : 200;
       } else if (ev.tipo === "pulo") {
@@ -366,23 +366,20 @@ export class CenaCombate extends Phaser.Scene {
         const visual = this.visuais[ev.id];
         if (visual) visual.elastico = -0.12;
       } else if (ev.tipo === "tiro") {
-        const l = e.lutadores[ev.id];
-        fx.faiscas(ev.x, ev.y, l?.direcao ?? 1, 2, CORES[l?.lado ?? 0]);
+        fx.faiscas(ev.x, ev.y, e.lutadores[ev.id]?.direcao ?? 1, 2, cor(ev.id));
       } else if (ev.tipo === "habilidade") {
         const l = e.lutadores[ev.id];
         const visual = this.visuais[ev.id];
-        const cor = CORES[l?.lado ?? 0];
         this.anel(ev.x, ev.y - (l?.def.altura ?? 60) / 2, 70, 0xffffff, 6, 260);
-        this.anel(ev.x, ev.y - (l?.def.altura ?? 60) / 2, 110, cor, 4, 340);
+        this.anel(ev.x, ev.y - (l?.def.altura ?? 60) / 2, 110, cor(ev.id), 4, 340);
         if (visual) {
           visual.brilho = 0.8;
           visual.elastico = ev.habilidade === "pisao" ? 0.35 : 0.2;
         }
       } else {
         // pisão: onda de choque no chão
-        const cor = CORES[e.lutadores[ev.id]?.lado ?? 0];
         this.anel(ev.x, ev.y - 6, ev.raio, 0xffffff, 12, 320);
-        this.anel(ev.x, ev.y - 6, ev.raio * 1.25, cor, 7, 420);
+        this.anel(ev.x, ev.y - 6, ev.raio * 1.25, cor(ev.id), 7, 420);
         fx.poeira(ev.x, ev.y, 22, 6);
         fx.tremor = Math.max(fx.tremor, 14);
         const visual = this.visuais[ev.id];
@@ -394,7 +391,7 @@ export class CenaCombate extends Phaser.Scene {
     for (const l of e.lutadores) {
       if (!l.vivo) continue;
       const voando = l.lancado && l.atordoado > 0 && Math.hypot(l.vx, l.vy) > 7;
-      if (voando || l.impulso > 0) fx.rastro(l.x, l.y - l.def.altura / 2, CORES[l.lado]);
+      if (voando || l.impulso > 0) fx.rastro(l.x, l.y - l.def.altura / 2, corDoJogador(l.dono));
     }
     return continuar;
   }
@@ -502,9 +499,9 @@ export class CenaCombate extends Phaser.Scene {
     const e = this.laco.estado;
     g.clear();
 
-    // Projéteis: traço claro com rastro na cor do time.
+    // Projéteis: traço claro com rastro na cor do dono.
     for (const p of e.projeteis) {
-      const cor = CORES[p.lado];
+      const cor = corDoJogador(e.lutadores[p.dono]?.dono ?? p.lado);
       const d = p.vx >= 0 ? 1 : -1;
       g.lineStyle(p.altura + 2, cor, 0.35);
       g.lineBetween(p.x - d * 46, p.y, p.x, p.y);
@@ -543,7 +540,7 @@ export class CenaCombate extends Phaser.Scene {
     }
   }
 
-  /** Marcas por cima dos lutadores: recarga da habilidade e, no modo de depuração, caixas e alvos. */
+  /** Marcas por cima dos lutadores: recarga da habilidade, nível e, na depuração, caixas e alvos. */
   private desenharMarcas(): void {
     const g = this.marcas;
     const e = this.laco.estado;
@@ -552,6 +549,7 @@ export class CenaCombate extends Phaser.Scene {
       if (!l.vivo) continue;
       const w = l.def.largura;
       const h = l.def.altura;
+      const cor = corDoJogador(l.dono);
       // Barrinha da habilidade: enche conforme a recarga; fica branca quando está pronta.
       const total = l.def.habilidade.recarga;
       const cheio = 1 - l.habRecarga / total;
@@ -559,7 +557,7 @@ export class CenaCombate extends Phaser.Scene {
       const by = l.y - h - 12;
       g.fillStyle(0x0b0f16, 0.7);
       g.fillRoundedRect(bx - 1, by - 1, 42, 7, 3);
-      g.fillStyle(cheio >= 1 ? 0xffffff : CORES[l.lado], 1);
+      g.fillStyle(cheio >= 1 ? 0xffffff : cor, 1);
       g.fillRoundedRect(bx, by, Math.max(2, 40 * cheio), 5, 2);
       desenharPinos(g, l.x, by - 8, l.nivel);
 
@@ -588,9 +586,9 @@ export class CenaCombate extends Phaser.Scene {
       // Linha até o alvo.
       const alvo = e.lutadores.find((o) => o.id === l.alvo && o.vivo);
       if (alvo) {
-        g.lineStyle(2, CORES[l.lado], 0.55);
+        g.lineStyle(2, cor, 0.55);
         g.lineBetween(l.x, l.y - h / 2, alvo.x, alvo.y - alvo.def.altura / 2);
-        g.fillStyle(CORES[l.lado], 0.9);
+        g.fillStyle(cor, 0.9);
         g.fillCircle(alvo.x, alvo.y - alvo.def.altura / 2, 5);
       }
     }
@@ -610,52 +608,95 @@ export class CenaCombate extends Phaser.Scene {
       g.fillRect(0, 0, LARGURA, ALTURA);
     }
 
-    // Placar de baixo: um espaço por lutador, com o ícone do arquétipo e a porcentagem.
-    const porLado = [0, 0];
+    // Placar de baixo: um painel por lado, com o nome de quem luta e um ícone por personagem.
     for (const lado of LADOS) {
-      const x0 = this.xDoPlacar(lado, 0) - 22;
-      g.fillStyle(0x0b0f16, 0.6);
-      g.fillRoundedRect(x0, ALTURA - 92, 4 * 104 + 8, 78, 12);
-      g.fillStyle(CORES[lado], 1);
-      g.fillRoundedRect(x0, ALTURA - 18, 4 * 104 + 8, 5, 2);
-    }
-    for (const l of e.lutadores) {
-      const v = this.visuais[l.id];
-      if (!v) continue;
-      const indice = porLado[l.lado] ?? 0;
-      porLado[l.lado] = indice + 1;
-      const x = this.xDoPlacar(l.lado, indice);
-      desenharIcone(g, l.def.arquetipo, x, ALTURA - 52, l.vivo ? CORES[l.lado] : 0x3a4558);
-      this.escrever(v.placar, l.vivo ? `${Math.round(l.dano)}%` : "fora");
-      v.placar.setTint(l.vivo ? corDoDano(l.dano) : 0x5b6b82);
-      v.placar.setScale(1 + v.pulso * 0.25);
+      const doLado = e.lutadores.filter((l) => l.lado === lado);
+      const largura = Math.max(220, 36 + doLado.length * 32);
+      const x0 = lado === 0 ? 14 : LARGURA - 14 - largura;
+      g.fillStyle(0x0b0f16, 0.62);
+      g.fillRoundedRect(x0, ALTURA - 98, largura, 86, 12);
+      doLado.forEach((l, i) => {
+        const x = x0 + 26 + i * 32;
+        desenharIcone(g, l.def.arquetipo, x, ALTURA - 40, l.vivo ? corDoJogador(l.dono) : 0x2e394c);
+        if (l.vivo) {
+          // tracinho com a cor do dano
+          g.fillStyle(corDoDano(l.dano), 1);
+          g.fillRoundedRect(x - 11, ALTURA - 22, 22 * Math.min(1, 0.15 + l.dano / 160), 4, 2);
+        }
+      });
+      const t = this.textoLado[lado];
+      if (t) {
+        const vivos = doLado.filter((l) => l.vivo).length;
+        this.escrever(t, `${this.nomesDoLado(lado)}  ·  ${vivos}/${doLado.length}`);
+        const ids = this.ctx
+          ? lado === 0
+            ? this.ctx.confronto.ladoA
+            : this.ctx.confronto.ladoB
+          : [lado];
+        t.setTint(corDoJogador(ids[0] ?? lado));
+      }
     }
 
     const restante = Math.max(0, Math.ceil((TICKS_MAXIMOS - e.tick) / TICKS_POR_SEGUNDO));
     this.escrever(this.textoTempo, e.fim ? "" : String(restante));
-    this.escrever(
-      this.textoPlacar,
-      `${NOMES[0]}  ${this.placar[0]}  ×  ${this.placar[1]}  ${NOMES[1]}`,
-    );
+    if (this.ctx) {
+      const { partida } = this.ctx;
+      const vidas = partida.jogadores
+        .map((j) => `${j.nome} ${j.eliminadoNaRodada === null ? `♥${j.vida}` : "fora"}`)
+        .join("   ");
+      this.escrever(this.textoPlacar, `Rodada ${partida.economia.rodada}   ·   ${vidas}`);
+    } else {
+      this.escrever(this.textoPlacar, `Azul  ${this.placar[0]}  ×  ${this.placar[1]}  Laranja`);
+    }
 
     if (e.fim && this.msDesdeFim > 500) {
       const v = e.fim.vencedor;
       const entrada = Math.min(1, (this.msDesdeFim - 500) / 260);
       const escala = 1 + Math.pow(1 - entrada, 2) * 1.6;
-      this.escrever(this.textoFaixa, v === null ? "EMPATE" : `${NOMES[v]} VENCE!`);
-      this.textoFaixa
-        .setVisible(true)
-        .setTint(v === null ? 0xffffff : CORES[v])
-        .setScale(escala)
-        .setAlpha(entrada);
-      const sobraram = e.lutadores.filter((l) => l.vivo).length;
-      const falta = Math.max(1, Math.ceil((MS_ENTRE_RODADAS - this.msDesdeFim) / 1000));
-      const motivo = e.fim.motivo === "tempo" ? "tempo esgotado · " : "";
-      const resumo = v === null ? "" : `${sobraram} de pé · `;
-      const depois = this.sessao ? "preparação" : "próxima rodada";
-      this.escrever(this.textoSub, `${motivo}${resumo}${depois} em ${falta}…`);
+      const { titulo, sub, cor } = this.textoDoFim(v);
+      this.escrever(this.textoFaixa, titulo);
+      this.textoFaixa.setVisible(true).setTint(cor).setScale(escala).setAlpha(entrada);
+      this.escrever(this.textoSub, sub);
       this.textoSub.setVisible(true).setAlpha(entrada);
     }
+  }
+
+  private textoDoFim(v: Lado | null): { titulo: string; sub: string; cor: number } {
+    const e = this.laco.estado;
+    const sobraram = e.lutadores.filter((l) => l.vivo).length;
+    const motivo = e.fim?.motivo === "tempo" ? "tempo esgotado · " : "";
+    const corDoLado = (lado: Lado): number =>
+      corDoJogador(e.lutadores.find((l) => l.lado === lado)?.dono ?? lado);
+    if (!this.ctx) {
+      const titulo = v === null ? "EMPATE" : v === 0 ? "AZUL VENCE!" : "LARANJA VENCE!";
+      return {
+        titulo,
+        sub: `${motivo}${sobraram} de pé`,
+        cor: v === null ? 0xffffff : corDoLado(v),
+      };
+    }
+    const { confronto, resultado } = this.ctx;
+    if (v === null) return { titulo: "EMPATE", sub: `${motivo}ninguém perde vida`, cor: 0xffffff };
+    const meuLado: Lado | null = confronto.ladoA.includes(HUMANO)
+      ? 0
+      : confronto.ladoB.includes(HUMANO) && !confronto.fantasma
+        ? 1
+        : null;
+    const dano = resultado?.dano ?? 0;
+    const perdeVida = !(v === 0 && confronto.fantasma);
+    const perda = perdeVida
+      ? `${this.nomesDoLado(v === 0 ? 1 : 0)}: −${dano} de vida`
+      : "a cópia não perde vida";
+    if (meuLado === null) {
+      return {
+        titulo: `${this.nomesDoLado(v)} VENCE`,
+        sub: `${motivo}${perda}`,
+        cor: corDoLado(v),
+      };
+    }
+    return meuLado === v
+      ? { titulo: "VITÓRIA!", sub: `${motivo}${sobraram} de pé · ${perda}`, cor: corDoLado(v) }
+      : { titulo: "DERROTA", sub: `${motivo}você perde ${dano} de vida`, cor: corDoLado(v) };
   }
 
   /** Só regera a textura do texto quando o conteúdo muda de verdade. */

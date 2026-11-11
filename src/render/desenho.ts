@@ -2,8 +2,17 @@ import type Phaser from "phaser";
 import type { Arena, Lutador } from "../sim/combate/tipos";
 import { misturar } from "./efeitos";
 
-export const CORES = [0x4fa3ff, 0xff8a3d] as const;
-export const CORES_ESCURAS = [0x1d4f8f, 0x9a4410] as const;
+/** Uma cor por jogador: azul, laranja, verde e roxo. */
+export const CORES = [0x4fa3ff, 0xff8a3d, 0x5fd67a, 0xb98bff] as const;
+export const CORES_ESCURAS = [0x1d4f8f, 0x9a4410, 0x1f7a3a, 0x5a3aa0] as const;
+
+export function corDoJogador(jogador: number): number {
+  return CORES[jogador % CORES.length] ?? 0xffffff;
+}
+
+function corEscuraDoJogador(jogador: number): number {
+  return CORES_ESCURAS[jogador % CORES_ESCURAS.length] ?? 0x333333;
+}
 export const NOMES = ["AZUL", "LARANJA"] as const;
 
 type G = Phaser.GameObjects.Graphics;
@@ -26,8 +35,8 @@ export function desenharCorpo(g: G, l: Readonly<Lutador>, brilho: number): void 
   const fase = l.ataque.fase;
   const avanco = fase === "inicio" ? -5 : fase === "ativo" ? 9 : fase === "recuperacao" ? 3 : 0;
   const ox = avanco * d;
-  const base = CORES[l.lado];
-  const escura = CORES_ESCURAS[l.lado];
+  const base = corDoJogador(l.dono);
+  const escura = corEscuraDoJogador(l.dono);
   const cor =
     brilho > 0
       ? misturar(base, 0xffffff, brilho)
