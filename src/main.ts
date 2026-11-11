@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { CenaArena } from "./render/CenaArena";
+import { CenaDuelo } from "./render/CenaDuelo";
 
 new Phaser.Game({
   type: Phaser.AUTO,
@@ -8,5 +8,5 @@ new Phaser.Game({
   height: 675,
   backgroundColor: "#141a22",
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [CenaArena],
+  scene: [CenaDuelo],
 });
