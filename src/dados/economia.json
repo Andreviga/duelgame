@@ -1,0 +1,20 @@
+{
+  "elixirBase": 4,
+  "elixirPorRodada": 1,
+  "ganhoMaximo": 10,
+  "tetoElixir": 20,
+  "custoAtualizar": 1,
+  "tamanhoLoja": 3,
+  "tamanhoBanco": 6,
+  "limiteCampo": [2, 2, 3, 3, 4, 4, 5, 5, 6],
+  "copiasPorPersonagem": 10,
+  "nivelMaximo": 4,
+  "reembolsoNivel1": 1,
+  "reembolsoNiveisMaiores": 0.75,
+  "segundosPreparacao": 40,
+  "multiplicadores": {
+    "dano": [1, 1.35, 1.8, 2.4],
+    "peso": [1, 1.12, 1.26, 1.42],
+    "tamanho": [1, 1.08, 1.16, 1.25]
+  }
+}

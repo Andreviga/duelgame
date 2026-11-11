@@ -29,6 +29,8 @@ export interface Arena {
     readonly fundo: number;
   };
   readonly nascimentos: readonly { readonly x: number; readonly y: number }[];
+  /** Pontos onde o jogador pode posicionar personagens, no lado esquerdo; o direito usa o espelho. */
+  readonly pontos: readonly { readonly x: number; readonly y: number }[];
 }
 
 /** Dano e arremesso de um acerto (golpe, projétil ou habilidade). */
@@ -85,6 +87,8 @@ export interface DefPersonagem {
   readonly id: string;
   readonly nome: string;
   readonly arquetipo: Arquetipo;
+  /** Preço na loja, em elixir. */
+  readonly custo: number;
   readonly largura: number;
   readonly altura: number;
   readonly peso: number;
@@ -107,6 +111,8 @@ export interface Lutador {
   readonly id: number;
   readonly lado: Lado;
   readonly def: DefPersonagem;
+  /** Nível de fusão (1 a 4). Os atributos de `def` já vêm ajustados; isto é só para mostrar. */
+  readonly nivel: number;
   /** Posição: `x` é o centro, `y` é a base (os pés). */
   x: number;
   y: number;
@@ -223,6 +229,7 @@ export interface Vaga {
   readonly def: DefPersonagem;
   readonly x: number;
   readonly y: number;
+  readonly nivel?: number;
 }
 export type Esquadrao = readonly Vaga[];
 

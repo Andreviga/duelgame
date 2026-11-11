@@ -1,0 +1,58 @@
+[
+  { "vagas": [{ "personagem": "lutador", "nivel": 1, "x": 420, "y": 520 }] },
+  {
+    "vagas": [
+      { "personagem": "lutador", "nivel": 1, "x": 480, "y": 520 },
+      { "personagem": "atirador", "nivel": 1, "x": 280, "y": 520 }
+    ]
+  },
+  {
+    "vagas": [
+      { "personagem": "tanque", "nivel": 1, "x": 520, "y": 520 },
+      { "personagem": "lutador", "nivel": 1, "x": 420, "y": 520 },
+      { "personagem": "atirador", "nivel": 1, "x": 280, "y": 520 }
+    ]
+  },
+  {
+    "vagas": [
+      { "personagem": "tanque", "nivel": 1, "x": 520, "y": 520 },
+      { "personagem": "lutador", "nivel": 1, "x": 440, "y": 520 },
+      { "personagem": "assassino", "nivel": 1, "x": 360, "y": 520 },
+      { "personagem": "atirador", "nivel": 1, "x": 260, "y": 520 }
+    ]
+  },
+  {
+    "vagas": [
+      { "personagem": "tanque", "nivel": 2, "x": 520, "y": 520 },
+      { "personagem": "lutador", "nivel": 1, "x": 440, "y": 520 },
+      { "personagem": "assassino", "nivel": 1, "x": 360, "y": 520 },
+      { "personagem": "atirador", "nivel": 1, "x": 260, "y": 520 }
+    ]
+  },
+  {
+    "vagas": [
+      { "personagem": "tanque", "nivel": 2, "x": 520, "y": 520 },
+      { "personagem": "lutador", "nivel": 2, "x": 440, "y": 520 },
+      { "personagem": "assassino", "nivel": 1, "x": 430, "y": 400 },
+      { "personagem": "atirador", "nivel": 2, "x": 260, "y": 520 }
+    ]
+  },
+  {
+    "vagas": [
+      { "personagem": "tanque", "nivel": 2, "x": 520, "y": 520 },
+      { "personagem": "lutador", "nivel": 2, "x": 440, "y": 520 },
+      { "personagem": "assassino", "nivel": 2, "x": 430, "y": 400 },
+      { "personagem": "atirador", "nivel": 2, "x": 260, "y": 520 },
+      { "personagem": "lutador", "nivel": 1, "x": 340, "y": 520 }
+    ]
+  },
+  {
+    "vagas": [
+      { "personagem": "tanque", "nivel": 3, "x": 520, "y": 520 },
+      { "personagem": "lutador", "nivel": 2, "x": 440, "y": 520 },
+      { "personagem": "assassino", "nivel": 2, "x": 430, "y": 400 },
+      { "personagem": "atirador", "nivel": 3, "x": 260, "y": 520 },
+      { "personagem": "lutador", "nivel": 2, "x": 340, "y": 520 }
+    ]
+  }
+]

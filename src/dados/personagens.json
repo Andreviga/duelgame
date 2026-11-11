@@ -3,6 +3,7 @@
     "id": "lutador",
     "nome": "Lutador",
     "arquetipo": "corpo",
+    "custo": 2,
     "largura": 40,
     "altura": 60,
     "peso": 100,
@@ -40,6 +41,7 @@
     "id": "atirador",
     "nome": "Atirador",
     "arquetipo": "distancia",
+    "custo": 3,
     "largura": 36,
     "altura": 58,
     "peso": 85,
@@ -59,7 +61,12 @@
       "arremessoBase": 3.5,
       "arremessoCrescimento": 0.085,
       "anguloGraus": 25,
-      "projetil": { "velocidade": 11, "largura": 18, "altura": 8, "vida": 60 }
+      "projetil": {
+        "velocidade": 11,
+        "largura": 18,
+        "altura": 8,
+        "vida": 60
+      }
     },
     "habilidade": {
       "tipo": "rajada",
@@ -78,6 +85,7 @@
     "id": "tanque",
     "nome": "Tanque",
     "arquetipo": "tanque",
+    "custo": 3,
     "largura": 56,
     "altura": 68,
     "peso": 160,
@@ -115,6 +123,7 @@
     "id": "assassino",
     "nome": "Assassino",
     "arquetipo": "assassino",
+    "custo": 3,
     "largura": 34,
     "altura": 52,
     "peso": 75,

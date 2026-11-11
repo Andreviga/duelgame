@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import arenaJson from "../src/dados/arena-basica.json";
+import economiaJson from "../src/dados/economia.json";
 import formacoesJson from "../src/dados/formacoes.json";
 import personagensJson from "../src/dados/personagens.json";
 import {
   ErroDeDados,
   validarArena,
+  validarEconomia,
   validarFormacoes,
   validarPersonagem,
   validarPersonagens,
@@ -41,6 +43,26 @@ describe("schemas de dados", () => {
   it("personagem à distância precisa de projétil", () => {
     const base = personagensJson[0];
     expect(() => validarPersonagem({ ...base, arquetipo: "distancia" })).toThrow(/projetil/);
+  });
+
+  it("recusa ponto de posicionamento fora do lado esquerdo ou solto no ar", () => {
+    expect(() => validarArena({ ...arenaJson, pontos: [{ x: 900, y: 520 }] })).toThrow(
+      /metade esquerda/,
+    );
+    expect(() => validarArena({ ...arenaJson, pontos: [{ x: 300, y: 100 }] })).toThrow(/em cima/);
+    expect(() => validarArena({ ...arenaJson, pontos: [] })).toThrow(/pontos/);
+  });
+
+  it("recusa economia com multiplicadores faltando ou reembolso acima de 1", () => {
+    expect(validarEconomia(economiaJson).tamanhoLoja).toBe(3);
+    expect(() =>
+      validarEconomia({
+        ...economiaJson,
+        multiplicadores: { ...economiaJson.multiplicadores, dano: [1, 2] },
+      }),
+    ).toThrow(/um por nível/);
+    expect(() => validarEconomia({ ...economiaJson, reembolsoNivel1: 1.5 })).toThrow(/entre 0 e 1/);
+    expect(() => validarPersonagem({ ...personagensJson[0], custo: 0 })).toThrow(/custo/);
   });
 
   it("recusa formação com personagem desconhecido ou fora da metade esquerda", () => {

@@ -1,3 +1,4 @@
+import type { ConfigEconomia } from "../sim/economia/tipos";
 import type {
   Arena,
   Arquetipo,
@@ -101,6 +102,23 @@ export function validarArena(json: unknown): Arena {
     const no = obj(n, cn);
     return { x: num(no, "x", cn, "qualquer"), y: num(no, "y", cn, "qualquer") };
   });
+  const meio = chao.x + chao.largura / 2;
+  const pontos = lista(o["pontos"], `${c}.pontos`, 1).map((n, i) => {
+    const cn = `${c}.pontos[${i}]`;
+    const no = obj(n, cn);
+    const ponto = { x: num(no, "x", cn, "qualquer"), y: num(no, "y", cn, "qualquer") };
+    if (ponto.x <= chao.x || ponto.x > meio) {
+      throw new ErroDeDados(`${cn}.x: deve ficar na metade esquerda do chão`);
+    }
+    const noChao = ponto.y === chao.y;
+    const emPlataforma = plataformas.some(
+      (p) => p.y === ponto.y && ponto.x >= p.x && ponto.x <= p.x + p.largura,
+    );
+    if (!noChao && !emPlataforma) {
+      throw new ErroDeDados(`${cn}: o ponto deve ficar em cima do chão ou de uma plataforma`);
+    }
+    return ponto;
+  });
   return {
     id: texto(o, "id", c),
     nome: texto(o, "nome", c),
@@ -109,6 +127,7 @@ export function validarArena(json: unknown): Arena {
     plataformas,
     limites,
     nascimentos,
+    pontos,
   };
 }
 
@@ -173,6 +192,7 @@ export function validarPersonagem(json: unknown, caminho = "personagem"): DefPer
     id: texto(o, "id", caminho),
     nome: texto(o, "nome", caminho),
     arquetipo,
+    custo: inteiro(o, "custo", caminho),
     largura: num(o, "largura", caminho, "positivo"),
     altura: num(o, "altura", caminho, "positivo"),
     peso: num(o, "peso", caminho, "positivo"),
@@ -217,8 +237,57 @@ export function validarFormacoes(
       if (x < arena.chao.x || x > meio) {
         throw new ErroDeDados(`${cv}.x: deve ficar na metade esquerda do chão`);
       }
-      return { def, x, y: num(vo, "y", cv, "qualquer") };
+      const nivel = vo["nivel"] === undefined ? 1 : inteiro(vo, "nivel", cv);
+      return { def, x, y: num(vo, "y", cv, "qualquer"), nivel };
     });
-    return { id: texto(o, "id", c), nome: texto(o, "nome", c), vagas };
+    const id = o["id"] === undefined ? `${i}` : texto(o, "id", c);
+    const nome = o["nome"] === undefined ? id : texto(o, "nome", c);
+    return { id, nome, vagas };
   });
+}
+
+function listaDeNumeros(o: Obj, campo: string, caminho: string, tamanho?: number): number[] {
+  const itens = lista(o[campo], `${caminho}.${campo}`, 1).map((v, i) => {
+    if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) {
+      throw new ErroDeDados(`${caminho}.${campo}[${i}]: esperava um número maior que zero`);
+    }
+    return v;
+  });
+  if (tamanho !== undefined && itens.length !== tamanho) {
+    throw new ErroDeDados(`${caminho}.${campo}: esperava ${tamanho} valores, um por nível`);
+  }
+  return itens;
+}
+
+export function validarEconomia(json: unknown): ConfigEconomia {
+  const c = "economia";
+  const o = obj(json, c);
+  const nivelMaximo = inteiro(o, "nivelMaximo", c);
+  const m = obj(o["multiplicadores"], `${c}.multiplicadores`);
+  const cm = `${c}.multiplicadores`;
+  const fracao = (campo: string): number => {
+    const v = num(o, campo, c, "naoNegativo");
+    if (v > 1) throw new ErroDeDados(`${c}.${campo}: deve ficar entre 0 e 1`);
+    return v;
+  };
+  return {
+    elixirBase: num(o, "elixirBase", c, "naoNegativo"),
+    elixirPorRodada: num(o, "elixirPorRodada", c, "naoNegativo"),
+    ganhoMaximo: num(o, "ganhoMaximo", c, "positivo"),
+    tetoElixir: num(o, "tetoElixir", c, "positivo"),
+    custoAtualizar: num(o, "custoAtualizar", c, "naoNegativo"),
+    tamanhoLoja: inteiro(o, "tamanhoLoja", c),
+    tamanhoBanco: inteiro(o, "tamanhoBanco", c),
+    limiteCampo: listaDeNumeros(o, "limiteCampo", c),
+    copiasPorPersonagem: inteiro(o, "copiasPorPersonagem", c),
+    nivelMaximo,
+    reembolsoNivel1: fracao("reembolsoNivel1"),
+    reembolsoNiveisMaiores: fracao("reembolsoNiveisMaiores"),
+    segundosPreparacao: num(o, "segundosPreparacao", c, "positivo"),
+    multiplicadores: {
+      dano: listaDeNumeros(m, "dano", cm, nivelMaximo),
+      peso: listaDeNumeros(m, "peso", cm, nivelMaximo),
+      tamanho: listaDeNumeros(m, "tamanho", cm, nivelMaximo),
+    },
+  };
 }
