@@ -1,28 +1,43 @@
 import { describe, expect, it } from "vitest";
 import { ARENA_BASICA as arena, personagem } from "../src/dados";
 import {
-  criarCombate,
+  criarDuelo,
   criarLutador,
   golpeAcerta,
   simularCombate,
   stepCombate,
   TICKS_MAXIMOS,
 } from "../src/sim/combate/combate";
-import type { DefPersonagem, EstadoCombate, Evento } from "../src/sim/combate/tipos";
+import type { DefPersonagem, Evento } from "../src/sim/combate/tipos";
 
 const def = personagem("lutador");
 const duelo = (semente: number, a: DefPersonagem = def, b: DefPersonagem = def) =>
-  criarCombate(arena, [a, b], semente);
+  criarDuelo(arena, a, b, semente);
 
-function ateOPrimeiroGolpe(inicial: EstadoCombate) {
-  let e = inicial;
-  for (let i = 0; i < 600; i++) {
-    const antes = e;
-    e = stepCombate(e);
-    const golpe = e.eventos.find((ev) => ev.tipo === "golpe");
-    if (golpe && golpe.tipo === "golpe") return { antes, depois: e, golpe };
-  }
-  throw new Error("ninguém acertou ninguém em 10 s");
+/** Monta o instante exato de um golpe: atacante com o golpe ativo, alvo na frente dele. */
+function golpear(alvoDef: DefPersonagem, danoDoAlvo = 0) {
+  const inicial = duelo(1, def, alvoDef);
+  const [a, b] = inicial.lutadores;
+  if (!a || !b) throw new Error("lutador ausente");
+  const depois = stepCombate({
+    ...inicial,
+    lutadores: [
+      {
+        ...a,
+        x: 500,
+        y: arena.chao.y,
+        noChao: true,
+        direcao: 1,
+        ataque: { fase: "ativo", ticks: 3, acertou: false },
+      },
+      { ...b, x: 550, y: arena.chao.y, noChao: true, dano: danoDoAlvo },
+    ],
+  });
+  const golpe = depois.eventos.find((ev) => ev.tipo === "golpe");
+  if (!golpe || golpe.tipo !== "golpe") throw new Error("o golpe não acertou");
+  const alvo = depois.lutadores[1];
+  if (!alvo) throw new Error("lutador ausente");
+  return { golpe, alvo };
 }
 
 describe("golpe", () => {
@@ -36,27 +51,21 @@ describe("golpe", () => {
   });
 
   it("acertar soma dano, atordoa e arremessa para longe do atacante", () => {
-    const { antes, depois, golpe } = ateOPrimeiroGolpe(duelo(3));
-    const atacante = antes.lutadores[golpe.atacante];
-    const alvoAntes = antes.lutadores[golpe.alvo];
-    const alvo = depois.lutadores[golpe.alvo];
-    if (!atacante || !alvoAntes || !alvo) throw new Error("lutador ausente");
-    expect(alvo.dano).toBeGreaterThan(alvoAntes.dano);
+    const { alvo, golpe } = golpear(def);
+    expect(golpe.alvo).toBe(1);
+    expect(alvo.dano).toBeGreaterThan(def.ataque.dano * 0.89);
+    expect(alvo.dano).toBeLessThan(def.ataque.dano * 1.11);
     expect(alvo.atordoado).toBeGreaterThan(0);
     expect(alvo.lancado).toBe(true);
-    expect(Math.sign(alvo.vx)).toBe(Math.sign(alvo.x - atacante.x) || atacante.direcao);
+    expect(alvo.vx).toBeGreaterThan(0);
     expect(alvo.vy).toBeLessThan(0);
   });
 
-  it("o mesmo golpe arremessa mais um alvo leve do que um pesado", () => {
-    const leve = { ...def, peso: 60 };
-    const pesado = { ...def, peso: 180 };
-    const forca = (alvoDef: DefPersonagem) => {
-      const { golpe } = ateOPrimeiroGolpe(duelo(3, def, alvoDef));
-      return golpe.forca;
-    };
-    // Mesma semente: o primeiro golpe acontece igual; só o peso do alvo muda.
-    expect(forca(leve)).toBeGreaterThan(forca(pesado));
+  it("o mesmo golpe arremessa mais um alvo leve do que um pesado, e mais quem tem mais dano", () => {
+    expect(golpear({ ...def, peso: 60 }).golpe.forca).toBeGreaterThan(
+      golpear({ ...def, peso: 180 }).golpe.forca,
+    );
+    expect(golpear(def, 120).golpe.forca).toBeGreaterThan(golpear(def, 0).golpe.forca * 2);
   });
 });
 

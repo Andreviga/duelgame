@@ -19,8 +19,18 @@ export function moverLutador(l: Lutador, entrada: Entrada, arena: Arena, eventos
   const controlavel = l.atordoado === 0;
 
   if (controlavel) {
-    const aceleracao = l.noChao ? def.aceleracao : def.aceleracaoAr;
-    l.vx = aproximar(l.vx, entrada.mover * def.velocidade, aceleracao);
+    // Impulso (investida ou salto) mantém a velocidade horizontal, mas é cortado perto da beirada.
+    const margem = 25;
+    const proximoX = l.x + l.vx;
+    if (proximoX < arena.chao.x + margem || proximoX > arena.chao.x + arena.chao.largura - margem) {
+      l.impulso = 0;
+    }
+    if (l.impulso > 0) {
+      l.impulso--;
+    } else {
+      const aceleracao = l.noChao ? def.aceleracao : def.aceleracaoAr;
+      l.vx = aproximar(l.vx, entrada.mover * def.velocidade, aceleracao);
+    }
     if (entrada.encarar !== 0) l.direcao = entrada.encarar;
     else if (entrada.mover !== 0 && l.ataque.fase === "nenhum") l.direcao = entrada.mover;
 
@@ -102,6 +112,7 @@ export function moverLutador(l: Lutador, entrada: Entrada, arena: Arena, eventos
 
   if (apoiado) {
     if (!estavaNoChao) {
+      l.impulso = 0; // pousou: o salto acabou
       eventos.push({ tipo: "pouso", id: l.id, x: l.x, y: l.y, impacto: vyImpacto });
     }
     l.noChao = true;

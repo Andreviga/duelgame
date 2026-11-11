@@ -5,7 +5,14 @@ import { foraDosLimites, moverLutador } from "../src/sim/combate/fisica";
 import type { Entrada, Evento, Lutador } from "../src/sim/combate/tipos";
 
 const def = personagem("lutador");
-const NADA: Entrada = { mover: 0, pular: false, descer: false, atacar: false, encarar: 0 };
+const NADA: Entrada = {
+  mover: 0,
+  pular: false,
+  descer: false,
+  atacar: false,
+  habilidade: false,
+  encarar: 0,
+};
 const PULAR: Entrada = { ...NADA, pular: true };
 
 function rodar(l: Lutador, ticks: number, entrada: Entrada = NADA): Evento[] {
@@ -107,6 +114,24 @@ describe("física", () => {
     rodar(l, 10, { ...PULAR, mover: 1 });
     expect(l.x).toBe(600);
     expect(l.y).toBe(arena.chao.y);
+  });
+
+  it("impulso mantém a velocidade horizontal, mas é cortado perto da beirada", () => {
+    const l = criarLutador(def, 0, 0, 600, arena.chao.y);
+    rodar(l, 2);
+    l.vx = 10;
+    l.impulso = 5;
+    rodar(l, 5);
+    expect(l.vx).toBe(10); // a entrada parada não freou
+    rodar(l, 1);
+    expect(l.vx).toBeLessThan(10); // impulso acabou: volta a frear
+
+    const b = criarLutador(def, 0, 0, arena.chao.x + arena.chao.largura - 40, arena.chao.y);
+    rodar(b, 2);
+    b.vx = 10;
+    b.impulso = 30;
+    rodar(b, 3);
+    expect(b.impulso).toBe(0);
   });
 
   it("detecta saída pelos quatro limites", () => {

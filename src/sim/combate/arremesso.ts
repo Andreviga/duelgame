@@ -1,4 +1,4 @@
-import type { DefAtaque } from "./tipos";
+import type { DefImpacto } from "./tipos";
 
 /** Peso de referência: com este peso, o arremesso não é ampliado nem reduzido. */
 export const PESO_REFERENCIA = 100;
@@ -8,7 +8,7 @@ export const PESO_REFERENCIA = 100;
  * Cresce em linha reta com a porcentagem do alvo (já contando o golpe) e é
  * inversamente proporcional ao peso do alvo.
  */
-export function forcaArremesso(ataque: DefAtaque, danoDoAlvo: number, pesoDoAlvo: number): number {
+export function forcaArremesso(ataque: DefImpacto, danoDoAlvo: number, pesoDoAlvo: number): number {
   const bruta = ataque.arremessoBase + ataque.arremessoCrescimento * danoDoAlvo;
   return bruta * (PESO_REFERENCIA / pesoDoAlvo);
 }
