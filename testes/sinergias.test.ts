@@ -19,10 +19,19 @@ import type {
 } from "../src/sim/combate/tipos";
 import { montarEsquadrao, sinergiasDoJogador } from "../src/sim/economia/economia";
 import { aplicarSinergias, elixirAoVencer, sinergiasEmCampo } from "../src/sim/economia/sinergias";
+import type { DefSinergia } from "../src/sim/economia/sinergias";
 import type { EstadoJogador } from "../src/sim/economia/tipos";
 import { combater, comEconomia, concluirRodada, criarPartida } from "../src/sim/partida/partida";
 
 const p = (id: string): DefPersonagem => personagem(id);
+/** Efeitos de um degrau, lidos do JSON: balancear muda os números, não os testes. */
+const ef = (grupo: "mundos" | "papeis", chave: string, degrau: 0 | 1): Record<string, number> => {
+  const definicoes: Record<string, DefSinergia | undefined> = { ...SINERGIAS[grupo] };
+  const efeitos = definicoes[chave]?.niveis[degrau]?.efeitos ?? {};
+  return Object.fromEntries(
+    Object.entries(efeitos).flatMap(([k, v]) => (typeof v === "number" ? [[k, v]] : [])),
+  );
+};
 const CHAO = arena.chao.y;
 const ativas = (...ids: string[]) => sinergiasEmCampo(ids.map(p), SINERGIAS);
 const com = (id: string, ...time: string[]) =>
@@ -109,72 +118,94 @@ describe("contagem de características", () => {
 });
 
 describe("efeitos de cada sinergia", () => {
-  it("Futebol 2: +15% de velocidade; 3: +20% de arremesso horizontal", () => {
-    expect(com("maestro", "ponta").def.velocidade).toBeCloseTo(p("maestro").velocidade * 1.15);
+  it("Futebol 2: mais velocidade; 3: mais arremesso horizontal", () => {
+    const v = ef("mundos", "futebol", 0)["velocidade"] ?? 0;
+    expect(v).toBeGreaterThan(1);
+    expect(com("maestro", "ponta").def.velocidade).toBeCloseTo(p("maestro").velocidade * v);
     expect(com("maestro", "ponta").bonus.arremessoHorizontal).toBe(1);
     const tres = com("maestro", "ponta", "paredao");
-    expect(tres.def.velocidade).toBeCloseTo(p("maestro").velocidade * 1.15);
-    expect(tres.bonus.arremessoHorizontal).toBe(1.2);
+    expect(tres.def.velocidade).toBeCloseTo(
+      p("maestro").velocidade * (ef("mundos", "futebol", 1)["velocidade"] ?? 0),
+    );
+    expect(tres.bonus.arremessoHorizontal).toBe(ef("mundos", "futebol", 1)["arremessoHorizontal"]);
+    expect(tres.bonus.arremessoHorizontal).toBeGreaterThan(1);
   });
 
-  it("Piratas 2: +1 de elixir ao vencer; 3: primeiro golpe com dano dobrado", () => {
+  it("Piratas 2: elixir ao vencer; 3: primeiro golpe mais forte", () => {
     expect(elixirAoVencer(ativas("mare", "canhoneiro"))).toBe(1);
     expect(elixirAoVencer(ativas("mare"))).toBe(0);
     expect(com("mare", "canhoneiro").bonus.primeiroGolpe).toBe(1);
-    expect(com("mare", "canhoneiro", "ancora").bonus.primeiroGolpe).toBe(2);
+    const golpe = ef("mundos", "piratas", 1)["primeiroGolpe"] ?? 0;
+    expect(golpe).toBeGreaterThan(1);
+    expect(com("canhoneiro", "mare", "ancora").bonus.primeiroGolpe).toBe(golpe);
     expect(elixirAoVencer(ativas("mare", "canhoneiro", "ancora"))).toBe(1);
   });
 
-  it("Monstros 2: +15% de peso; 3: explode ao sair", () => {
-    expect(com("brasa", "faisca").def.peso).toBeCloseTo(p("brasa").peso * 1.15);
+  it("Monstros 2: mais peso; 3: explode ao sair", () => {
+    const peso = ef("mundos", "monstros", 0)["peso"] ?? 0;
+    expect(peso).toBeGreaterThan(1);
+    expect(com("brasa", "faisca").def.peso).toBeCloseTo(p("brasa").peso * peso);
     expect(com("brasa", "faisca").bonus.danoExplosao).toBe(0);
     const tres = com("brasa", "faisca", "rochedo").bonus;
     expect(tres.danoExplosao).toBe(SINERGIAS.explosao.dano);
     expect(tres.raioExplosao).toBe(SINERGIAS.explosao.raio);
   });
 
-  it("Dojo 2: golpes 15% mais rápidos; 3: habilidade carrega 30% mais rápido", () => {
+  it("Dojo 2: golpes mais rápidos; 3: habilidade carrega mais rápido", () => {
     const base = p("lamina");
+    const ataque = ef("mundos", "dojo", 0)["velocidadeDeAtaque"] ?? 0;
+    const recarga = ef("mundos", "dojo", 1)["recargaHabilidade"] ?? 0;
+    expect(ataque).toBeGreaterThan(1);
+    expect(recarga).toBeGreaterThan(1);
     const dois = com("lamina", "sombra").def;
-    expect(dois.ataque.inicio).toBe(Math.round(base.ataque.inicio / 1.15));
-    expect(dois.ataque.recarga).toBe(Math.round(base.ataque.recarga / 1.15));
+    expect(dois.ataque.inicio).toBe(Math.round(base.ataque.inicio / ataque));
+    expect(dois.ataque.recarga).toBe(Math.round(base.ataque.recarga / ataque));
+    expect(dois.ataque.recarga).toBeLessThan(base.ataque.recarga);
     expect(dois.habilidade.recarga).toBe(base.habilidade.recarga);
     const tres = com("lamina", "sombra", "vento").def;
-    expect(tres.habilidade.recarga).toBe(Math.round(base.habilidade.recarga / 1.3));
-    expect(tres.ataque.inicio).toBe(dois.ataque.inicio);
+    expect(tres.habilidade.recarga).toBe(Math.round(base.habilidade.recarga / recarga));
+    expect(tres.habilidade.recarga).toBeLessThan(base.habilidade.recarga);
   });
 
-  it("Corpo a corpo 2: +10% de dano; 3: +25%", () => {
+  it("Corpo a corpo 2 e 3: mais dano, no golpe e na habilidade", () => {
     const base = p("lamina").ataque.dano;
-    expect(com("lamina", "mare").def.ataque.dano).toBeCloseTo(base * 1.1);
-    expect(com("lamina", "mare", "brasa").def.ataque.dano).toBeCloseTo(base * 1.25);
-    expect(com("lamina", "mare").def.habilidade.dano).toBeCloseTo(
-      p("lamina").habilidade.dano * 1.1,
-    );
+    const d2 = ef("papeis", "corpo", 0)["dano"] ?? 0;
+    const d3 = ef("papeis", "corpo", 1)["dano"] ?? 0;
+    expect(d3).toBeGreaterThan(d2);
+    expect(d2).toBeGreaterThan(1);
+    expect(com("lamina", "mare").def.ataque.dano).toBeCloseTo(base * d2);
+    expect(com("lamina", "mare", "brasa").def.ataque.dano).toBeCloseTo(base * d3);
+    expect(com("lamina", "mare").def.habilidade.dano).toBeCloseTo(p("lamina").habilidade.dano * d2);
   });
 
-  it("À distância 2: +10% de alcance; 3: projéteis atravessam", () => {
-    const base = p("maestro").ataque.alcance;
-    expect(com("maestro", "canhoneiro").def.ataque.alcance).toBeCloseTo(base * 1.1);
+  it("À distância 2: mais alcance; 3: projéteis atravessam", () => {
+    const alcance = ef("papeis", "distancia", 0)["alcance"] ?? 0;
+    expect(alcance).toBeGreaterThan(1);
+    expect(com("maestro", "canhoneiro").def.ataque.alcance).toBeCloseTo(
+      p("maestro").ataque.alcance * alcance,
+    );
     expect(com("maestro", "canhoneiro").bonus.perfura).toBe(false);
     expect(com("maestro", "canhoneiro", "vento").bonus.perfura).toBe(true);
   });
 
-  it("Tanque 2 e 3: o time inteiro fica protegido perto de um tanque (10% e 25%)", () => {
+  it("Tanque 2 e 3: o time inteiro fica protegido perto de um tanque", () => {
     // o bônus do tanque é para os vizinhos: vale também para quem não é tanque
+    const p2 = ef("papeis", "tanque", 0)["protecaoVizinhos"] ?? 0;
+    const p3 = ef("papeis", "tanque", 1)["protecaoVizinhos"] ?? 0;
+    expect(p3).toBeGreaterThan(p2);
     const vizinho = aplicarSinergias(
       p("lamina"),
       ativas("lamina", "paredao", "ancora"),
       SINERGIAS,
     ).bonus;
-    expect(vizinho.protecaoVizinhos).toBe(0.1);
+    expect(vizinho.protecaoVizinhos).toBe(p2);
     expect(vizinho.raioVizinho).toBe(SINERGIAS.raioVizinho);
     const tres = aplicarSinergias(
       p("lamina"),
       ativas("lamina", "paredao", "ancora", "rochedo"),
       SINERGIAS,
     );
-    expect(tres.bonus.protecaoVizinhos).toBe(0.25);
+    expect(tres.bonus.protecaoVizinhos).toBe(p3);
     expect(
       aplicarSinergias(p("lamina"), ativas("lamina", "paredao"), SINERGIAS).bonus.protecaoVizinhos,
     ).toBe(0);
@@ -189,20 +220,21 @@ describe("efeitos de cada sinergia", () => {
   it("os bônus de mundo e de papel só valem para quem tem a característica", () => {
     const time = ativas("maestro", "ponta", "lamina"); // 2 de futebol + 1 do dojo
     const lamina = aplicarSinergias(p("lamina"), time, SINERGIAS);
-    expect(lamina.def.velocidade).toBe(p("lamina").velocidade);
     expect(lamina.def).toEqual(p("lamina"));
     expect(lamina.bonus).toEqual(SEM_BONUS);
   });
 
-  it("bônus se acumulam: pirata assassino... mundo e papel juntos multiplicam o primeiro golpe", () => {
-    // Capitã Maré é pirata e corpo a corpo: com 3 piratas e 2 de corpo a corpo, leva os dois.
+  it("mundo e papel se somam no mesmo personagem", () => {
+    // Capitã Maré é pirata e corpo a corpo: com 3 piratas e 2 de corpo a corpo, leva os dois bônus.
     const maré = aplicarSinergias(
       p("mare"),
       ativas("mare", "canhoneiro", "ancora", "lamina"),
       SINERGIAS,
     );
-    expect(maré.bonus.primeiroGolpe).toBe(2);
-    expect(maré.def.ataque.dano).toBeCloseTo(p("mare").ataque.dano * 1.1);
+    expect(maré.bonus.primeiroGolpe).toBe(ef("mundos", "piratas", 1)["primeiroGolpe"]);
+    expect(maré.def.ataque.dano).toBeCloseTo(
+      p("mare").ataque.dano * (ef("papeis", "corpo", 0)["dano"] ?? 0),
+    );
   });
 });
 
@@ -353,12 +385,15 @@ describe("mecânicas de sinergia no combate", () => {
     );
     const esquadrao = montarEsquadrao(campo, ctx, arena, 0);
     const de = (id: string) => esquadrao.find((v) => v.def.id === id);
-    expect(de("ponta")?.def.velocidade).toBeCloseTo(p("ponta").velocidade * 1.15);
-    expect(de("ponta")?.bonus?.arremessoHorizontal).toBe(1.2);
+    const futebol3 = ef("mundos", "futebol", 1);
+    expect(de("ponta")?.def.velocidade).toBeCloseTo(
+      p("ponta").velocidade * (futebol3["velocidade"] ?? 0),
+    );
+    expect(de("ponta")?.bonus?.arremessoHorizontal).toBe(futebol3["arremessoHorizontal"]);
     expect(de("lamina")?.def.velocidade).toBe(p("lamina").velocidade);
     const combate = criarCombate(arena, [esquadrao, []], 1);
     expect(combate.lutadores.find((l) => l.def.id === "maestro")?.bonus.arremessoHorizontal).toBe(
-      1.2,
+      futebol3["arremessoHorizontal"],
     );
     expect(simularCombate(combate).fim?.vencedor).toBe(0);
   });

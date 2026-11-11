@@ -32,6 +32,8 @@ export const RECARGA_INICIAL = 0.4;
 const FOLGA_DO_TELEPORTE = 45;
 /** O projétil do canhão é maior que o tiro normal. */
 const ESCALA_DO_CANHAO = 1.8;
+/** Depois de atravessar um alvo, o projétil só causa esta fração do dano, sem arremessar. */
+export const DANO_APOS_ATRAVESSAR = 0.25;
 /** Dentro do casco, o dano recebido é reduzido por este fator. */
 export const DANO_NO_CASCO = 0.5;
 /** Aliados mantêm pelo menos esta fração da largura média entre si, andando até este tanto por tick. */
@@ -249,16 +251,33 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
     imp: DefImpacto,
     direcao: -1 | 1,
     multiplicador = 1,
+    /** Fração do dano, sem arremesso nem atordoamento (projétil que já atravessou alguém). */
+    soDano = 0,
   ): void => {
     const critico = atacante.golpes === 0 && atacante.bonus.primeiroGolpe > 1;
     const bonusDano = atacante.golpes === 0 ? atacante.bonus.primeiroGolpe : 1;
     atacante.golpes++;
-    const dano = imp.dano * bonusDano * (1 + (sortear() * 2 - 1) * VARIACAO_DANO);
+    const dano =
+      imp.dano * bonusDano * (soDano > 0 ? soDano : 1) * (1 + (sortear() * 2 - 1) * VARIACAO_DANO);
     const angulo = imp.anguloGraus + (sortear() * 2 - 1) * VARIACAO_ANGULO;
     alvo.ultimoAtacante = atacante.id;
     const x = alvo.x;
     const y = alvo.y - alvo.def.altura / 2;
 
+    if (soDano > 0 && !noCasco(alvo)) {
+      alvo.dano += dano;
+      eventos.push({
+        tipo: "golpe",
+        atacante: atacante.id,
+        alvo: alvo.id,
+        x,
+        y,
+        forca: 0,
+        direcao,
+        critico,
+      });
+      return;
+    }
     if (noCasco(alvo)) {
       // Imune a arremesso: só leva parte do dano e continua onde está.
       alvo.dano += dano * DANO_NO_CASCO;
@@ -344,6 +363,7 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
       perfura: l.bonus.perfura ? 1 : 0,
       atingidos: [],
       multiplicador: 1,
+      enfraquecido: false,
       dano: imp.dano,
       arremessoBase: imp.arremessoBase,
       arremessoCrescimento: imp.arremessoCrescimento,
@@ -611,9 +631,17 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
         p.perfura = 0;
         p.atingidos = [];
         p.multiplicador = defesa.quantidade;
+        p.enfraquecido = false;
       } else {
         const sentido = p.vx !== 0 ? (p.vx > 0 ? 1 : -1) : alvo.x >= dono.x ? 1 : -1;
-        aplicarImpacto(dono, alvo, p, sentido, p.multiplicador);
+        aplicarImpacto(
+          dono,
+          alvo,
+          p,
+          sentido,
+          p.multiplicador,
+          p.enfraquecido ? DANO_APOS_ATRAVESSAR : 0,
+        );
         p.atingidos = [...p.atingidos, alvo.id];
         if (p.quiques > 0) {
           // Quica para o inimigo mais próximo que ainda não foi atingido.
@@ -633,6 +661,7 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
         } else if (p.perfura > 0) {
           p.perfura--;
           p.alvo = null;
+          p.enfraquecido = true;
         } else {
           some = true;
         }

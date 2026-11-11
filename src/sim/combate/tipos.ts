@@ -233,6 +233,8 @@ export interface Projetil extends DefImpacto {
   atingidos: readonly number[];
   /** Multiplicador de arremesso (o projétil devolvido volta mais forte). */
   multiplicador: number;
+  /** Já atravessou um alvo: daqui em diante só causa parte do dano, sem arremessar. */
+  enfraquecido: boolean;
 }
 
 /** O que a IA quer fazer neste tick. A física decide o que acontece. */

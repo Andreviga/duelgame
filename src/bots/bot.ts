@@ -111,14 +111,30 @@ export function jogarBot(
       continue;
     }
     if (cartas.length > 0 && minhas.length < limite + folga) {
-      // Prefere um arquétipo que ainda não tem; depois, a carta mais cara.
+      // Prefere a carta que faz mais sinergia com o que já tem (mesmo mundo ou mesmo papel,
+      // personagem diferente); depois um papel que ainda falta; depois a mais cara.
+      const diferentes = [
+        ...new Map(minhas.map((u) => [u.personagem, def(u.personagem)])).values(),
+      ];
+      const afinidade = (carta: string): number => {
+        const d = def(carta);
+        if (!d) return 0;
+        return diferentes.filter(
+          (o) => o && o.id !== d.id && (o.mundo === d.mundo || o.papel === d.papel),
+        ).length;
+      };
       const papeis = new Set(minhas.map((u) => def(u.personagem)?.papel));
       const ordenadas = [...cartas].sort((a, b) => {
         const da = def(a.carta);
         const db = def(b.carta);
         const novoA = da && !papeis.has(da.papel) ? 1 : 0;
         const novoB = db && !papeis.has(db.papel) ? 1 : 0;
-        return novoB - novoA || (db?.custo ?? 0) - (da?.custo ?? 0) || a.i - b.i;
+        return (
+          afinidade(b.carta) - afinidade(a.carta) ||
+          novoB - novoA ||
+          (db?.custo ?? 0) - (da?.custo ?? 0) ||
+          a.i - b.i
+        );
       });
       const escolha = ordenadas[0];
       if (escolha) {

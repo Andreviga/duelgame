@@ -1,10 +1,10 @@
 {
   "raioVizinho": 150,
-  "ticksInvisivel": 120,
-  "multiplicadorCritico": 1.75,
+  "ticksInvisivel": 180,
+  "multiplicadorCritico": 2,
   "explosao": {
     "raio": 650,
-    "dano": 14
+    "dano": 22
   },
   "mundos": {
     "futebol": {
@@ -12,17 +12,17 @@
       "niveis": [
         {
           "minimo": 2,
-          "descricao": "+15% de velocidade de movimento",
+          "descricao": "+12% de velocidade de movimento",
           "efeitos": {
-            "velocidade": 1.15
+            "velocidade": 1.12
           }
         },
         {
           "minimo": 3,
-          "descricao": "Ataques ganham +20% de arremesso horizontal",
+          "descricao": "Ataques ganham +6% de arremesso horizontal",
           "efeitos": {
-            "velocidade": 1.15,
-            "arremessoHorizontal": 1.2
+            "velocidade": 1.12,
+            "arremessoHorizontal": 1.06
           }
         }
       ]
@@ -39,10 +39,10 @@
         },
         {
           "minimo": 3,
-          "descricao": "O primeiro golpe de cada pirata causa dano dobrado",
+          "descricao": "O primeiro golpe de cada pirata causa +15% de dano",
           "efeitos": {
             "elixirAoVencer": 1,
-            "primeiroGolpe": 2
+            "primeiroGolpe": 1.15
           }
         }
       ]
@@ -52,16 +52,16 @@
       "niveis": [
         {
           "minimo": 2,
-          "descricao": "+15% de peso",
+          "descricao": "+20% de peso",
           "efeitos": {
-            "peso": 1.15
+            "peso": 1.2
           }
         },
         {
           "minimo": 3,
           "descricao": "Ao sair da arena, o monstro explode e fere os inimigos",
           "efeitos": {
-            "peso": 1.15,
+            "peso": 1.2,
             "explosaoAoSair": true
           }
         }
@@ -72,17 +72,17 @@
       "niveis": [
         {
           "minimo": 2,
-          "descricao": "+15% de velocidade de ataque",
+          "descricao": "+10% de velocidade de ataque",
           "efeitos": {
-            "velocidadeDeAtaque": 1.15
+            "velocidadeDeAtaque": 1.1
           }
         },
         {
           "minimo": 3,
-          "descricao": "Habilidades carregam 30% mais rápido",
+          "descricao": "Habilidades carregam 5% mais rápido",
           "efeitos": {
-            "velocidadeDeAtaque": 1.15,
-            "recargaHabilidade": 1.3
+            "velocidadeDeAtaque": 1.1,
+            "recargaHabilidade": 1.05
           }
         }
       ]
@@ -101,9 +101,9 @@
         },
         {
           "minimo": 3,
-          "descricao": "+25% de dano",
+          "descricao": "+15% de dano",
           "efeitos": {
-            "dano": 1.25
+            "dano": 1.15
           }
         }
       ]
@@ -120,9 +120,8 @@
         },
         {
           "minimo": 3,
-          "descricao": "Projéteis atravessam o primeiro alvo",
+          "descricao": "Projéteis atravessam o primeiro alvo (com dano reduzido)",
           "efeitos": {
-            "alcance": 1.1,
             "perfura": true
           }
         }
@@ -140,9 +139,9 @@
         },
         {
           "minimo": 3,
-          "descricao": "Aliados vizinhos recebem 25% menos arremesso",
+          "descricao": "Aliados vizinhos recebem 12% menos arremesso",
           "efeitos": {
-            "protecaoVizinhos": 0.25
+            "protecaoVizinhos": 0.12
           }
         }
       ]
