@@ -31,23 +31,60 @@ export interface Arena {
   readonly nascimentos: readonly { readonly x: number; readonly y: number }[];
 }
 
-export interface DefAtaque {
+/** Dano e arremesso de um acerto (golpe, projétil ou habilidade). */
+export interface DefImpacto {
   /** Dano em pontos de porcentagem. */
   readonly dano: number;
+  readonly arremessoBase: number;
+  readonly arremessoCrescimento: number;
+  readonly anguloGraus: number;
+}
+
+export interface DefProjetil {
+  /** Velocidade em px por tick. */
+  readonly velocidade: number;
+  readonly largura: number;
+  readonly altura: number;
+  /** Tempo de vida em ticks. */
+  readonly vida: number;
+}
+
+export interface DefAtaque extends DefImpacto {
+  /** Corpo a corpo: tamanho da caixa de acerto. À distância: distância máxima para atirar. */
   readonly alcance: number;
   /** Duração de cada parte do golpe, em ticks. */
   readonly inicio: number;
   readonly ativo: number;
   readonly recuperacao: number;
   readonly recarga: number;
-  readonly arremessoBase: number;
-  readonly arremessoCrescimento: number;
-  readonly anguloGraus: number;
+  /** Se presente, o ataque dispara um projétil em vez de bater. */
+  readonly projetil?: DefProjetil;
 }
+
+export type TipoHabilidade = "investida" | "rajada" | "pisao" | "salto";
+
+/**
+ * Habilidade com tempo de recarga. O sentido de cada campo depende do tipo:
+ *  - investida: corre `duracao` ticks a `velocidade`, acertando quem estiver no caminho; `alcance` é a distância máxima para usar.
+ *  - rajada:    dispara `quantidade` projéteis, um a cada `duracao` ticks, a `velocidade`; `alcance` é a distância máxima.
+ *  - pisao:     prepara por `duracao` ticks e arremessa todos os inimigos a até `alcance` de distância.
+ *  - salto:     pula com velocidade vertical `velocidade` e cai atrás do alvo; `alcance` é a distância máxima.
+ */
+export interface DefHabilidade extends DefImpacto {
+  readonly tipo: TipoHabilidade;
+  readonly recarga: number;
+  readonly alcance: number;
+  readonly velocidade: number;
+  readonly duracao: number;
+  readonly quantidade: number;
+}
+
+export type Arquetipo = "corpo" | "distancia" | "tanque" | "assassino";
 
 export interface DefPersonagem {
   readonly id: string;
   readonly nome: string;
+  readonly arquetipo: Arquetipo;
   readonly largura: number;
   readonly altura: number;
   readonly peso: number;
@@ -58,9 +95,11 @@ export interface DefPersonagem {
   readonly puloDuplo: number;
   readonly quedaMaxima: number;
   readonly ataque: DefAtaque;
+  readonly habilidade: DefHabilidade;
 }
 
-export type EstadoIA = "procurar" | "aproximar" | "atacar" | "recuar" | "recuperar" | "voltar";
+export type EstadoIA =
+  "procurar" | "aproximar" | "atacar" | "habilidade" | "recuar" | "recuperar" | "voltar";
 export type FaseAtaque = "nenhum" | "inicio" | "ativo" | "recuperacao";
 export type Lado = 0 | 1;
 
@@ -80,6 +119,8 @@ export interface Lutador {
   /** Ticks em que ignora plataformas, para descer por elas. */
   ignorarPlataforma: number;
   pulosRestantes: number;
+  /** Ticks em que a velocidade horizontal não obedece à entrada (investida, salto). */
+  impulso: number;
   /** Dano acumulado, em porcentagem. */
   dano: number;
   /** Ticks de atordoamento restantes (sem controle). */
@@ -89,8 +130,26 @@ export interface Lutador {
   ataque: { fase: FaseAtaque; ticks: number; acertou: boolean };
   recarga: number;
   recuarDepois: boolean;
+  /** Habilidade em andamento: ticks restantes, quem já foi atingido e disparos que faltam. */
+  hab: { ticks: number; atingidos: readonly number[]; restante: number };
+  habRecarga: number;
+  /** Id do alvo atual, ou null. */
+  alvo: number | null;
   ia: EstadoIA;
   vivo: boolean;
+}
+
+export interface Projetil extends DefImpacto {
+  readonly id: number;
+  readonly lado: Lado;
+  readonly dono: number;
+  /** Centro do projétil. */
+  x: number;
+  y: number;
+  readonly vx: number;
+  readonly largura: number;
+  readonly altura: number;
+  vida: number;
 }
 
 /** O que a IA quer fazer neste tick. A física decide o que acontece. */
@@ -99,6 +158,7 @@ export interface Entrada {
   readonly pular: boolean;
   readonly descer: boolean;
   readonly atacar: boolean;
+  readonly habilidade: boolean;
   readonly encarar: -1 | 0 | 1;
 }
 
@@ -111,6 +171,7 @@ export type Evento =
       readonly x: number;
       readonly y: number;
       readonly forca: number;
+      readonly direcao: -1 | 1;
     }
   | {
       readonly tipo: "saida";
@@ -133,7 +194,22 @@ export type Evento =
       readonly y: number;
       readonly impacto: number;
     }
-  | { readonly tipo: "ataque"; readonly id: number };
+  | { readonly tipo: "ataque"; readonly id: number }
+  | { readonly tipo: "tiro"; readonly id: number; readonly x: number; readonly y: number }
+  | {
+      readonly tipo: "habilidade";
+      readonly id: number;
+      readonly habilidade: TipoHabilidade;
+      readonly x: number;
+      readonly y: number;
+    }
+  | {
+      readonly tipo: "pisao";
+      readonly id: number;
+      readonly x: number;
+      readonly y: number;
+      readonly raio: number;
+    };
 
 export interface FimCombate {
   /** Lado vencedor, ou `null` em caso de empate. */
@@ -142,11 +218,21 @@ export interface FimCombate {
   readonly tick: number;
 }
 
+/** Um personagem e onde ele começa a rodada. */
+export interface Vaga {
+  readonly def: DefPersonagem;
+  readonly x: number;
+  readonly y: number;
+}
+export type Esquadrao = readonly Vaga[];
+
 export interface EstadoCombate {
   readonly tick: number;
   readonly rng: EstadoAleatorio;
   readonly arena: Arena;
   readonly lutadores: readonly Readonly<Lutador>[];
+  readonly projeteis: readonly Readonly<Projetil>[];
+  readonly proximoProjetil: number;
   readonly eventos: readonly Evento[];
   readonly fim: FimCombate | null;
 }

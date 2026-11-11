@@ -2,6 +2,7 @@
   {
     "id": "lutador",
     "nome": "Lutador",
+    "arquetipo": "corpo",
     "largura": 40,
     "altura": 60,
     "peso": 100,
@@ -21,6 +22,130 @@
       "arremessoBase": 5,
       "arremessoCrescimento": 0.13,
       "anguloGraus": 38
+    },
+    "habilidade": {
+      "tipo": "investida",
+      "recarga": 300,
+      "alcance": 260,
+      "velocidade": 11,
+      "duracao": 14,
+      "quantidade": 1,
+      "dano": 11,
+      "arremessoBase": 7,
+      "arremessoCrescimento": 0.14,
+      "anguloGraus": 30
+    }
+  },
+  {
+    "id": "atirador",
+    "nome": "Atirador",
+    "arquetipo": "distancia",
+    "largura": 36,
+    "altura": 58,
+    "peso": 85,
+    "velocidade": 3.8,
+    "aceleracao": 0.7,
+    "aceleracaoAr": 0.35,
+    "pulo": 13,
+    "puloDuplo": 12,
+    "quedaMaxima": 12,
+    "ataque": {
+      "dano": 6,
+      "alcance": 420,
+      "inicio": 10,
+      "ativo": 2,
+      "recuperacao": 12,
+      "recarga": 30,
+      "arremessoBase": 3.5,
+      "arremessoCrescimento": 0.085,
+      "anguloGraus": 25,
+      "projetil": { "velocidade": 11, "largura": 18, "altura": 8, "vida": 60 }
+    },
+    "habilidade": {
+      "tipo": "rajada",
+      "recarga": 360,
+      "alcance": 420,
+      "velocidade": 13,
+      "duracao": 6,
+      "quantidade": 4,
+      "dano": 4,
+      "arremessoBase": 3,
+      "arremessoCrescimento": 0.06,
+      "anguloGraus": 20
+    }
+  },
+  {
+    "id": "tanque",
+    "nome": "Tanque",
+    "arquetipo": "tanque",
+    "largura": 56,
+    "altura": 68,
+    "peso": 160,
+    "velocidade": 2.8,
+    "aceleracao": 0.5,
+    "aceleracaoAr": 0.25,
+    "pulo": 12.5,
+    "puloDuplo": 11,
+    "quedaMaxima": 13,
+    "ataque": {
+      "dano": 13,
+      "alcance": 50,
+      "inicio": 14,
+      "ativo": 5,
+      "recuperacao": 18,
+      "recarga": 24,
+      "arremessoBase": 6.5,
+      "arremessoCrescimento": 0.15,
+      "anguloGraus": 40
+    },
+    "habilidade": {
+      "tipo": "pisao",
+      "recarga": 330,
+      "alcance": 130,
+      "velocidade": 0,
+      "duracao": 16,
+      "quantidade": 1,
+      "dano": 10,
+      "arremessoBase": 8,
+      "arremessoCrescimento": 0.13,
+      "anguloGraus": 62
+    }
+  },
+  {
+    "id": "assassino",
+    "nome": "Assassino",
+    "arquetipo": "assassino",
+    "largura": 34,
+    "altura": 52,
+    "peso": 75,
+    "velocidade": 5.6,
+    "aceleracao": 0.9,
+    "aceleracaoAr": 0.45,
+    "pulo": 13.5,
+    "puloDuplo": 12.5,
+    "quedaMaxima": 12,
+    "ataque": {
+      "dano": 6,
+      "alcance": 38,
+      "inicio": 5,
+      "ativo": 3,
+      "recuperacao": 8,
+      "recarga": 10,
+      "arremessoBase": 4,
+      "arremessoCrescimento": 0.1,
+      "anguloGraus": 35
+    },
+    "habilidade": {
+      "tipo": "salto",
+      "recarga": 240,
+      "alcance": 420,
+      "velocidade": 11,
+      "duracao": 1,
+      "quantidade": 1,
+      "dano": 0,
+      "arremessoBase": 0,
+      "arremessoCrescimento": 0,
+      "anguloGraus": 0
     }
   }
 ]

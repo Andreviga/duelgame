@@ -1,0 +1,32 @@
+[
+  {
+    "id": "padrao",
+    "nome": "Tanque na frente",
+    "vagas": [
+      { "personagem": "tanque", "x": 520, "y": 520 },
+      { "personagem": "lutador", "x": 440, "y": 520 },
+      { "personagem": "assassino", "x": 360, "y": 520 },
+      { "personagem": "atirador", "x": 260, "y": 520 }
+    ]
+  },
+  {
+    "id": "invertida",
+    "nome": "Atirador na frente",
+    "vagas": [
+      { "personagem": "atirador", "x": 520, "y": 520 },
+      { "personagem": "assassino", "x": 440, "y": 520 },
+      { "personagem": "lutador", "x": 360, "y": 520 },
+      { "personagem": "tanque", "x": 260, "y": 520 }
+    ]
+  },
+  {
+    "id": "plataformas",
+    "nome": "Espalhados nas plataformas",
+    "vagas": [
+      { "personagem": "tanque", "x": 520, "y": 520 },
+      { "personagem": "lutador", "x": 385, "y": 400 },
+      { "personagem": "assassino", "x": 560, "y": 290 },
+      { "personagem": "atirador", "x": 260, "y": 520 }
+    ]
+  }
+]
