@@ -67,3 +67,56 @@ test("demonstração 4x4 roda sem erros", async ({ page }) => {
   await page.waitForTimeout(4000);
   expect(erros).toEqual([]);
 });
+
+test("online: uma aba cria a sala, outra entra pelo código, jogam uma rodada e uma delas recarrega", async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  const erros: string[] = [];
+  const abrirAba = async (caminho: string) => {
+    const contexto = await browser.newContext({ viewport: { width: 1200, height: 675 } });
+    const page = await contexto.newPage();
+    page.on("pageerror", (e) => erros.push(e.message));
+    page.on("console", (m) => {
+      if (m.type() === "error") erros.push(m.text());
+    });
+    await page.goto(caminho);
+    await cena(page, "inicial");
+    await page.waitForTimeout(600);
+    return page;
+  };
+
+  const ana = await abrirAba("/?nome=Ana");
+  await ana.mouse.click(470, 629); // criar sala online
+  await cena(ana, "sala");
+  await ana.waitForFunction(() => Boolean(document.body.dataset["sala"]));
+  const codigo = await ana.evaluate(() => document.body.dataset["sala"] ?? "");
+  expect(codigo).toMatch(/^[A-Z]{4}$/);
+
+  const bia = await abrirAba(`/?nome=Bia&codigo=${codigo}`);
+  await bia.mouse.click(730, 629); // entrar com código
+  await cena(bia, "sala");
+
+  await ana.mouse.click(600, 580); // começar (só o anfitrião)
+  await cena(ana, "preparacao");
+  await cena(bia, "preparacao");
+  await ana.waitForTimeout(500);
+  await ana.mouse.click(646, 560); // cada uma compra uma carta
+  await bia.mouse.click(646, 560);
+  await ana.waitForTimeout(300);
+  await ana.mouse.click(1095, 626); // lutar
+  await bia.mouse.click(1095, 626);
+  await cena(ana, "combate");
+  await cena(bia, "combate");
+
+  // a Bia recarrega a página no meio da partida e volta sozinha para a sala
+  await bia.reload();
+  await bia.waitForSelector('body[data-cena="combate"], body[data-cena="preparacao"]', {
+    timeout: 15_000,
+  });
+
+  // o servidor abre a rodada seguinte para as duas
+  await cena(ana, "preparacao", 60_000);
+  await cena(bia, "preparacao", 60_000);
+  expect(erros).toEqual([]);
+});

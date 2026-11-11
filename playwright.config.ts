@@ -10,9 +10,14 @@ export default defineConfig({
     trace: "off",
     ...(executablePath ? { launchOptions: { executablePath } } : {}),
   },
-  webServer: {
-    command: "npm run dev",
-    url: "http://localhost:5173",
-    reuseExistingServer: true,
-  },
+  // O jogo (Vite) e o servidor de partidas online, com os relógios da sala acelerados.
+  webServer: [
+    { command: "npm run dev", url: "http://localhost:5173", reuseExistingServer: true },
+    {
+      command: "npm run servidor",
+      port: 2567,
+      reuseExistingServer: true,
+      env: { ESCALA_DE_TEMPO: "5" },
+    },
+  ],
 });
