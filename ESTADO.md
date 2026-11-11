@@ -2,9 +2,9 @@
 
 ## Fase atual
 
-**Fase 2 — Combate de esquadrões: concluída, aguardando "aprovado" do André.**
+**Fase 3 — Preparação: loja, elixir e fusão: concluída, aguardando "aprovado" do André.**
 
-Fases 0 e 1 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
+Fases 0, 1 e 2 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
 
 ## Pronto
 
@@ -33,6 +33,19 @@ Fases 0 e 1 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/
 - **Render:** silhueta por arquétipo, cor por time, porcentagem e barra de recarga da habilidade acima de cada personagem, placar por time, botões de velocidade (1x/2x, tecla V) e depuração (tecla D): caixas do corpo, do golpe e dos projéteis, linha até o alvo e estado da IA.
 - **Testes** (59): alvo, projéteis, cada habilidade, espaço entre aliados, regras de fim, determinismo 4x4, lote 4x4 e efeito da posição inicial.
 
+### Fase 3
+- **Economia por comandos** (`src/sim/economia/`): `aplicar(estado, contexto, comando)` devolve o estado novo ou um erro com código. Comandos: `comprar`, `vender`, `atualizar`, `posicionar`, `recolher`, `pronto`. Já aceita vários jogadores (o comando leva o número do jogador) e um baralho comum.
+- **Elixir:** ganho por rodada que cresce (4 + rodada, até 10), sobra acumulada, teto de 20.
+- **Loja:** 3 cartas sorteadas do baralho comum com o gerador com semente; a carta comprada sai, a vendida volta; atualizar custa 1.
+- **Banco** de 6 e **limite de campo** por rodada (2, 2, 3, 3, 4, 4, 5, 5, 6).
+- **Fusão automática:** dois iguais do mesmo nível viram um de nível maior (1 a 4), em cadeia; fica quem está em campo. Banco cheio não impede a compra que funde.
+- **Níveis:** multiplicadores de dano, peso e tamanho em `economia.json`, aplicados ao montar o esquadrão.
+- **Pontos de posicionamento** no JSON da arena (5 no chão, 3 em plataformas), validados; o lado direito usa o espelho.
+- **Cronômetro** da preparação em ticks, na simulação (40 s). Ao zerar, o combate começa com o que estiver em campo.
+- **Tela de preparação** (`CenaPreparacao`): clicar na carta compra; arrastar do banco para um ponto posiciona; arrastar para a loja vende; arrastar do campo para o banco recolhe. Mostra o adversário da rodada, o limite de campo, o elixir, avisos de erro e de fusão.
+- **Laço preparação → combate → preparação** contra um esquadrão fixo por rodada (`adversarios.json`, 8 rodadas, cada vez mais forte).
+- **Testes** (90): 29 da economia (todos os comandos e seus inválidos, conservação de cartas em 400 comandos sorteados), mais schemas novos.
+
 ## Números do lote
 
 **4x4 (1.800 combates, 9 confrontos de formação, mesmos personagens dos dois lados):**
@@ -44,7 +57,7 @@ Fases 0 e 1 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/
 
 ## Comandos
 
-- `npm run dev`: abre o jogo em http://localhost:5173. Parâmetros no endereço: `?semente=N`, `&debug`, `&velocidade=2`.
+- `npm run dev`: abre o jogo em http://localhost:5173 (preparação + combate). Parâmetros no endereço: `?semente=N`, `&debug`, `&velocidade=2`, `&demo` (combate 4x4 de demonstração da fase 2).
 - `npm test`: Vitest (simulação)
 - `npm run lint`: tipos + ESLint + Prettier (checagem)
 - `npm run build`: checagem de tipos + build de produção
@@ -84,6 +97,14 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 - **A tela de demonstração troca a formação a cada rodada** (semente), para dar para comparar posições. A escolha de formação pelo jogador é da Fase 3.
 - Balanceamento entre arquétipos não foi feito (é da Fase 5); só foi garantido que os combates terminam.
 
+### Fase 3
+- **Venda:** nível 1 devolve o custo inteiro; níveis maiores devolvem 75% do investido (arredondado para baixo).
+- **Ponto ocupado troca:** soltar um personagem do banco sobre um ponto ocupado troca os dois, mesmo com o campo cheio.
+- **A sessão de jogo (rodada, vitórias, derrotas) fica em `src/render/sessao.ts`** por enquanto. Na Fase 4 vira `src/sim/partida`, com vida dos jogadores e pareamento.
+- **Perder a rodada ainda não tem consequência** (vida de jogador é da Fase 4).
+- **Custos provisórios:** lutador 2; atirador, tanque e assassino 3. O plano pede 2 a 5 na Fase 5.
+- **Ícone da página embutido no `index.html`**, para o navegador não acusar 404 do favicon.
+
 ## Próximo passo
 
-Fase 3 — Preparação: loja, elixir e fusão (depois do "aprovado" e do ok no plano da fase).
+Fase 4 — Partida completa para 4 jogadores (depois do "aprovado" e do ok no plano da fase).
