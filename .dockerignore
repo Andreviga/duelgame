@@ -1,0 +1,7 @@
+node_modules
+dist
+dist-servidor
+test-results
+playwright-report
+relatorios
+.git

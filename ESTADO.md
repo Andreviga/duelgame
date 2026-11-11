@@ -2,20 +2,22 @@
 
 ## Fase atual
 
-**Fase 5 — Conteúdo e balanceamento: concluída, aguardando "aprovado" do André.**
+**Fase 6 — Online: concluída no que dá para fazer sem publicar, aguardando o teste do André.**
 
-Fases 0 a 4 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
+O critério da fase ("quatro pessoas em redes diferentes jogam uma partida inteira") depende de publicar o servidor e de quatro pessoas jogando; isso é do André (ver `PUBLICAR.md`). Aqui foi testado com clientes de rede na mesma máquina.
 
-O `PLANO.md` em vigor é o enviado em 2026-11-11, junto com o `ELENCO.md` (12 personagens, mundos e papéis).
+Fases 0 a 5 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
+
+Pendência herdada da Fase 5: três trios de sinergia ficam perto de 60% no lote (Piratas, Dojo e Futebol); o André ainda não decidiu se aceita ou se os personagens devem ser enfraquecidos.
 
 ## Definição de 100% (seção 9 do plano)
 
-- [ ] `npm run test`, `lint` e `build` passam sem aviso. *Hoje: passam (149 testes); o build não emite aviso.*
+- [ ] `npm run test`, `lint` e `build` passam sem aviso. *Hoje: passam (169 testes); o build não emite aviso.*
 - [x] Determinismo: 1.000 combates repetidos com a mesma semente dão resultado idêntico. *`npm run lote` com `LOTE_DETERMINISMO=1000`: 0 divergiram (2026-11-11, `relatorios/lote-fase5.md`).*
 - [x] 10.000 combates simulados terminam sem personagem preso e sem estourar o tempo. *`LOTE_COMBATES=10000`: 0 por tempo, 0 quedas sem arremesso (2026-11-11, `relatorios/lote-fase5.md`).*
 - [ ] Nenhum personagem, mundo ou papel passa de 55% de vitória. *Personagens: sim (ver números abaixo). Sinergias de 3: algumas ainda passam; ver "Números do lote".*
 - [ ] Partida completa contra 3 bots nos dois modos, do menu à tela de resultado, sem erro no console. *Automatizado em `npm run test:e2e`; falta o André jogar.*
-- [ ] Partida online completa com 4 pessoas. *Fase 6.*
+- [ ] Partida online completa com 4 pessoas em redes diferentes, com uma reconexão no meio. *Automatizado na mesma máquina: 4 clientes de rede jogam a partida inteira (`testes/servidor.test.ts`) e duas abas com reconexão (`npm run test:e2e`). Falta publicar e jogar com 4 pessoas.*
 - [ ] Os 12 personagens com todas as animações. *Fase 7.*
 - [ ] Som e efeitos em todos os eventos da Fase 8. *Efeitos visuais já existem; som não.*
 - [ ] Jogável no celular por toque, a 60 quadros por segundo. *Fase 9.*
@@ -85,6 +87,19 @@ O `PLANO.md` em vigor é o enviado em 2026-11-11, junto com o `ELENCO.md` (12 pe
 - **Ferramenta de lote** (`npm run lote`, em `ferramentas/lote.ts`): taxa de vitória por personagem, característica e arena, com times de mesmo orçamento; medição pareada de cada sinergia (mesmos combates com e sem o bônus); conferência de determinismo. `ferramentas/ajustar.py` edita números dos JSON pela linha de comando.
 - **Testes** (149): cada habilidade, cada sinergia nos dois degraus (lendo os valores do JSON), mecânicas novas, elixir de Piratas na partida.
 
+### Fase 6
+- **Dependências novas** (Colyseus 0.18, conferido em 2026-11-11): `@colyseus/core` 0.18.28 e `@colyseus/ws-transport` 0.18.5 no servidor; `@colyseus/sdk` 0.18.10 no cliente.
+- **Mesa** (`servidor/mesa.ts`): toda a lógica da sala online, sem rede. Quem está sentado, a partida, os relógios, quem vê o quê. Usa a mesma simulação do jogo local (`src/sim`) e os mesmos bots.
+- **Servidor autoritativo:** o cliente só manda comandos, sem dizer de quem são; o servidor usa a vaga de quem mandou e valida com o mesmo `aplicar`. Comando inválido volta como erro.
+- **Visão por jogador:** cada um recebe a própria loja e o próprio banco; dos outros, só o campo (que é público). O baralho e os geradores aleatórios não saem do servidor.
+- **Combate:** ao fim da preparação o servidor simula todos os combates e manda os resultados; cada cliente simula o próprio com a mesma semente e avisa o que viu. Divergência fica registrada no servidor e vale o resultado dele.
+- **Sala** (`servidor/SalaDeJogo.ts`): sala privada com código de 4 letras; até 4 jogadores; o primeiro é o anfitrião e começa a partida; vagas vazias viram bots.
+- **Reconexão:** quem cai é jogado por um bot e tem 60 s para voltar à mesma vaga (o cliente tenta sozinho; recarregar a página também volta). Depois do prazo, ou se sair de propósito, o bot fica até o fim.
+- **Cliente** (`src/rede/`): "Criar sala online" e "Entrar com código" no menu, sala de espera, aviso de conexão perdida. As telas de preparação, combate e resultado são as mesmas do jogo contra bots, lendo o estado que vem do servidor.
+- **Online, você pode lutar do lado direito** da arena (quem tem o número maior no duelo). A preparação mostra seus pontos do lado em que você vai lutar.
+- **Publicação:** `Dockerfile` do servidor e `PUBLICAR.md` com o passo a passo (servidor em host com WebSocket, cliente na Vercel com `VITE_SERVIDOR`).
+- **Testes** (169): mesa (sala, comandos, visões, relógios, partida inteira nos dois modos com conferência do combate, queda e reconexão) e integração com o servidor Colyseus de verdade (4 clientes de rede, sala cheia, saída no meio). No navegador (5): mais o fluxo online com duas abas e recarga.
+
 ## Números do lote
 
 Relatório completo: `relatorios/lote-fase5.md` (gerado em 2026-11-11 com `LOTE_COMBATES=10000 LOTE_SINERGIAS=1000 LOTE_DETERMINISMO=1000 npm run lote`).
@@ -118,7 +133,8 @@ Relatório completo: `relatorios/lote-fase5.md` (gerado em 2026-11-11 com `LOTE_
 - `npm test`: Vitest (simulação)
 - `npm run lint`: tipos + ESLint + Prettier (checagem)
 - `npm run build`: checagem de tipos + build de produção
-- `npm run test:e2e`: testes no navegador (Playwright), cerca de 3 minutos.
+- `npm run test:e2e`: testes no navegador (Playwright), cerca de 4 minutos. Sobe o jogo e o servidor sozinho.
+- `npm run servidor`: empacota e sobe o servidor de jogo na porta 2567 (`npm run servidor:build` só empacota, em `dist-servidor/`).
 - `npm run lote`: simulação em lote para balanceamento. Variáveis: `LOTE_COMBATES` (padrão 4000), `LOTE_SINERGIAS` (por degrau, padrão 400), `LOTE_DETERMINISMO` (padrão 200), `LOTE_SEMENTE`. O relatório da fase está em `relatorios/lote-fase5.md`. Na primeira vez, rode `npx playwright install chromium`. Para usar outro Chromium: `CHROMIUM_PATH=/caminho npm run test:e2e`.
 - `npm run format`: formata tudo
 
@@ -197,6 +213,16 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 - **A IA só desce de uma plataforma quando vai cair sobre o chão** (a Torre tem plataformas que passam da largura do chão).
 - **Cenário de medição do lote:** dois times com 14 de elixir e até 4 em campo; o elixir que sobra vira níveis de fusão. Sem isso, personagem barato parecia fraco só por deixar elixir sem gastar.
 
+### Fase 6
+- **Sem o estado sincronizado do Colyseus (Schema):** cada jogador recebe por mensagem um retrato da partida já filtrado. É mais simples que filtrar campo a campo e reaproveita o estado da simulação como está.
+- **O servidor não empacota com `tsc` nem usa `tsx`:** `vite build --ssr` gera `dist-servidor/index.js`. Assim não entrou dependência nova além do Colyseus. Os tipos mínimos do Node estão em `servidor/node.d.ts` (sem `@types/node`).
+- **Tempo do combate online:** o servidor espera a duração do combate mais longo da rodada mais 6 s e abre a rodada seguinte. Por isso, online, a velocidade fica em 1x e a pausa no golpe e a câmera lenta são desligadas (esticariam a luta além desse tempo).
+- **Nome e código são pedidos em caixas simples do navegador** (`prompt`). Uma tela própria fica para a Fase 8 (interface).
+- **Uma instância só do servidor:** as salas ficam na memória do processo.
+- **O anfitrião escolhe modo e dificuldade no menu, antes de criar a sala**; dentro da sala não dá para trocar.
+- **Bots do servidor jogam no nível escolhido pelo anfitrião**, inclusive quando substituem alguém que caiu.
+
 ## Próximo passo
 
-Fase 6 — Online (depois do "aprovado" e do ok no plano da fase).
+1. André: publicar o servidor e o cliente (`PUBLICAR.md`) e jogar uma partida com 4 pessoas em redes diferentes, com uma reconexão no meio.
+2. Fase 7 — Arte dos personagens, começando pelo piloto (Lâmina). Antes de começar, o André precisa instalar o Blender e baixar os packs de modelos listados no `ELENCO.md`.
