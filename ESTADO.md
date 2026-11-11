@@ -2,19 +2,19 @@
 
 ## Fase atual
 
-**Fase 4 — Partida completa para 4 jogadores: concluída, aguardando "aprovado" do André.**
+**Fase 5 — Conteúdo e balanceamento: concluída, aguardando "aprovado" do André.**
 
-Fases 0 a 3 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
+Fases 0 a 4 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
 
-O André enviou em 2026-11-11 um `PLANO.md` novo (fases 7 a 9 refeitas, seção 9 "Definição de 100%") e o `ELENCO.md` (12 personagens, mundos e papéis). Os dois estão no repositório. O elenco é o conteúdo da Fase 5; os quatro personagens atuais (lutador, atirador, tanque, assassino) são provisórios e saem nessa fase.
+O `PLANO.md` em vigor é o enviado em 2026-11-11, junto com o `ELENCO.md` (12 personagens, mundos e papéis).
 
 ## Definição de 100% (seção 9 do plano)
 
-- [ ] `npm run test`, `lint` e `build` passam sem aviso. *Hoje: passam (115 testes); o build não emite aviso.*
-- [ ] Determinismo: 1.000 combates repetidos com a mesma semente dão resultado idêntico. *Hoje: testado quadro a quadro em 1x1 e 4x4 e em partida inteira; falta o lote de 1.000.*
-- [ ] 10.000 combates simulados terminam sem personagem preso e sem estourar o tempo. *Hoje: 1.800 combates 4x4, 0 por tempo, 0 quedas sozinhas.*
-- [ ] Nenhum personagem, mundo ou papel passa de 55% de vitória. *Fase 5.*
-- [ ] Partida completa contra 3 bots nos dois modos, do menu à tela de resultado, sem erro no console. *Automatizado em `npm run test:e2e` (2026-11-11); falta o André jogar.*
+- [ ] `npm run test`, `lint` e `build` passam sem aviso. *Hoje: passam (149 testes); o build não emite aviso.*
+- [x] Determinismo: 1.000 combates repetidos com a mesma semente dão resultado idêntico. *`npm run lote` com `LOTE_DETERMINISMO=1000`: 0 divergiram (2026-11-11, `relatorios/lote-fase5.md`).*
+- [x] 10.000 combates simulados terminam sem personagem preso e sem estourar o tempo. *`LOTE_COMBATES=10000`: 0 por tempo, 0 quedas sem arremesso (2026-11-11, `relatorios/lote-fase5.md`).*
+- [ ] Nenhum personagem, mundo ou papel passa de 55% de vitória. *Personagens: sim (ver números abaixo). Sinergias de 3: algumas ainda passam; ver "Números do lote".*
+- [ ] Partida completa contra 3 bots nos dois modos, do menu à tela de resultado, sem erro no console. *Automatizado em `npm run test:e2e`; falta o André jogar.*
 - [ ] Partida online completa com 4 pessoas. *Fase 6.*
 - [ ] Os 12 personagens com todas as animações. *Fase 7.*
 - [ ] Som e efeitos em todos os eventos da Fase 8. *Efeitos visuais já existem; som não.*
@@ -74,22 +74,52 @@ O André enviou em 2026-11-11 um `PLANO.md` novo (fases 7 a 9 refeitas, seção 
 - **Testes** (115): pareamento, vida, eliminação, fantasma, classificação, 2x2, cada nível de bot só emite comandos válidos, partidas inteiras entre bots nos dois modos, e bots melhores terminam em posições melhores.
 - **Teste de navegador** (4): do menu ao combate à mão; partida inteira nos dois modos até a tela de resultado (com `?auto`); demonstração.
 
+### Fase 5
+- **Elenco:** os 12 personagens do `ELENCO.md` em `personagens.json` (3 por mundo, 3 por papel; custos 2, 2, 3×5, 4×3, 5×2). Os quatro provisórios saíram.
+- **Habilidades** (11 tipos na simulação, cada uma com teste): bola que persegue e quica (Maestro), devolver projétil (Paredão), carrinho (Ponta), gancho (Capitã Maré), tiro de canhão (Canhoneiro), área (Âncora e Brasa), cadeia (Faísca), casco (Rochedo), investida (Lâmina), teleporte (Sombra) e tufão (Mestre Vento).
+- **Sinergias** em `sinergias.json`: mundo e papel, com degraus em 2 e em 3 personagens diferentes em campo. Cópias do mesmo personagem contam uma vez.
+- **Mecânicas novas:** primeiro golpe com bônus (crítico), invisibilidade (não pode ser alvo), projétil que atravessa, proteção de quem está perto de um tanque aliado, explosão ao sair da arena e elixir extra ao vencer.
+- **Arenas:** três (`arena-basica`, `arena-larga`, `arena-torre`), uma sorteada por partida. As três têm o mesmo número de pontos de posicionamento.
+- **Telas:** carta com mundo, papel e nome da habilidade; painel de sinergias na preparação (ativas e quanto falta); sinergias de cada lado no combate; emblema do mundo no corpo do personagem; efeitos para as habilidades novas.
+- **Bots** preferem cartas que fazem sinergia com o que já têm.
+- **Ferramenta de lote** (`npm run lote`, em `ferramentas/lote.ts`): taxa de vitória por personagem, característica e arena, com times de mesmo orçamento; medição pareada de cada sinergia (mesmos combates com e sem o bônus); conferência de determinismo. `ferramentas/ajustar.py` edita números dos JSON pela linha de comando.
+- **Testes** (149): cada habilidade, cada sinergia nos dois degraus (lendo os valores do JSON), mecânicas novas, elixir de Piratas na partida.
+
 ## Números do lote
 
-**4x4 (1.800 combates, 9 confrontos de formação, mesmos personagens dos dois lados):**
-- 0 por tempo, 0 quedas sem ter sido arremessado, 1 empate.
-- Duração: 10 s a 54 s, mediana 24 s. Os 1.800 combates rodam em 12 s (menos de 7 ms cada).
-- A posição muda o resultado: "tanque na frente" vence "atirador na frente" em 65% (130 a 70) de um lado e 58,5% (117 a 83) do outro. Formações iguais ficam em 50%.
+Relatório completo: `relatorios/lote-fase5.md` (gerado em 2026-11-11 com `LOTE_COMBATES=10000 LOTE_SINERGIAS=1000 LOTE_DETERMINISMO=1000 npm run lote`).
 
-**1x1 (2.000 duelos, Fase 1):** 0 por tempo, 0 quedas sozinhas; 7 s a 49 s, mediana 21 s.
+**10.000 combates** (times sorteados com 14 de elixir, até 4 em campo, nas três arenas):
+- 0 por tempo, 0 quedas sem arremesso, 1 empate. Duração mediana 24,5 s; máxima 82 s.
+- **Personagens: todos entre 47,8% e 53,6%.** Do mais forte ao mais fraco: Maestro 53,6 · Canhoneiro 53,2 · Faísca 52,8 · Brasa 51,3 · Rochedo 51,0 · Paredão 50,5 · Âncora 50,0 · Ponta 49,2 · Lâmina 49,0 · Sombra 48,6 · Capitã Maré 48,0 · Mestre Vento 47,8.
+- Arenas (vitória do lado esquerdo): 49,9% a 51,7%.
+- Determinismo: 1.000 combates rodados duas vezes, 0 divergiram.
+
+**Sinergias** (1.000 combates por degrau; taxa de vitória do time que tem a característica, com o bônus e com o bônus desligado):
+
+| Característica | Em campo | Com o bônus | Sem o bônus |
+|---|---|---|---|
+| Futebol | 2 / 3 | 51,6% / 59,2% | 45,4% / 53,1% |
+| Piratas | 2 / 3 | 48,3% / 61,6% | 48,3% / 59,8% |
+| Monstros | 2 / 3 | 53,5% / 51,8% | 40,9% / 30,5% |
+| Dojo | 2 / 3 | 47,9% / 61,2% | 45,7% / 54,5% |
+| Corpo a corpo | 2 / 3 | 51,1% / 52,6% | 45,3% / 41,5% |
+| À distância | 2 / 3 | 48,4% / 56,7% | 48,9% / 49,0% |
+| Tanque | 2 / 3 | 51,1% / 57,0% | 42,9% / 45,9% |
+| Assassino | 2 / 3 | 47,8% / 52,5% | 44,3% / 32,5% |
+
+**O que ainda passa da meta de 55%:** três trios completos, Piratas (61,6%), Dojo (61,2%) e Futebol (59,2%). No caso de Piratas e Dojo o trio já é forte sem bônus nenhum (59,8% e 54,5%): são os trios mais caros (12 de elixir em três vagas) e as habilidades combinam entre si. Baixar mais exige mexer nos personagens, não na sinergia. Todos os degraus de 2 estão entre 47% e 54%.
+
+**Mais de uma estratégia vencedora:** sim. Sete dos oito trios ficam entre 51% e 62%, com composições bem diferentes (três baratos de Monstros ou de Assassino empatam com trios caros).
 
 ## Comandos
 
-- `npm run dev`: abre o jogo em http://localhost:5173. Parâmetros no endereço: `?semente=N`, `&debug`, `&velocidade=2` (ou 4), `&demo` (combate 4x4 solto), `&auto` (o seu jogador também é um bot: a partida anda sozinha), `&modo=duplas`.
+- `npm run dev`: abre o jogo em http://localhost:5173. Parâmetros no endereço: `?semente=N`, `&debug`, `&velocidade=2` (ou 4), `&demo` (combate 4x4 solto), `&auto` (o seu jogador também é um bot: a partida anda sozinha), `&modo=duplas`, `&arena=arena-basica` (fixa a arena).
 - `npm test`: Vitest (simulação)
 - `npm run lint`: tipos + ESLint + Prettier (checagem)
 - `npm run build`: checagem de tipos + build de produção
-- `npm run test:e2e`: testes no navegador (Playwright), cerca de 3 minutos. Na primeira vez, rode `npx playwright install chromium`. Para usar outro Chromium: `CHROMIUM_PATH=/caminho npm run test:e2e`.
+- `npm run test:e2e`: testes no navegador (Playwright), cerca de 3 minutos.
+- `npm run lote`: simulação em lote para balanceamento. Variáveis: `LOTE_COMBATES` (padrão 4000), `LOTE_SINERGIAS` (por degrau, padrão 400), `LOTE_DETERMINISMO` (padrão 200), `LOTE_SEMENTE`. O relatório da fase está em `relatorios/lote-fase5.md`. Na primeira vez, rode `npx playwright install chromium`. Para usar outro Chromium: `CHROMIUM_PATH=/caminho npm run test:e2e`.
 - `npm run format`: formata tudo
 
 ## Versões (conferidas em 2026-11-11)
@@ -143,6 +173,30 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 - **Nome provisório na tela inicial:** "Arena de Esquadrões".
 - A cópia antiga do projeto em `/home/user` (fora de `duelgame/`) não é mais usada.
 
+### Fase 5
+- **Os bônus de sinergia valem para quem tem a característica**, não para o esquadrão inteiro. A exceção é o Tanque, cujo bônus é justamente para os vizinhos.
+- **Sinergia conta personagens diferentes.** Três cópias do mesmo personagem contam como um.
+- **No 2x2, cada jogador tem as próprias sinergias** (as do aliado não somam com as suas).
+- **Números mudados em relação ao `ELENCO.md` por causa do balanceamento** (o elenco diz que o balanceamento manda):
+  - Futebol: velocidade +12% (era +15%); arremesso horizontal +6% (era +20%).
+  - Piratas 3: primeiro golpe +15% (era dano dobrado). O trio já é forte sem bônus.
+  - Monstros 2: peso +20% (era +15%).
+  - Dojo: velocidade de ataque +6% (era +15%); habilidades 5% mais rápidas (era 30%).
+  - Corpo a corpo 3: dano +15% (era +25%).
+  - À distância 3: o projétil atravessa, mas depois do primeiro alvo só causa 25% do dano e não arremessa. O degrau 3 não soma o alcance do degrau 2.
+  - Tanque 3: vizinhos recebem 12% menos arremesso (era 25%).
+  - Assassino: crítico = dano em dobro; invisibilidade de 3 segundos no começo da rodada e depois de cada nocaute.
+- **Interpretações de habilidades do elenco:**
+  - "Folha seca" persegue o alvo em linha reta (o "arco" fica para a arte) e quica até 3 inimigos.
+  - "Gancho" traz o inimigo mais distante para a frente da Capitã, atordoado; o golpe dela vem em seguida.
+  - "Descarga" teleporta a Faísca de inimigo em inimigo.
+  - "Casco" também reduz pela metade o dano recebido enquanto dura.
+  - "Tufão" só é usado quando algum inimigo já acumulou 30% de dano.
+  - Explosão dos Monstros: fere os inimigos a até 650 px do ponto por onde o monstro saiu.
+- **"Arremessado" só zera quando o personagem recupera o controle** (fora do atordoamento e sem deslizar com a velocidade do golpe). Antes, raspar numa plataforma já zerava.
+- **A IA só desce de uma plataforma quando vai cair sobre o chão** (a Torre tem plataformas que passam da largura do chão).
+- **Cenário de medição do lote:** dois times com 14 de elixir e até 4 em campo; o elixir que sobra vira níveis de fusão. Sem isso, personagem barato parecia fraco só por deixar elixir sem gastar.
+
 ## Próximo passo
 
-Fase 5 — Conteúdo e balanceamento, com os 12 personagens e as sinergias do `ELENCO.md` (depois do "aprovado" e do ok no plano da fase).
+Fase 6 — Online (depois do "aprovado" e do ok no plano da fase).
