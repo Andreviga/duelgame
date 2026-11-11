@@ -31,6 +31,8 @@ export interface Arena {
   readonly nascimentos: readonly { readonly x: number; readonly y: number }[];
   /** Pontos onde o jogador pode posicionar personagens, no lado esquerdo; o direito usa o espelho. */
   readonly pontos: readonly { readonly x: number; readonly y: number }[];
+  /** Pontos do segundo jogador do mesmo lado, no modo 2x2 (mesma quantidade de `pontos`). */
+  readonly pontosAliado: readonly { readonly x: number; readonly y: number }[];
 }
 
 /** Dano e arremesso de um acerto (golpe, projétil ou habilidade). */
@@ -113,6 +115,8 @@ export interface Lutador {
   readonly def: DefPersonagem;
   /** Nível de fusão (1 a 4). Os atributos de `def` já vêm ajustados; isto é só para mostrar. */
   readonly nivel: number;
+  /** Jogador dono do personagem (para cores e placar). Sem partida, é igual ao lado. */
+  readonly dono: number;
   /** Posição: `x` é o centro, `y` é a base (os pés). */
   x: number;
   y: number;
@@ -230,6 +234,7 @@ export interface Vaga {
   readonly x: number;
   readonly y: number;
   readonly nivel?: number;
+  readonly dono?: number;
 }
 export type Esquadrao = readonly Vaga[];
 

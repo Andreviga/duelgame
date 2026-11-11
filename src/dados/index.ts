@@ -2,12 +2,14 @@ import adversariosJson from "./adversarios.json";
 import arenaBasicaJson from "./arena-basica.json";
 import economiaJson from "./economia.json";
 import formacoesJson from "./formacoes.json";
+import partidaJson from "./partida.json";
 import personagensJson from "./personagens.json";
 import {
   ErroDeDados,
   validarArena,
   validarEconomia,
   validarFormacoes,
+  validarPartida,
   validarPersonagens,
 } from "./schemas";
 import type { Contexto } from "../sim/economia/tipos";
@@ -18,6 +20,7 @@ export const ARENA_BASICA = validarArena(arenaBasicaJson);
 export const PERSONAGENS = validarPersonagens(personagensJson);
 export const FORMACOES = validarFormacoes(formacoesJson, PERSONAGENS, ARENA_BASICA);
 export const ECONOMIA = validarEconomia(economiaJson);
+export const PARTIDA = validarPartida(partidaJson);
 /** Esquadrão fixo de cada rodada (posições do lado esquerdo; espelhe para usar como adversário). */
 export const ADVERSARIOS = validarFormacoes(adversariosJson, PERSONAGENS, ARENA_BASICA);
 /** Contexto da economia com os dados do jogo. */

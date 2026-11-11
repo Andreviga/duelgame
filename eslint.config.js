@@ -12,7 +12,7 @@ export default tseslint.config(
   },
   {
     // A simulação é pura: sem Phaser, sem navegador, sem relógio, sem aleatoriedade global.
-    files: ["src/sim/**/*.ts"],
+    files: ["src/sim/**/*.ts", "src/bots/**/*.ts"],
     languageOptions: { globals: {} },
     rules: {
       "no-restricted-imports": [

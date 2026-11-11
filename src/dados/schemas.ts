@@ -1,4 +1,5 @@
 import type { ConfigEconomia } from "../sim/economia/tipos";
+import type { ConfigPartida } from "../sim/partida/tipos";
 import type {
   Arena,
   Arquetipo,
@@ -103,22 +104,28 @@ export function validarArena(json: unknown): Arena {
     return { x: num(no, "x", cn, "qualquer"), y: num(no, "y", cn, "qualquer") };
   });
   const meio = chao.x + chao.largura / 2;
-  const pontos = lista(o["pontos"], `${c}.pontos`, 1).map((n, i) => {
-    const cn = `${c}.pontos[${i}]`;
-    const no = obj(n, cn);
-    const ponto = { x: num(no, "x", cn, "qualquer"), y: num(no, "y", cn, "qualquer") };
-    if (ponto.x <= chao.x || ponto.x > meio) {
-      throw new ErroDeDados(`${cn}.x: deve ficar na metade esquerda do chão`);
-    }
-    const noChao = ponto.y === chao.y;
-    const emPlataforma = plataformas.some(
-      (p) => p.y === ponto.y && ponto.x >= p.x && ponto.x <= p.x + p.largura,
-    );
-    if (!noChao && !emPlataforma) {
-      throw new ErroDeDados(`${cn}: o ponto deve ficar em cima do chão ou de uma plataforma`);
-    }
-    return ponto;
-  });
+  const lerPontos = (campo: string) =>
+    lista(o[campo], `${c}.${campo}`, 1).map((n, i) => {
+      const cn = `${c}.${campo}[${i}]`;
+      const no = obj(n, cn);
+      const ponto = { x: num(no, "x", cn, "qualquer"), y: num(no, "y", cn, "qualquer") };
+      if (ponto.x <= chao.x || ponto.x > meio) {
+        throw new ErroDeDados(`${cn}.x: deve ficar na metade esquerda do chão`);
+      }
+      const noChao = ponto.y === chao.y;
+      const emPlataforma = plataformas.some(
+        (p) => p.y === ponto.y && ponto.x >= p.x && ponto.x <= p.x + p.largura,
+      );
+      if (!noChao && !emPlataforma) {
+        throw new ErroDeDados(`${cn}: o ponto deve ficar em cima do chão ou de uma plataforma`);
+      }
+      return ponto;
+    });
+  const pontos = lerPontos("pontos");
+  const pontosAliado = lerPontos("pontosAliado");
+  if (pontosAliado.length !== pontos.length) {
+    throw new ErroDeDados(`${c}.pontosAliado: deve ter a mesma quantidade de ${c}.pontos`);
+  }
   return {
     id: texto(o, "id", c),
     nome: texto(o, "nome", c),
@@ -128,6 +135,7 @@ export function validarArena(json: unknown): Arena {
     limites,
     nascimentos,
     pontos,
+    pontosAliado,
   };
 }
 
@@ -289,5 +297,16 @@ export function validarEconomia(json: unknown): ConfigEconomia {
       peso: listaDeNumeros(m, "peso", cm, nivelMaximo),
       tamanho: listaDeNumeros(m, "tamanho", cm, nivelMaximo),
     },
+  };
+}
+
+export function validarPartida(json: unknown): ConfigPartida {
+  const c = "partida";
+  const o = obj(json, c);
+  return {
+    vidaInicial: inteiro(o, "vidaInicial", c),
+    danoBase: num(o, "danoBase", c, "naoNegativo"),
+    danoPorSobrevivente: num(o, "danoPorSobrevivente", c, "naoNegativo"),
+    rodadasPorDanoExtra: inteiro(o, "rodadasPorDanoExtra", c),
   };
 }

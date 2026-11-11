@@ -90,13 +90,21 @@ export function criarEconomia(ctx: Contexto, jogadores: number, semente: number)
   };
 }
 
-/** Começa a preparação da rodada seguinte: elixir novo (com teto), loja nova e cronômetro cheio. */
-export function iniciarRodada(e: EstadoEconomia, ctx: Contexto): EstadoEconomia {
+/**
+ * Começa a preparação da rodada seguinte: elixir novo (com teto), loja nova e cronômetro cheio.
+ * Jogadores fora de `ativos` (eliminados) não recebem nada e já contam como prontos.
+ */
+export function iniciarRodada(
+  e: EstadoEconomia,
+  ctx: Contexto,
+  ativos?: readonly boolean[],
+): EstadoEconomia {
   const rodada = e.rodada + 1;
   const baralho = { ...e.baralho };
   let rng = e.rng;
   for (const j of e.jogadores) devolverLoja(baralho, j.loja);
-  const jogadores = e.jogadores.map((j) => {
+  const jogadores = e.jogadores.map((j, i) => {
+    if (ativos && !ativos[i]) return { ...j, loja: [], pronto: true };
     const sorteio = sortearLoja(baralho, ctx, rng);
     rng = sorteio.rng;
     return {
@@ -114,6 +122,19 @@ export function iniciarRodada(e: EstadoEconomia, ctx: Contexto): EstadoEconomia 
     jogadores,
     ticksRestantes: Math.round(ctx.config.segundosPreparacao * TICKS_POR_SEGUNDO),
   };
+}
+
+/** Tira um jogador da partida: as cartas dele (loja, banco e campo) voltam para o baralho. */
+export function removerJogador(e: EstadoEconomia, jogador: number): EstadoEconomia {
+  const j = e.jogadores[jogador];
+  if (!j) return e;
+  const baralho = { ...e.baralho };
+  devolverLoja(baralho, j.loja);
+  for (const u of [...j.banco, ...j.campo.map((c) => c.unidade)]) {
+    baralho[u.personagem] = (baralho[u.personagem] ?? 0) + copiasDoNivel(u.nivel);
+  }
+  const vazio: EstadoJogador = { elixir: 0, loja: [], banco: [], campo: [], pronto: true };
+  return { ...e, baralho, jogadores: e.jogadores.map((o, i) => (i === jogador ? vazio : o)) };
 }
 
 /** Avança o cronômetro da preparação em um tick. */
@@ -333,18 +354,21 @@ export function montarEsquadrao(
   ctx: Contexto,
   arena: Arena,
   lado: 0 | 1,
+  /** Dono dos personagens e se ele é o segundo jogador do lado (2x2), que usa `pontosAliado`. */
+  opcoes: { dono?: number; segundo?: boolean } = {},
 ): Esquadrao {
   const soma = arena.chao.x * 2 + arena.chao.largura;
   const vagas = [];
   for (const c of [...jogador.campo].sort((a, b) => a.unidade.id - b.unidade.id)) {
     const def = definicao(ctx, c.unidade.personagem);
-    const ponto = arena.pontos[c.ponto];
+    const ponto = (opcoes.segundo ? arena.pontosAliado : arena.pontos)[c.ponto];
     if (!def || !ponto) continue;
     vagas.push({
       def: aplicarNivel(def, c.unidade.nivel, ctx.config),
       x: lado === 0 ? ponto.x : soma - ponto.x,
       y: ponto.y,
       nivel: c.unidade.nivel,
+      dono: opcoes.dono ?? lado,
     });
   }
   return vagas;

@@ -40,12 +40,14 @@ export function criarLutador(
   x: number,
   y: number,
   nivel = 1,
+  dono: number = lado,
 ): Lutador {
   return {
     id,
     lado,
     def,
     nivel,
+    dono,
     x,
     y,
     vx: 0,
@@ -81,7 +83,15 @@ export function criarCombate(
     const lado: Lado = i === 0 ? 0 : 1;
     for (const vaga of esquadrao) {
       lutadores.push(
-        criarLutador(vaga.def, lutadores.length, lado, vaga.x, vaga.y, vaga.nivel ?? 1),
+        criarLutador(
+          vaga.def,
+          lutadores.length,
+          lado,
+          vaga.x,
+          vaga.y,
+          vaga.nivel ?? 1,
+          vaga.dono ?? lado,
+        ),
       );
     }
   });
