@@ -1,0 +1,7 @@
+[
+  {
+    "id": "lamina",
+    "fonte": "arte/fontes/boneco-teste.blend",
+    "gerador": "ferramentas/arte/criar_boneco_teste.py"
+  }
+]

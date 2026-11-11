@@ -1,0 +1,16 @@
+{
+  "quadro": 256,
+  "quadrosPorSegundo": 12,
+  "linhaDeBase": 0.86,
+  "animacoes": [
+    { "nome": "parado", "quadros": 8, "laco": true },
+    { "nome": "andar", "quadros": 8, "laco": true },
+    { "nome": "pular", "quadros": 4, "laco": false },
+    { "nome": "cair", "quadros": 2, "laco": true },
+    { "nome": "atacar", "quadros": 6, "laco": false },
+    { "nome": "habilidade", "quadros": 8, "laco": false },
+    { "nome": "atingido", "quadros": 3, "laco": false },
+    { "nome": "arremessado", "quadros": 4, "laco": true },
+    { "nome": "nocaute", "quadros": 6, "laco": false }
+  ]
+}
