@@ -2,9 +2,25 @@
 
 ## Fase atual
 
-**Fase 3 — Preparação: loja, elixir e fusão: concluída, aguardando "aprovado" do André.**
+**Fase 4 — Partida completa para 4 jogadores: concluída, aguardando "aprovado" do André.**
 
-Fases 0, 1 e 2 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
+Fases 0 a 3 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
+
+O André enviou em 2026-11-11 um `PLANO.md` novo (fases 7 a 9 refeitas, seção 9 "Definição de 100%") e o `ELENCO.md` (12 personagens, mundos e papéis). Os dois estão no repositório. O elenco é o conteúdo da Fase 5; os quatro personagens atuais (lutador, atirador, tanque, assassino) são provisórios e saem nessa fase.
+
+## Definição de 100% (seção 9 do plano)
+
+- [ ] `npm run test`, `lint` e `build` passam sem aviso. *Hoje: passam (115 testes); o build não emite aviso.*
+- [ ] Determinismo: 1.000 combates repetidos com a mesma semente dão resultado idêntico. *Hoje: testado quadro a quadro em 1x1 e 4x4 e em partida inteira; falta o lote de 1.000.*
+- [ ] 10.000 combates simulados terminam sem personagem preso e sem estourar o tempo. *Hoje: 1.800 combates 4x4, 0 por tempo, 0 quedas sozinhas.*
+- [ ] Nenhum personagem, mundo ou papel passa de 55% de vitória. *Fase 5.*
+- [ ] Partida completa contra 3 bots nos dois modos, do menu à tela de resultado, sem erro no console. *Automatizado em `npm run test:e2e` (2026-11-11); falta o André jogar.*
+- [ ] Partida online completa com 4 pessoas. *Fase 6.*
+- [ ] Os 12 personagens com todas as animações. *Fase 7.*
+- [ ] Som e efeitos em todos os eventos da Fase 8. *Efeitos visuais já existem; som não.*
+- [ ] Jogável no celular por toque, a 60 quadros por segundo. *Fase 9.*
+- [ ] Tutorial concluído por uma pessoa de fora sem ajuda. *Fase 8.*
+- [ ] `CREDITOS.md` lista cada asset de terceiros. *Hoje não há nenhum asset de terceiros.*
 
 ## Pronto
 
@@ -46,6 +62,18 @@ Fases 0, 1 e 2 aprovadas em 2026-11-11. Repositório: https://github.com/Andrevi
 - **Laço preparação → combate → preparação** contra um esquadrão fixo por rodada (`adversarios.json`, 8 rodadas, cada vez mais forte).
 - **Testes** (90): 29 da economia (todos os comandos e seus inválidos, conservação de cartas em 400 comandos sorteados), mais schemas novos.
 
+### Fase 4
+- **Partida** (`src/sim/partida/`): `criarPartida`, `combater` (simula todos os confrontos da rodada sem tela) e `concluirRodada` (vida, eliminação, classificação, próxima rodada). Substitui a sessão provisória da Fase 3.
+- **Todos contra todos:** duelos sorteados a cada rodada, evitando repetir o último adversário. Com três vivos, quem sobra enfrenta uma cópia ("fantasma") do esquadrão de outro jogador, que não perde vida por isso.
+- **Vida:** 20 por jogador; a derrota custa 2 + 1 por inimigo que sobrou, mais 1 a cada 5 rodadas (`partida.json`). Vida zerada elimina e devolve as cartas ao baralho.
+- **2x2:** jogadores 0 e 1 contra 2 e 3, todos na mesma arena, com vida do time. O segundo de cada lado usa `pontosAliado` da arena. Cada personagem guarda o dono.
+- **Bots** (`src/bots/`) em três níveis, usando os mesmos comandos do jogador: fácil (compra ao acaso, posição sorteada), médio (busca fusões, atualiza a loja uma vez, tanque na frente) e difícil (atualiza mais, vende sobras e ensaia três formações contra o adversário da rodada antes de escolher).
+- **Telas:** inicial (modo e dificuldade), preparação (lista dos quatro jogadores com vida e elixir, campo real do adversário da rodada e do aliado), combate (uma cor por jogador, placar por lado, vidas no topo, velocidade 1x/2x/4x) e resultado (classificação e "jogar de novo").
+- **Jogador eliminado** continua assistindo: os combates seguem direto, e dá para acelerar em 4x.
+- **Conferência de determinismo na tela:** o combate assistido é comparado com o que foi simulado sem tela; divergência vira erro no console.
+- **Testes** (115): pareamento, vida, eliminação, fantasma, classificação, 2x2, cada nível de bot só emite comandos válidos, partidas inteiras entre bots nos dois modos, e bots melhores terminam em posições melhores.
+- **Teste de navegador** (4): do menu ao combate à mão; partida inteira nos dois modos até a tela de resultado (com `?auto`); demonstração.
+
 ## Números do lote
 
 **4x4 (1.800 combates, 9 confrontos de formação, mesmos personagens dos dois lados):**
@@ -57,11 +85,11 @@ Fases 0, 1 e 2 aprovadas em 2026-11-11. Repositório: https://github.com/Andrevi
 
 ## Comandos
 
-- `npm run dev`: abre o jogo em http://localhost:5173 (preparação + combate). Parâmetros no endereço: `?semente=N`, `&debug`, `&velocidade=2`, `&demo` (combate 4x4 de demonstração da fase 2).
+- `npm run dev`: abre o jogo em http://localhost:5173. Parâmetros no endereço: `?semente=N`, `&debug`, `&velocidade=2` (ou 4), `&demo` (combate 4x4 solto), `&auto` (o seu jogador também é um bot: a partida anda sozinha), `&modo=duplas`.
 - `npm test`: Vitest (simulação)
 - `npm run lint`: tipos + ESLint + Prettier (checagem)
 - `npm run build`: checagem de tipos + build de produção
-- `npm run test:e2e`: teste de fumaça no navegador (Playwright). Na primeira vez, rode `npx playwright install chromium`. Para usar outro Chromium: `CHROMIUM_PATH=/caminho npm run test:e2e`.
+- `npm run test:e2e`: testes no navegador (Playwright), cerca de 3 minutos. Na primeira vez, rode `npx playwright install chromium`. Para usar outro Chromium: `CHROMIUM_PATH=/caminho npm run test:e2e`.
 - `npm run format`: formata tudo
 
 ## Versões (conferidas em 2026-11-11)
@@ -105,6 +133,16 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 - **Custos provisórios:** lutador 2; atirador, tanque e assassino 3. O plano pede 2 a 5 na Fase 5.
 - **Ícone da página embutido no `index.html`**, para o navegador não acusar 404 do favicon.
 
+### Fase 4
+- **Bots jogam no começo da preparação**, de uma vez. Por isso a tela mostra o campo que o adversário já montou nesta rodada.
+- **Seu combate é assistido; os outros são só simulados.** O resultado de todos é calculado quando a preparação acaba.
+- **Empate não tira vida de ninguém.** Para a partida não se arrastar, a derrota fica mais cara a cada 5 rodadas.
+- **Classificação:** quem sobrevive primeiro; depois, quem caiu mais tarde; no empate, quem tinha mais vida.
+- **"Guardar elixir" do bot difícil ficou de fora:** sem juros sobre elixir guardado, guardar não traz vantagem. No lugar, ele ensaia formações.
+- **Limite de tempo dos testes subiu para 120 s** (`vitest.config.ts`): o bot difícil simula combates e passa dos 5 s padrão.
+- **Nome provisório na tela inicial:** "Arena de Esquadrões".
+- A cópia antiga do projeto em `/home/user` (fora de `duelgame/`) não é mais usada.
+
 ## Próximo passo
 
-Fase 4 — Partida completa para 4 jogadores (depois do "aprovado" e do ok no plano da fase).
+Fase 5 — Conteúdo e balanceamento, com os 12 personagens e as sinergias do `ELENCO.md` (depois do "aprovado" e do ok no plano da fase).
