@@ -29,6 +29,9 @@ export const CHANCE_RECUAR = 0.4;
 export const RECARGA_INICIAL = 0.4;
 /** Distância atrás do alvo em que o salto do assassino cai. */
 const FOLGA_DO_SALTO = 55;
+/** Aliados mantêm pelo menos esta fração da largura média entre si, andando até este tanto por tick. */
+const ESPACO_ENTRE_ALIADOS = 1.15;
+const EMPURRAO_MAXIMO = 1;
 
 export function criarLutador(
   def: DefPersonagem,
@@ -355,6 +358,23 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
           }
         }
       }
+    }
+  }
+
+  // Aliados no mesmo piso se afastam de leve, para não ficarem empilhados no mesmo ponto.
+  for (const [i, a] of ls.entries()) {
+    for (const b of ls.slice(i + 1)) {
+      if (a.lado !== b.lado || !a.vivo || !b.vivo || !a.noChao || !b.noChao) continue;
+      if (a.atordoado > 0 || b.atordoado > 0 || Math.abs(a.y - b.y) > 10) continue;
+      const minimo = ((a.def.largura + b.def.largura) / 2) * ESPACO_ENTRE_ALIADOS;
+      const dx = b.x - a.x;
+      if (Math.abs(dx) >= minimo) continue;
+      const empurrao = Math.min(EMPURRAO_MAXIMO, (minimo - Math.abs(dx)) / 2);
+      const sentido = dx >= 0 ? 1 : -1;
+      const esq = arena.chao.x + 15;
+      const dir = arena.chao.x + arena.chao.largura - 15;
+      a.x = Math.min(dir, Math.max(esq, a.x - sentido * empurrao));
+      b.x = Math.min(dir, Math.max(esq, b.x + sentido * empurrao));
     }
   }
 

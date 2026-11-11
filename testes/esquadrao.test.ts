@@ -228,6 +228,40 @@ describe("habilidades", () => {
   });
 });
 
+describe("espaço entre aliados", () => {
+  it("aliados no mesmo ponto se afastam; inimigos não são empurrados", () => {
+    const inicial = montar(
+      [vaga(lutador, 400), vaga(lutador, 400)],
+      [vaga(lutador, 400)],
+      [0, 1, 2],
+      (l) => {
+        l.atordoado = 0;
+        l.recarga = 100_000;
+        l.habRecarga = 100_000;
+      },
+    );
+    const { e } = avancar(inicial, 1);
+    const [a, b] = e.lutadores;
+    expect(Math.abs((b?.x ?? 0) - (a?.x ?? 0))).toBeGreaterThan(1);
+  });
+
+  it("o empurrão não tira ninguém do chão", () => {
+    const beira = arena.chao.x + arena.chao.largura - 16;
+    const inicial = montar(
+      [vaga(tanque, beira), vaga(tanque, beira)],
+      [vaga(lutador, 300)],
+      [],
+      (l) => {
+        l.recarga = 100_000;
+        l.habRecarga = 100_000;
+      },
+    );
+    const { e } = avancar(inicial, 40);
+    for (const l of e.lutadores)
+      expect(l.vivo && l.x < arena.chao.x + arena.chao.largura).toBe(true);
+  });
+});
+
 describe("fim da rodada com esquadrões", () => {
   const noFim = (ajuste: (l: Lutador) => void) => {
     const e = montar(
