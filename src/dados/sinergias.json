@@ -72,16 +72,16 @@
       "niveis": [
         {
           "minimo": 2,
-          "descricao": "+10% de velocidade de ataque",
+          "descricao": "+6% de velocidade de ataque",
           "efeitos": {
-            "velocidadeDeAtaque": 1.1
+            "velocidadeDeAtaque": 1.06
           }
         },
         {
           "minimo": 3,
           "descricao": "Habilidades carregam 5% mais rápido",
           "efeitos": {
-            "velocidadeDeAtaque": 1.1,
+            "velocidadeDeAtaque": 1.06,
             "recargaHabilidade": 1.05
           }
         }
