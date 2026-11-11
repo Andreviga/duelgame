@@ -20,8 +20,16 @@ async function abrir(page: Page, caminho: string): Promise<string[]> {
   return erros;
 }
 
-test("preparação: compra, posiciona, vende e luta sem erros", async ({ page }) => {
+const cena = (page: Page, nome: string, timeout = 10_000) =>
+  page.waitForSelector(`body[data-cena="${nome}"]`, { timeout });
+
+test("do menu ao combate: escolhe o modo, compra, posiciona, vende e luta", async ({ page }) => {
   const erros = await abrir(page, "/?semente=3");
+  await cena(page, "inicial");
+  await page.mouse.click(450, 477); // dificuldade: fácil
+  await page.mouse.click(600, 583); // jogar
+  await cena(page, "preparacao");
+  await page.waitForTimeout(400);
   await page.mouse.click(646, 560); // compra a primeira carta
   await page.mouse.click(788, 560); // compra a segunda
   // arrasta o primeiro do banco para um ponto da arena
@@ -37,9 +45,22 @@ test("preparação: compra, posiciona, vende e luta sem erros", async ({ page })
   await page.mouse.up();
   await page.mouse.click(1095, 572); // atualizar a loja
   await page.mouse.click(1095, 626); // lutar
-  await page.waitForTimeout(4000); // tempo para o combate começar e os primeiros golpes
+  await cena(page, "combate");
+  await page.waitForTimeout(3000);
   expect(erros).toEqual([]);
 });
+
+for (const modo of ["todos", "duplas"]) {
+  test(`partida inteira (${modo}) contra 3 bots, do menu à tela de resultado`, async ({ page }) => {
+    test.setTimeout(300_000);
+    // ?auto: o jogador humano também é jogado por um bot, para a partida andar sozinha.
+    const erros = await abrir(page, `/?auto&modo=${modo}&semente=8&velocidade=4`);
+    await cena(page, "resultado", 280_000);
+    await page.mouse.click(600, 592); // jogar de novo
+    await cena(page, "inicial");
+    expect(erros).toEqual([]);
+  });
+}
 
 test("demonstração 4x4 roda sem erros", async ({ page }) => {
   const erros = await abrir(page, "/?demo&semente=7&velocidade=2");
