@@ -2,23 +2,25 @@
 
 ## Fase atual
 
-**Fase 6 — Online: concluída no que dá para fazer sem publicar, aguardando o teste do André.**
+**Fase 7A — Pipeline de arte com o Lâmina como piloto: pipeline pronto, aguardando o modelo de verdade e a aprovação visual do André.**
 
-O critério da fase ("quatro pessoas em redes diferentes jogam uma partida inteira") depende de publicar o servidor e de quatro pessoas jogando; isso é do André (ver `PUBLICAR.md`). Aqui foi testado com clientes de rede na mesma máquina.
+O critério da 7A ("`npm run arte` gera o atlas do Lâmina do zero, a validação passa, e ele aparece animado em um combate ao lado dos retângulos") está cumprido com um **boneco de teste** feito de formas simples. Falta o modelo real do Lâmina, que depende do André (ver `arte/LEIA-ME.md`).
 
-Fases 0 a 5 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
+Fases 0 a 6 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
 
-Pendência herdada da Fase 5: três trios de sinergia ficam perto de 60% no lote (Piratas, Dojo e Futebol); o André ainda não decidiu se aceita ou se os personagens devem ser enfraquecidos.
+Pendências herdadas:
+- Fase 6: publicar o servidor e jogar com 4 pessoas em redes diferentes (`PUBLICAR.md`).
+- Fase 5: três trios de sinergia perto de 60% no lote (Piratas, Dojo e Futebol), sem decisão do André.
 
 ## Definição de 100% (seção 9 do plano)
 
-- [ ] `npm run test`, `lint` e `build` passam sem aviso. *Hoje: passam (169 testes); o build não emite aviso.*
+- [ ] `npm run test`, `lint` e `build` passam sem aviso. *Hoje: passam (186 testes); o build não emite aviso.*
 - [x] Determinismo: 1.000 combates repetidos com a mesma semente dão resultado idêntico. *`npm run lote` com `LOTE_DETERMINISMO=1000`: 0 divergiram (2026-11-11, `relatorios/lote-fase5.md`).*
 - [x] 10.000 combates simulados terminam sem personagem preso e sem estourar o tempo. *`LOTE_COMBATES=10000`: 0 por tempo, 0 quedas sem arremesso (2026-11-11, `relatorios/lote-fase5.md`).*
 - [ ] Nenhum personagem, mundo ou papel passa de 55% de vitória. *Personagens: sim (ver números abaixo). Sinergias de 3: algumas ainda passam; ver "Números do lote".*
 - [ ] Partida completa contra 3 bots nos dois modos, do menu à tela de resultado, sem erro no console. *Automatizado em `npm run test:e2e`; falta o André jogar.*
 - [ ] Partida online completa com 4 pessoas em redes diferentes, com uma reconexão no meio. *Automatizado na mesma máquina: 4 clientes de rede jogam a partida inteira (`testes/servidor.test.ts`) e duas abas com reconexão (`npm run test:e2e`). Falta publicar e jogar com 4 pessoas.*
-- [ ] Os 12 personagens com todas as animações. *Fase 7.*
+- [ ] Os 12 personagens com todas as animações. *Pipeline pronto (Fase 7A); 0 de 12 com arte final. O Lâmina usa um boneco de teste.*
 - [ ] Som e efeitos em todos os eventos da Fase 8. *Efeitos visuais já existem; som não.*
 - [ ] Jogável no celular por toque, a 60 quadros por segundo. *Fase 9.*
 - [ ] Tutorial concluído por uma pessoa de fora sem ajuda. *Fase 8.*
@@ -100,6 +102,16 @@ Pendência herdada da Fase 5: três trios de sinergia ficam perto de 60% no lote
 - **Publicação:** `Dockerfile` do servidor e `PUBLICAR.md` com o passo a passo (servidor em host com WebSocket, cliente na Vercel com `VITE_SERVIDOR`).
 - **Testes** (169): mesa (sala, comandos, visões, relógios, partida inteira nos dois modos com conferência do combate, queda e reconexão) e integração com o servidor Colyseus de verdade (4 clientes de rede, sala cheia, saída no meio). No navegador (5): mais o fluxo online com duas abas e recarga.
 
+### Fase 7A
+- **`npm run arte`** gera do zero os sprites de cada personagem de `arte/personagens.json`: Blender → quadros → validação → atlas → lista em `src/dados/sprites.json`.
+- **`ferramentas/arte/render_sprites.py`** (Blender 5.3): câmera lateral ortográfica, mesma luz e enquadramento para todos, pés na mesma linha de base, fundo transparente, quadros de 256×256. Usa o Cycles na CPU com semente fixa, então roda sem placa de vídeo e gera sempre os mesmos arquivos.
+- **`ferramentas/arte/rodar_blender.py`** usa o programa `blender` se existir, ou o módulo Python `bpy`.
+- **`src/dados/animacoes.json`**: as 9 animações, quantos quadros e se é laço. Lido pelo Blender, pela ferramenta de atlas e pelo jogo.
+- **`ferramentas/arte/montar_atlas.ts`** com PNG lido e escrito à mão (`png.ts`, sem dependência) e a validação (`atlas.ts`): animação ausente, número de quadros errado, quadro sobrando, tamanho errado, quadro vazio, quadro repetido em `andar`.
+- **No jogo** (`src/render/animacao.ts` e `CenaCombate`): personagem com atlas aparece como sprite, espelhado quando vira para a esquerda; a animação é escolhida pelo estado da simulação (arremessado > atingido > habilidade > atacar > pular/cair > andar > parado); nocaute por meio segundo depois de sair da arena. A cor do jogador vai no contorno e em um anel no chão. A simulação não mudou.
+- **Boneco de teste** (`ferramentas/arte/criar_boneco_teste.py`): formas simples + esqueleto + as 9 ações, gerado por script. Está no lugar do Lâmina só para provar o pipeline.
+- **Testes** (186): PNG, cada regra da validação com quadros defeituosos de propósito, formato do atlas, e a escolha de animação a partir do estado.
+
 ## Números do lote
 
 Relatório completo: `relatorios/lote-fase5.md` (gerado em 2026-11-11 com `LOTE_COMBATES=10000 LOTE_SINERGIAS=1000 LOTE_DETERMINISMO=1000 npm run lote`).
@@ -135,6 +147,7 @@ Relatório completo: `relatorios/lote-fase5.md` (gerado em 2026-11-11 com `LOTE_
 - `npm run build`: checagem de tipos + build de produção
 - `npm run test:e2e`: testes no navegador (Playwright), cerca de 4 minutos. Sobe o jogo e o servidor sozinho.
 - `npm run servidor`: empacota e sobe o servidor de jogo na porta 2567 (`npm run servidor:build` só empacota, em `dist-servidor/`).
+- `npm run arte`: gera os sprites do zero (precisa do Blender; ver `arte/LEIA-ME.md`). `npm run arte:atlas` refaz só a validação e o atlas.
 - `npm run lote`: simulação em lote para balanceamento. Variáveis: `LOTE_COMBATES` (padrão 4000), `LOTE_SINERGIAS` (por degrau, padrão 400), `LOTE_DETERMINISMO` (padrão 200), `LOTE_SEMENTE`. O relatório da fase está em `relatorios/lote-fase5.md`. Na primeira vez, rode `npx playwright install chromium`. Para usar outro Chromium: `CHROMIUM_PATH=/caminho npm run test:e2e`.
 - `npm run format`: formata tudo
 
@@ -222,7 +235,17 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 - **O anfitrião escolhe modo e dificuldade no menu, antes de criar a sala**; dentro da sala não dá para trocar.
 - **Bots do servidor jogam no nível escolhido pelo anfitrião**, inclusive quando substituem alguém que caiu.
 
+### Fase 7A
+- **Blender 5.3:** os scripts foram escritos para a API dessa versão e testados com o módulo `bpy` 5.3.0 (o Blender não está instalado no ambiente de desenvolvimento). O André ainda não informou a versão dele.
+- **Motor de render: Cycles na CPU**, 24 amostras, sem redução de ruído. É o que roda em qualquer máquina sem placa de vídeo. Os 49 quadros levam uns 10 segundos.
+- **Enquadramento fixo:** o quadro mostra 2,5 unidades; os pés ficam a 86% da altura. Personagem de até 2,05 unidades.
+- **Tamanho no jogo:** o sprite é escalado para a altura da caixa de colisão do personagem, com 20% de folga para a arma e os gestos.
+- **O atlas não recorta os quadros** (cada um ocupa 256×256): mais simples e a linha de base fica igual em todos. O do Lâmina tem 2048×2304 e 830 kB.
+- **`public/sprites/` vai para o repositório** (o jogo roda sem Blender). `arte/quadros/` e o `.blend` do boneco de teste são gerados e ficam fora.
+- **Só o combate usa sprites por enquanto.** Cartas, banco e preparação continuam com as formas geométricas; os retratos nas cartas são da Fase 8.
+- **Tipos mínimos do Node** para o servidor e as ferramentas ficam em `node.d.ts` na raiz (sem `@types/node`).
+
 ## Próximo passo
 
-1. André: publicar o servidor e o cliente (`PUBLICAR.md`) e jogar uma partida com 4 pessoas em redes diferentes, com uma reconexão no meio.
-2. Fase 7 — Arte dos personagens, começando pelo piloto (Lâmina). Antes de começar, o André precisa instalar o Blender e baixar os packs de modelos listados no `ELENCO.md`.
+1. André: informar a versão do Blender e mandar o modelo do Lâmina (`arte/fontes/lamina.blend` conforme `arte/LEIA-ME.md`, ou os arquivos do pack para o Claude Code montar o `.blend`). Depois, aprovar o visual.
+2. Fase 7B — os outros 11 personagens, um por vez, com aprovação visual em cada um.
