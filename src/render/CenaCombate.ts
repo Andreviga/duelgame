@@ -4,7 +4,16 @@ import { TICKS_POR_SEGUNDO } from "../sim/constantes";
 import { criarCombate, stepCombate, TICKS_MAXIMOS } from "../sim/combate/combate";
 import type { EstadoCombate, Lado } from "../sim/combate/tipos";
 import { avancarLaco, type Laco } from "../sim/laco";
-import { CORES, desenharCorpo, desenharIcone, NOMES } from "./desenho";
+import {
+  CORES,
+  desenharArena,
+  desenharCorpo,
+  desenharFundo,
+  desenharIcone,
+  desenharPinos,
+  NOMES,
+} from "./desenho";
+import { concluirRodada, esquadroesDaRodada, jogo, sementeDoCombate } from "./sessao";
 import { Efeitos, misturar } from "./efeitos";
 
 const LARGURA = 1200;
@@ -40,6 +49,8 @@ function corDoDano(dano: number): number {
  */
 export class CenaCombate extends Phaser.Scene {
   private semente = 1;
+  /** Sessão de jogo (preparação + combate). Sem ela, a cena roda em modo demonstração. */
+  private sessao: typeof jogo.sessao = null;
   private laco!: Laco<EstadoCombate>;
   private ultimoTick = -1;
   private efeitos = new Efeitos();
@@ -76,7 +87,12 @@ export class CenaCombate extends Phaser.Scene {
   }
 
   create(): void {
+    // A cena pode ser reaberta várias vezes: os objetos antigos já foram destruídos pelo Phaser.
+    this.visuais = [];
+    this.textoFormacao = [];
+    this.placar = [0, 0];
     const params = new URLSearchParams(window.location.search);
+    this.sessao = params.has("demo") ? null : jogo.sessao;
     const param = Number(params.get("semente"));
     this.semente = Number.isFinite(param) && param > 0 ? Math.floor(param) : 1;
     this.debug = params.has("debug");
@@ -172,17 +188,25 @@ export class CenaCombate extends Phaser.Scene {
   }
 
   private iniciarRodada(): void {
-    // A cada rodada muda a formação de um dos lados, para dar para comparar posições.
-    const n = this.semente - 1;
-    const fa = FORMACOES[n % FORMACOES.length];
-    const fb = FORMACOES[Math.floor(n / FORMACOES.length) % FORMACOES.length];
-    if (!fa || !fb) throw new Error("sem formações");
-    this.formacoes = [fa.nome, fb.nome];
-    const estado = criarCombate(
-      ARENA_BASICA,
-      [fa.vagas, espelhar(fb.vagas, ARENA_BASICA)],
-      this.semente,
-    );
+    let estado: EstadoCombate;
+    if (this.sessao) {
+      this.formacoes = ["Você", `Rodada ${this.sessao.economia.rodada}`];
+      this.placar = [this.sessao.vitorias, this.sessao.derrotas];
+      this.semente = sementeDoCombate(this.sessao);
+      estado = criarCombate(ARENA_BASICA, esquadroesDaRodada(this.sessao), this.semente);
+    } else {
+      // Demonstração: a cada rodada muda a formação de um dos lados, para comparar posições.
+      const n = this.semente - 1;
+      const fa = FORMACOES[n % FORMACOES.length];
+      const fb = FORMACOES[Math.floor(n / FORMACOES.length) % FORMACOES.length];
+      if (!fa || !fb) throw new Error("sem formações");
+      this.formacoes = [fa.nome, fb.nome];
+      estado = criarCombate(
+        ARENA_BASICA,
+        [fa.vagas, espelhar(fb.vagas, ARENA_BASICA)],
+        this.semente,
+      );
+    }
     this.laco = { estado, acumulado: 0 };
 
     for (const v of this.visuais) {
@@ -272,18 +296,25 @@ export class CenaCombate extends Phaser.Scene {
     if (fim) {
       if (!this.fimContado) {
         this.fimContado = true;
-        if (fim.vencedor !== null) this.placar[fim.vencedor] = (this.placar[fim.vencedor] ?? 0) + 1;
+        if (fim.vencedor !== null) {
+          this.placar[fim.vencedor] = (this.placar[fim.vencedor] ?? 0) + 1;
+        }
       }
       this.msDesdeFim += ms * this.velocidade;
       if (this.msDesdeFim > MS_ENTRE_RODADAS) {
+        if (this.sessao) {
+          concluirRodada(this.sessao, fim.vencedor);
+          this.scene.start("preparacao");
+          return;
+        }
         this.semente++;
         this.iniciarRodada();
       }
     }
 
     this.atualizarCamera(ms);
-    this.desenharFundo();
-    this.desenharCenario();
+    desenharFundo(this.fundo, this.cam.x, this.cam.y);
+    desenharArena(this.cenario, this.laco.estado.arena);
     this.desenharLutadores(ms);
     this.desenharEfeitos();
     this.desenharMarcas();
@@ -412,66 +443,6 @@ export class CenaCombate extends Phaser.Scene {
     );
   }
 
-  private desenharFundo(): void {
-    const g = this.fundo;
-    g.clear();
-    const faixas = 14;
-    for (let i = 0; i < faixas; i++) {
-      g.fillStyle(misturar(0x0c111b, 0x24304a, i / (faixas - 1)), 1);
-      g.fillRect(0, (ALTURA / faixas) * i, LARGURA, ALTURA / faixas + 1);
-    }
-    // Formas distantes, com um pouco de paralaxe.
-    const px = (600 - this.cam.x) * 0.06;
-    const py = (380 - this.cam.y) * 0.04;
-    g.fillStyle(0x2d3b5c, 0.5);
-    g.fillCircle(930 + px, 150 + py, 70);
-    g.fillStyle(0x1a2338, 0.9);
-    g.fillTriangle(-60 + px * 2, ALTURA, 240 + px * 2, 330 + py, 560 + px * 2, ALTURA);
-    g.fillTriangle(380 + px * 2, ALTURA, 760 + px * 2, 270 + py, 1120 + px * 2, ALTURA);
-    g.fillTriangle(820 + px * 2, ALTURA, 1100 + px * 2, 380 + py, 1340 + px * 2, ALTURA);
-  }
-
-  private desenharCenario(): void {
-    const g = this.cenario;
-    const a = this.laco.estado.arena;
-    g.clear();
-
-    // Limites da arena: só aparecem quando a câmera abre.
-    const lim = a.limites;
-    g.lineStyle(6, 0xff4d5e, 0.35);
-    g.strokeRect(lim.esquerda, lim.topo, lim.direita - lim.esquerda, lim.fundo - lim.topo);
-    g.lineStyle(26, 0xff4d5e, 0.07);
-    g.strokeRect(lim.esquerda, lim.topo, lim.direita - lim.esquerda, lim.fundo - lim.topo);
-
-    // Chão sólido: bloco com base afunilada.
-    const c = a.chao;
-    g.fillStyle(0x1b2333, 1);
-    g.fillTriangle(
-      c.x + 40,
-      c.y + c.altura,
-      c.x + c.largura - 40,
-      c.y + c.altura,
-      c.x + c.largura / 2,
-      c.y + c.altura + 150,
-    );
-    g.fillStyle(0x2c384f, 1);
-    g.fillRoundedRect(c.x, c.y, c.largura, c.altura, 6);
-    g.fillStyle(0x8fa6c9, 1);
-    g.fillRoundedRect(c.x, c.y, c.largura, 7, 3);
-    g.fillStyle(0x3a4863, 1);
-    for (let x = c.x + 50; x < c.x + c.largura; x += 100) g.fillRect(x, c.y + 14, 3, c.altura - 20);
-
-    // Plataformas atravessáveis: finas e mais claras.
-    for (const p of a.plataformas) {
-      g.fillStyle(0x0b0f16, 0.35);
-      g.fillRoundedRect(p.x + 3, p.y + 5, p.largura, 10, 5);
-      g.fillStyle(0x4d6185, 1);
-      g.fillRoundedRect(p.x, p.y, p.largura, 10, 5);
-      g.fillStyle(0xb9cbe8, 1);
-      g.fillRoundedRect(p.x, p.y, p.largura, 3, 2);
-    }
-  }
-
   private desenharLutadores(ms: number): void {
     const e = this.laco.estado;
     const quadros = ms / 16.667;
@@ -590,6 +561,7 @@ export class CenaCombate extends Phaser.Scene {
       g.fillRoundedRect(bx - 1, by - 1, 42, 7, 3);
       g.fillStyle(cheio >= 1 ? 0xffffff : CORES[l.lado], 1);
       g.fillRoundedRect(bx, by, Math.max(2, 40 * cheio), 5, 2);
+      desenharPinos(g, l.x, by - 8, l.nivel);
 
       if (!this.debug) continue;
       // Caixa do corpo.
@@ -680,7 +652,8 @@ export class CenaCombate extends Phaser.Scene {
       const falta = Math.max(1, Math.ceil((MS_ENTRE_RODADAS - this.msDesdeFim) / 1000));
       const motivo = e.fim.motivo === "tempo" ? "tempo esgotado · " : "";
       const resumo = v === null ? "" : `${sobraram} de pé · `;
-      this.escrever(this.textoSub, `${motivo}${resumo}próxima rodada em ${falta}…`);
+      const depois = this.sessao ? "preparação" : "próxima rodada";
+      this.escrever(this.textoSub, `${motivo}${resumo}${depois} em ${falta}…`);
       this.textoSub.setVisible(true).setAlpha(entrada);
     }
   }

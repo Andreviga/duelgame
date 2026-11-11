@@ -1,5 +1,5 @@
 import type Phaser from "phaser";
-import type { Lutador } from "../sim/combate/tipos";
+import type { Arena, Lutador } from "../sim/combate/tipos";
 import { misturar } from "./efeitos";
 
 export const CORES = [0x4fa3ff, 0xff8a3d] as const;
@@ -7,6 +7,9 @@ export const CORES_ESCURAS = [0x1d4f8f, 0x9a4410] as const;
 export const NOMES = ["AZUL", "LARANJA"] as const;
 
 type G = Phaser.GameObjects.Graphics;
+
+const LARGURA = 1200;
+const ALTURA = 675;
 
 /**
  * Desenha o corpo de um lutador em coordenadas locais (origem no centro do corpo).
@@ -138,5 +141,77 @@ export function desenharIcone(g: G, arquetipo: string, x: number, y: number, cor
     g.fillRoundedRect(x - 8, y - 11, 16, 22, 4);
     g.fillStyle(0x0b0f16, 0.7);
     g.fillRect(x - 8, y - 7, 16, 3);
+  }
+}
+
+/** Fundo em faixas com formas distantes e um pouco de paralaxe conforme a câmera. */
+export function desenharFundo(g: G, camX: number, camY: number): void {
+  g.clear();
+  const faixas = 14;
+  for (let i = 0; i < faixas; i++) {
+    g.fillStyle(misturar(0x0c111b, 0x24304a, i / (faixas - 1)), 1);
+    g.fillRect(0, (ALTURA / faixas) * i, LARGURA, ALTURA / faixas + 1);
+  }
+  // Formas distantes, com um pouco de paralaxe.
+  const px = (600 - camX) * 0.06;
+  const py = (380 - camY) * 0.04;
+  g.fillStyle(0x2d3b5c, 0.5);
+  g.fillCircle(930 + px, 150 + py, 70);
+  g.fillStyle(0x1a2338, 0.9);
+  g.fillTriangle(-60 + px * 2, ALTURA, 240 + px * 2, 330 + py, 560 + px * 2, ALTURA);
+  g.fillTriangle(380 + px * 2, ALTURA, 760 + px * 2, 270 + py, 1120 + px * 2, ALTURA);
+  g.fillTriangle(820 + px * 2, ALTURA, 1100 + px * 2, 380 + py, 1340 + px * 2, ALTURA);
+}
+
+/** Chão sólido, plataformas e limites da arena, em coordenadas do mundo. */
+export function desenharArena(g: G, a: Arena): void {
+  g.clear();
+
+  // Limites da arena: só aparecem quando a câmera abre.
+  const lim = a.limites;
+  g.lineStyle(6, 0xff4d5e, 0.35);
+  g.strokeRect(lim.esquerda, lim.topo, lim.direita - lim.esquerda, lim.fundo - lim.topo);
+  g.lineStyle(26, 0xff4d5e, 0.07);
+  g.strokeRect(lim.esquerda, lim.topo, lim.direita - lim.esquerda, lim.fundo - lim.topo);
+
+  // Chão sólido: bloco com base afunilada.
+  const c = a.chao;
+  g.fillStyle(0x1b2333, 1);
+  g.fillTriangle(
+    c.x + 40,
+    c.y + c.altura,
+    c.x + c.largura - 40,
+    c.y + c.altura,
+    c.x + c.largura / 2,
+    c.y + c.altura + 150,
+  );
+  g.fillStyle(0x2c384f, 1);
+  g.fillRoundedRect(c.x, c.y, c.largura, c.altura, 6);
+  g.fillStyle(0x8fa6c9, 1);
+  g.fillRoundedRect(c.x, c.y, c.largura, 7, 3);
+  g.fillStyle(0x3a4863, 1);
+  for (let x = c.x + 50; x < c.x + c.largura; x += 100) g.fillRect(x, c.y + 14, 3, c.altura - 20);
+
+  // Plataformas atravessáveis: finas e mais claras.
+  for (const p of a.plataformas) {
+    g.fillStyle(0x0b0f16, 0.35);
+    g.fillRoundedRect(p.x + 3, p.y + 5, p.largura, 10, 5);
+    g.fillStyle(0x4d6185, 1);
+    g.fillRoundedRect(p.x, p.y, p.largura, 10, 5);
+    g.fillStyle(0xb9cbe8, 1);
+    g.fillRoundedRect(p.x, p.y, p.largura, 3, 2);
+  }
+}
+
+/** Pinos amarelos que mostram o nível de fusão (nada no nível 1). */
+export function desenharPinos(g: G, x: number, y: number, nivel: number, tamanho = 4): void {
+  if (nivel <= 1) return;
+  const passo = tamanho * 2.6;
+  const x0 = x - ((nivel - 1) * passo) / 2;
+  for (let i = 0; i < nivel; i++) {
+    g.fillStyle(0x0b0f16, 0.8);
+    g.fillCircle(x0 + i * passo, y, tamanho + 1.5);
+    g.fillStyle(0xffd54a, 1);
+    g.fillCircle(x0 + i * passo, y, tamanho);
   }
 }
