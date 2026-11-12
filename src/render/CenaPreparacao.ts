@@ -39,6 +39,7 @@ import {
   jogo,
   partidaAtual,
 } from "./jogo";
+import { CamadasDoCenario, carregarCenarios } from "./cenarios";
 import { carregarSprites, posarRetrato, temSprite } from "./sprites";
 import { musica, opcoes, salvarOpcoes, tocar, type Efeito } from "./som";
 import { alvoTocado } from "./toque";
@@ -110,6 +111,7 @@ export class CenaPreparacao extends Phaser.Scene {
 
   preload(): void {
     carregarSprites(this);
+    carregarCenarios(this);
   }
 
   create(): void {
@@ -128,13 +130,26 @@ export class CenaPreparacao extends Phaser.Scene {
 
     ZOOM = Math.min(0.8, 640 / arenaAtual().chao.largura);
     this.fundo = this.add.graphics().setDepth(0);
-    desenharFundo(this.fundo, MUNDO_X, 380, arenaAtual().id);
     const cenario = this.add.graphics();
-    desenharArena(cenario, arenaAtual());
-    this.add
+    const mundo = this.add
       .container(LARGURA / 2 - MUNDO_X * ZOOM, TELA_Y - MUNDO_Y * ZOOM, [cenario])
       .setScale(ZOOM)
       .setDepth(1);
+    // Cenário em imagens, se a arena tiver; senão, o desenho por código.
+    const camadas = CamadasDoCenario.para(this, arenaAtual());
+    if (camadas) {
+      const profundidade = (pecas: Phaser.GameObjects.GameObject[], valor: number): void => {
+        for (const p of pecas) (p as Phaser.GameObjects.Image).setDepth(valor);
+      };
+      profundidade(camadas.criarFundo(), 0.5);
+      camadas.criarPiso().forEach((img, i) => mundo.addAt(img, i));
+      profundidade(camadas.criarFrente(), 1.5);
+      // A mesma câmera do enquadramento fixo desta tela, escrita como centro e zoom.
+      camadas.atualizar({ x: MUNDO_X, y: MUNDO_Y + (ALTURA / 2 - TELA_Y) / ZOOM, zoom: ZOOM });
+    } else {
+      desenharFundo(this.fundo, MUNDO_X, 380, arenaAtual().id);
+    }
+    desenharArena(cenario, arenaAtual(), camadas !== null);
     this.painel = this.add.graphics().setDepth(2);
     this.sobre = this.add.graphics().setDepth(4);
 

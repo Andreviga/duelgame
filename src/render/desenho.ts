@@ -388,8 +388,11 @@ export function desenharFundo(g: G, camX: number, camY: number, arena = TEMA_PAD
   }
 }
 
-/** Chão sólido, plataformas e limites da arena, em coordenadas do mundo. */
-export function desenharArena(g: G, a: Arena): void {
+/**
+ * Chão sólido, plataformas e limites da arena, em coordenadas do mundo.
+ * É também a reserva das arenas sem cenário em imagem.
+ */
+export function desenharArena(g: G, a: Arena, soLimites = false): void {
   g.clear();
   const tema = temaDe(a.id);
 
@@ -399,6 +402,9 @@ export function desenharArena(g: G, a: Arena): void {
   g.strokeRect(lim.esquerda, lim.topo, lim.direita - lim.esquerda, lim.fundo - lim.topo);
   g.lineStyle(26, 0xff4d5e, 0.07);
   g.strokeRect(lim.esquerda, lim.topo, lim.direita - lim.esquerda, lim.fundo - lim.topo);
+
+  // Com cenário em imagem, o chão e as plataformas são imagens: aqui ficam só os limites.
+  if (soLimites) return;
 
   // Chão sólido: bloco com base afunilada.
   const c = a.chao;

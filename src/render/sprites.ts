@@ -1,6 +1,7 @@
 import type Phaser from "phaser";
 import especJson from "../dados/animacoes.json";
 import spritesJson from "../dados/sprites.json";
+import { ehArquivoDeCenario } from "./cenarios";
 import { mostrarFalha } from "./falhas";
 
 /** Personagens que têm atlas em `public/sprites` (os outros são desenhados com formas). */
@@ -38,7 +39,10 @@ export function carregarSprites(cena: Phaser.Scene): void {
   };
   desenhar(0);
   cena.load.on("progress", desenhar);
-  cena.load.once("loaderror", () => mostrarFalha("carga"));
+  cena.load.on("loaderror", (arquivo: { key: string }) => {
+    // Cenário que não carrega tem reserva (o desenho por código); o resto é indispensável.
+    if (!ehArquivoDeCenario(arquivo.key)) mostrarFalha("carga");
+  });
   cena.load.once("complete", () => {
     cena.load.off("progress", desenhar);
     barra.destroy();

@@ -13,6 +13,7 @@ import {
   novaPartida,
   retomarSalaOnline,
 } from "./jogo";
+import { CamadasDoCenario, carregarCenarios } from "./cenarios";
 import { carregarSprites, posarRetrato, temSprite } from "./sprites";
 import { musica, opcoes, tocar } from "./som";
 import { alvoTocado } from "./toque";
@@ -53,6 +54,7 @@ export class CenaInicial extends Phaser.Scene {
 
   preload(): void {
     carregarSprites(this);
+    carregarCenarios(this);
   }
 
   create(): void {
@@ -63,13 +65,20 @@ export class CenaInicial extends Phaser.Scene {
     const modoParam = params.get("modo");
     if (modoParam === "duplas" || modoParam === "todos") jogo.modo = modoParam;
 
-    desenharFundo(this.add.graphics(), 600, 380);
-    const cenario = this.add.graphics();
-    desenharArena(cenario, ARENA_BASICA);
-    this.add
-      .container(LARGURA / 2 - 600 * 0.9, 60, [cenario])
-      .setScale(0.9)
-      .setAlpha(0.35);
+    const camadas = CamadasDoCenario.para(this, ARENA_BASICA);
+    if (camadas) {
+      // O menu mostra só o fundo do cenário, com a câmera parada.
+      camadas.criarFundo();
+      camadas.atualizar({ x: 600, y: ARENA_BASICA.chao.y - 140, zoom: 1 });
+    } else {
+      desenharFundo(this.add.graphics(), 600, 380);
+      const cenario = this.add.graphics();
+      desenharArena(cenario, ARENA_BASICA);
+      this.add
+        .container(LARGURA / 2 - 600 * 0.9, 60, [cenario])
+        .setScale(0.9)
+        .setAlpha(0.35);
+    }
     this.add.graphics().fillStyle(0x0b0f16, 0.55).fillRect(0, 0, LARGURA, ALTURA);
 
     // Quatro personagens de enfeite, um de cada cor.

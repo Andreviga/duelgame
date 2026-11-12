@@ -8,7 +8,7 @@ Fases 7A, 7B e 8 aprovadas em 2026-11-12.
 
 **Celular em pé:** o André decidiu manter o aviso "gire o aparelho" (2026-11-12). O jogo é só deitado.
 
-**Cenários no Blender:** o da `arena-basica` (pátio de dojo à noite) entrou por patch de outra sessão (5 commits, `public/cenarios/arena-basica/`, 1,41 MB). O jogo ainda não usa as imagens: falta a troca em `src/render`, com plano aguardando o ok do André.
+**Cenários no Blender:** o da `arena-basica` (pátio de dojo à noite) veio por patch de outra sessão e **já é usado pelo jogo** (combate, preparação e menu), aguardando a aprovação visual do André. `arena-larga` e `arena-torre` continuam desenhadas por código até terem imagens.
 
 Fases 0 a 6 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
 
@@ -136,6 +136,12 @@ Pendências herdadas:
 - **Créditos** no menu, lendo o `CREDITOS.md`.
 - **`ROTEIRO-DE-TESTE.md`** para o teste com pessoas de fora, e a conferência pós-publicação no `PUBLICAR.md`.
 - O fundo do combate só é redesenhado quando a câmera anda.
+
+### Cenários em imagem
+- `src/render/camadas.ts`: contas puras de encaixe, paralaxe e cobertura da tela, com teste (`testes/camadas.test.ts`).
+- `src/render/cenarios.ts`: carga das imagens e do `cenario.json`, e a classe que cria céu, longe, perto, chão, plataformas e frente.
+- `src/dados/cenarios.json`: lista das arenas que têm imagens (hoje só `arena-basica`).
+- Reserva por código para arena sem imagens ou com imagem que falhou; testes de navegador para os três casos (`testes/e2e/cenarios.spec.ts`).
 
 ## Números do lote
 
@@ -292,11 +298,18 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 - **Desempenho não medido de verdade.** No ambiente de desenvolvimento (sem placa de vídeo) o combate 2x2 roda a cerca de 23 quadros por segundo, e 90% do tempo é o desenho por software; o código do jogo usa cerca de 10% do tempo do quadro. Não dá para concluir nada sobre celular daqui.
 - **A tela de falha recarrega a página** em vez de tentar se recuperar: é o caminho que sempre funciona.
 
+### Cenários em imagem
+- **Falha de imagem de cenário não abre a tela de falha:** a arena cai no desenho por código. Sprites continuam indispensáveis.
+- **Todas as arenas da lista são carregadas na abertura**, não só a da partida. Hoje é uma (1,41 MB); com três, convém carregar só a sorteada.
+- **A camada `frente` não encolhe abaixo da largura da tela:** com a câmera aberta, os galhos ficam presos aos cantos em vez de sumir.
+- **Memória de vídeo das camadas da arena básica:** cerca de 30 MB (7,6 milhões de pixels). Fluidez no celular não medida daqui.
+- **O menu usa só o fundo do cenário** (céu, longe e perto), sem chão nem plataformas.
+
 ## Próximo passo
 
 Tudo o que falta para a "Definição de 100%" depende do André:
 
-1. Dar o ok no plano de fazer o jogo usar as imagens de cenário (`public/cenarios/`).
+1. Aprovar o cenário da `arena-basica` no jogo e decidir os três pontos em aberto (portal, corda, lua).
 2. Publicar o servidor (Render) e o cliente (Vercel) e fazer a conferência do `PUBLICAR.md`.
 3. Medir os quadros por segundo em um celular intermediário, com 16 personagens em combate (2x2, rodadas finais).
 4. Jogar online com 4 pessoas em redes diferentes, com uma reconexão.

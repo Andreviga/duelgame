@@ -105,9 +105,17 @@ python3 ferramentas/arte/rodar_blender.py ferramentas/arte/cenarios/arena-basica
   Blender, para não haver ruído. Brilhos suaves (lua, lanternas, névoa) usam `halo()`.
 - **Peso:** no máximo 1,5 MB por arena.
 
-Estado: `arena-basica` (pátio de dojo à noite) renderizada, 1,4 MB, aguardando a aprovação do André.
-**O jogo ainda não carrega essas imagens**: `desenharFundo` e `desenharArena` continuam desenhando
-por código. A troca por camadas com paralaxe é o próximo passo, só em `src/render`.
+Estado: `arena-basica` (pátio de dojo à noite) renderizada e em uso no jogo, aguardando a aprovação do André.
+
+**Como o jogo usa as imagens** (`src/render/cenarios.ts` e `src/render/camadas.ts`):
+
+- As arenas com cenário estão listadas em `src/dados/cenarios.json`. Para uma arena nova entrar, crie a
+  pasta em `public/cenarios/<id>/` com os sete arquivos e acrescente o id nessa lista.
+- Ordem de desenho: céu → longe → perto → chão e plataformas → personagens e efeitos → frente → interface.
+- A paralaxe e a linha do chão vêm do `cenario.json`. As camadas largas nunca mostram a borda lateral:
+  quando o zoom pediria uma imagem mais estreita que a tela, ela para de encolher.
+- Reserva: arena fora da lista, ou com qualquer imagem que não carregou, é desenhada por código
+  (`desenharFundo` e `desenharArena`), como antes.
 
 ## Licenças
 

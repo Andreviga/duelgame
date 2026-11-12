@@ -15,6 +15,7 @@ import {
   desenharIcone,
   desenharPinos,
 } from "./desenho";
+import { CamadasDoCenario, carregarCenarios } from "./cenarios";
 import { carregarSprites, escalaDoSprite } from "./sprites";
 import { musica, opcoes, tocar } from "./som";
 import { resumoDosNocautes } from "./resumo";
@@ -84,6 +85,12 @@ export class CenaCombate extends Phaser.Scene {
   private mundo!: Phaser.GameObjects.Container;
   private cenario!: Phaser.GameObjects.Graphics;
   private fundoDesenhado = "";
+  /** Cenário em imagens da arena atual, ou null quando ela é desenhada por código. */
+  private camadas: CamadasDoCenario | null = null;
+  private arenaDasCamadas = "";
+  private pecasDoCenario: Phaser.GameObjects.GameObject[] = [];
+  private camadaDeFundo!: Phaser.GameObjects.Container;
+  private camadaDaFrente!: Phaser.GameObjects.Container;
   private fx!: Phaser.GameObjects.Graphics;
   private marcas!: Phaser.GameObjects.Graphics;
   private tela!: Phaser.GameObjects.Graphics;
@@ -121,6 +128,7 @@ export class CenaCombate extends Phaser.Scene {
 
   preload(): void {
     carregarSprites(this);
+    carregarCenarios(this);
   }
 
   create(): void {
@@ -152,10 +160,16 @@ export class CenaCombate extends Phaser.Scene {
     }
 
     this.fundo = this.add.graphics();
+    // Ordem de desenho: fundo (céu, longe, perto) → mundo → frente → interface.
+    this.camadaDeFundo = this.add.container(0, 0);
+    this.arenaDasCamadas = "";
+    this.camadas = null;
+    this.pecasDoCenario = [];
     this.cenario = this.add.graphics();
     this.fx = this.add.graphics();
     this.marcas = this.add.graphics();
     this.mundo = this.add.container(0, 0, [this.cenario]);
+    this.camadaDaFrente = this.add.container(0, 0);
     this.tela = this.add.graphics();
 
     const estilo = (tamanho: number, cor = "#ffffff") => ({
@@ -396,13 +410,16 @@ export class CenaCombate extends Phaser.Scene {
     this.atualizarCamera(ms);
     // O fundo só é redesenhado quando a câmera andou o bastante para a paralaxe mudar 1 pixel.
     const arena = this.laco.estado.arena;
+    this.usarCenarioDa(arena);
     const chaveDoFundo = `${arena.id}:${Math.round(this.cam.x / 8)}:${Math.round(this.cam.y / 12)}`;
-    if (chaveDoFundo !== this.fundoDesenhado) {
+    if (this.camadas) {
+      this.camadas.atualizar(this.cam);
+    } else if (chaveDoFundo !== this.fundoDesenhado) {
       this.fundoDesenhado = chaveDoFundo;
       desenharFundo(this.fundo, this.cam.x, this.cam.y, arena.id);
     }
     // A arena é redesenhada sempre: o mesmo Graphics recebe os anéis no chão, que mudam a cada quadro.
-    desenharArena(this.cenario, arena);
+    desenharArena(this.cenario, arena, this.camadas !== null);
     // Anel no chão com a cor do jogador, para os personagens com sprite.
     for (const l of this.laco.estado.lutadores) {
       if (!l.vivo || !this.visuais[l.id]?.sprite) continue;
@@ -878,6 +895,28 @@ export class CenaCombate extends Phaser.Scene {
       this.escrever(this.textoResumo, this.resumo());
       this.textoResumo.setVisible(true).setAlpha(entrada);
     }
+  }
+
+  /** Troca as imagens do cenário quando a arena muda; sem imagens, a arena é desenhada por código. */
+  private usarCenarioDa(arena: EstadoCombate["arena"]): void {
+    if (arena.id === this.arenaDasCamadas) return;
+    this.arenaDasCamadas = arena.id;
+    for (const peca of this.pecasDoCenario) peca.destroy();
+    this.pecasDoCenario = [];
+    this.camadas = CamadasDoCenario.para(this, arena);
+    this.fundo.setVisible(this.camadas === null);
+    // Para os testes de navegador saberem qual dos dois caminhos está valendo.
+    document.body.dataset["cenario"] = this.camadas ? "imagens" : "codigo";
+    this.fundoDesenhado = "";
+    if (!this.camadas) return;
+    const fundo = this.camadas.criarFundo();
+    const piso = this.camadas.criarPiso();
+    const frente = this.camadas.criarFrente();
+    this.camadaDeFundo.add(fundo);
+    // O piso entra por baixo de tudo no mundo: limites, anéis e personagens ficam por cima.
+    piso.forEach((img, i) => this.mundo.addAt(img, i));
+    this.camadaDaFrente.add(frente);
+    this.pecasDoCenario = [...fundo, ...piso, ...frente];
   }
 
   /** Linha que explica o resultado: quem nocauteou mais de cada lado. Só nas partidas (não na demonstração). */
