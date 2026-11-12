@@ -2,7 +2,7 @@
 
 ## Fase atual
 
-**Fase 10 — Itens e elenco ampliado: personagens aprovados (2026-11-12); itens de arena prontos, aguardando o André jogar e aprovar.**
+**Fase 10 — Itens e elenco ampliado: aprovada pelo André em 2026-11-12 (16 personagens e 5 itens de arena). Não há fase em andamento.**
 
 Fase 9: a parte de código está pronta; faltam os itens que dependem do André (ver "Próximo passo").
 
@@ -351,7 +351,7 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 
 ## Próximo passo
 
-Fase 10: jogar com itens ligados e aprovar (ou pedir ajuste nos números de `src/dados/itens.json`).
+Não há fase aberta. Uma fase nova começa com um pedido do André e um plano curto.
 
 Da Fase 9, tudo o que falta para a "Definição de 100%" depende do André:
 
