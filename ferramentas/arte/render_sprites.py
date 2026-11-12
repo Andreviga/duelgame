@@ -7,7 +7,8 @@ O que o .blend precisa ter:
   - o personagem virado para +X (a direita da tela), em pé no chão (Z = 0), com a origem entre os pés;
   - um esqueleto (armature) e uma ação por animação, com o nome exato da animação
     (parado, andar, pular, cair, atacar, habilidade, atingido, arremessado, nocaute);
-  - até 2,05 unidades de altura (o quadro mostra de -0,35 a 2,15 na vertical).
+  - até 2 unidades de altura (o quadro mostra de -0,42 a 2,58 na vertical e 1,5 para cada lado,
+    com folga para armas e saltos).
 
 O que este script impõe, igual para todos os personagens: câmera lateral ortográfica, mesma luz,
 mesmo enquadramento, pés na mesma linha de base, fundo transparente e tamanho do quadro.
@@ -28,7 +29,7 @@ ESPEC = json.loads((RAIZ / "src" / "dados" / "animacoes.json").read_text(encodin
 
 # Enquadramento fixo: o quadro cobre ALTURA_DO_QUADRO unidades do mundo, e a linha dos pés
 # fica na fração `linhaDeBase` da altura do quadro, contada de cima.
-ALTURA_DO_QUADRO = 2.5
+ALTURA_DO_QUADRO = 3.0
 
 
 def argumentos():

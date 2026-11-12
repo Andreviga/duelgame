@@ -992,7 +992,7 @@
     "personagem": "lamina",
     "quadrosPorSegundo": 12,
     "linhaDeBase": 0.86,
-    "alturaDoPersonagem": 186,
+    "alturaDoPersonagem": 165,
     "animacoes": {
       "parado": {
         "quadros": 8,

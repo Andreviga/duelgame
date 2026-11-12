@@ -24,8 +24,8 @@ testados com a API do Blender 5.3.
 ## O que cada `.blend` precisa ter
 
 - O personagem **virado para +X** (a direita da tela), **em pé no chão (Z = 0)**, com a origem entre os pés.
-- **Até 2,05 unidades de altura.** O quadro mostra de −0,35 a 2,15 na vertical e 1,25 para cada lado.
-  Golpes e armas que passarem disso são cortados.
+- **Até 2 unidades de altura.** O quadro mostra de −0,42 a 2,58 na vertical e 1,5 para cada lado,
+  com folga para armas e saltos. O que passar disso é cortado.
 - **Um esqueleto (armature)** e **uma ação por animação**, com exatamente estes nomes:
 
 | Ação | Quadros | Em laço | O que mostra |
@@ -48,15 +48,26 @@ testados com a API do Blender 5.3.
 A lista de animações e o tamanho do quadro ficam em `src/dados/animacoes.json`, lido pelo Blender,
 pela ferramenta de atlas e pelo jogo.
 
+## De onde vêm os modelos
+
+Os personagens são **modelados por script**, com formas simples (decisão do André em 2026-11-12).
+Não há modelos, texturas nem animações de terceiros.
+
+- `ferramentas/arte/modelos/humanoide.py`: biblioteca para humanoides. Monta o esqueleto (com cotovelos
+  e joelhos), o corpo padrão e as sete ações comuns (`parado`, `andar`, `pular`, `cair`, `atingido`,
+  `arremessado`, `nocaute`). As convenções dos ângulos das poses estão no começo do arquivo.
+- `ferramentas/arte/modelos/<id>.py`: um arquivo por personagem. Define cores, roupas, acessórios e arma,
+  e as duas ações próprias: `atacar` e `habilidade`. Ao rodar, salva `arte/fontes/<id>.blend`.
+- `arte/personagens.json`: lista quem entra no `npm run arte`, com o script gerador de cada um.
+
+Os `.blend` em `arte/fontes/` são gerados e não vão para o repositório; os atlas em `public/sprites/` vão.
+
 ## Estado atual
 
-- `lamina` usa por enquanto o **boneco de teste** (`ferramentas/arte/criar_boneco_teste.py`): formas
-  simples com esqueleto, gerado por script, só para provar o pipeline. Não é a arte final.
-- Para trocar pelo modelo de verdade: salve `arte/fontes/lamina.blend` seguindo as regras acima e
-  mude a entrada em `arte/personagens.json` para
-  `{ "id": "lamina", "fonte": "arte/fontes/lamina.blend" }`.
-- Personagens sem sprite continuam aparecendo como formas geométricas.
+- `lamina`: modelado por script, aguardando a aprovação visual do André.
+- Os outros 11 continuam como formas geométricas até a Fase 7B.
 
 ## Licenças
 
-Antes de usar qualquer pack de modelos, confira a licença na página oficial e registre em `CREDITOS.md`.
+Hoje não há nada de terceiros na arte. Se um dia entrar algum pack, confira a licença na página
+oficial e registre em `CREDITOS.md` antes de usar.

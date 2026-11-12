@@ -34,7 +34,7 @@ const LADOS: readonly Lado[] = [0, 1];
 const VELOCIDADES = [1, 2, 4];
 const SPRITES: readonly string[] = spritesJson;
 /** O sprite é desenhado um pouco maior que a caixa de colisão, para a arma e os gestos aparecerem. */
-const FOLGA_DO_SPRITE = 1.2;
+const FOLGA_DO_SPRITE = 1.45;
 
 /** Estado só visual de cada lutador (não existe na simulação). */
 interface Visual {
