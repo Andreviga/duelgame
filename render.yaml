@@ -1,0 +1,14 @@
+# Render (https://render.com): servidor de jogo online.
+# No painel do Render: New > Blueprint > escolha este repositório. Ele lê este arquivo e cria o serviço.
+services:
+  - type: web
+    name: duelgame-servidor
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: virginia
+    # Uma instância só: as salas ficam na memória do processo.
+    numInstances: 1
+    # O Render define a variável PORT sozinho; o servidor escuta nela.
+    healthCheckPath: /
+    autoDeploy: true

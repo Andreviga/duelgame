@@ -3,18 +3,22 @@
 São duas partes: o **servidor de jogo** (Node + Colyseus, precisa de WebSocket ligado o tempo todo)
 e o **cliente** (o site, arquivos estáticos).
 
-## 1. Servidor de jogo
+## 1. Servidor de jogo (Render)
 
-Qualquer hospedagem que rode um contêiner Docker com WebSocket serve (Render, Fly.io, Railway).
-O repositório já tem o `Dockerfile`.
+O repositório já tem o `Dockerfile` e o `render.yaml`.
 
-1. Crie um serviço web apontando para este repositório, usando o `Dockerfile` da raiz.
-2. A hospedagem define a variável `PORT`; o servidor escuta nela (sem ela, usa 2567).
-3. Use **uma instância só**. As salas ficam na memória do processo; com mais de uma instância,
-   quem entra pelo código pode cair na instância errada.
-4. Anote o endereço público, por exemplo `https://meu-jogo.onrender.com`.
+1. Em https://render.com, entre com a conta do GitHub.
+2. **New > Blueprint**, escolha o repositório `duelgame` e confirme. O Render lê o `render.yaml`
+   e cria o serviço `duelgame-servidor`.
+3. Espere o primeiro deploy terminar. Os registros devem mostrar `servidor de jogo ouvindo na porta ...`.
+4. Anote o endereço público, algo como `https://duelgame-servidor.onrender.com`.
 
-Para conferir que subiu: os registros devem mostrar `servidor de jogo ouvindo na porta ...`.
+Limites do plano gratuito do Render: o serviço **dorme depois de uns 15 minutos sem uso** e leva
+cerca de um minuto para acordar. Na prática, quem cria a primeira sala do dia espera esse minuto
+(o jogo mostra "criando a sala…"). Uma partida em andamento não dorme. Para ficar sempre ligado,
+troque `plan: free` por um plano pago no `render.yaml`.
+
+Use **uma instância só**: as salas ficam na memória do processo.
 
 ## 2. Cliente (Vercel)
 
