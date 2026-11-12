@@ -6,7 +6,9 @@
 
 Fases 7A, 7B e 8 aprovadas em 2026-11-12.
 
-**Desvio do plano a decidir:** o plano pede layout "em pé e deitado". Hoje o jogo funciona deitado e, em pé, pede para girar o aparelho. Um layout em pé de verdade exige refazer as seis telas (todas têm posições fixas para 1200×675).
+**Celular em pé:** o André decidiu manter o aviso "gire o aparelho" (2026-11-12). O jogo é só deitado.
+
+**Cenários no Blender:** o da `arena-basica` (pátio de dojo à noite) entrou por patch de outra sessão (5 commits, `public/cenarios/arena-basica/`, 1,41 MB). O jogo ainda não usa as imagens: falta a troca em `src/render`, com plano aguardando o ok do André.
 
 Fases 0 a 6 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
 
@@ -284,7 +286,7 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 - **Briefing para outra IA melhorar a arte no Blender:** `arte/BRIEFING-BLENDER.md`.
 
 ### Fase 9
-- **Em pé, o jogo pede para girar** em vez de ter um layout próprio. É um desvio do plano, aguardando decisão do André.
+- **Em pé, o jogo pede para girar** em vez de ter um layout próprio. Desvio do plano aceito pelo André em 2026-11-12.
 - **O mínimo de toque (76 unidades) foi calculado para um celular deitado de 390 px de altura.** Em aparelhos menores a área fica proporcionalmente menor.
 - **Redução de cor nos atlas** (5 bits por canal): `ARTE_BITS=8 npm run arte:atlas` desliga. Só a ferramenta de atlas mudou; os scripts de modelo não (opção A do André).
 - **Desempenho não medido de verdade.** No ambiente de desenvolvimento (sem placa de vídeo) o combate 2x2 roda a cerca de 23 quadros por segundo, e 90% do tempo é o desenho por software; o código do jogo usa cerca de 10% do tempo do quadro. Não dá para concluir nada sobre celular daqui.
@@ -294,7 +296,7 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 
 Tudo o que falta para a "Definição de 100%" depende do André:
 
-1. Decidir sobre o layout em pé (refazer as telas ou manter "gire o aparelho").
+1. Dar o ok no plano de fazer o jogo usar as imagens de cenário (`public/cenarios/`).
 2. Publicar o servidor (Render) e o cliente (Vercel) e fazer a conferência do `PUBLICAR.md`.
 3. Medir os quadros por segundo em um celular intermediário, com 16 personagens em combate (2x2, rodadas finais).
 4. Jogar online com 4 pessoas em redes diferentes, com uma reconexão.
