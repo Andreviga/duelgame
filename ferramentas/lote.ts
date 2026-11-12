@@ -42,6 +42,8 @@ export interface OpcoesDeLote {
   maximoEmCampo: number;
   arenas?: readonly Arena[];
   personagens?: readonly DefPersonagem[];
+  /** Medir só estas sinergias (ex.: "mundo:piratas"). Sem isto, mede todas. */
+  soSinergias?: readonly string[];
 }
 
 const taxa = (c: Contagem): number => (c.jogos === 0 ? 0 : c.vitorias / c.jogos);
@@ -257,6 +259,7 @@ export function medirSinergias(opcoes: OpcoesDeLote): EfeitoDeSinergia[] {
     ...Object.entries(ctx.sinergias.papeis).map(([k, def]) => ({ tipo: "papel" as const, k, def })),
   ];
   for (const { tipo, k, def } of grupos) {
+    if (opcoes.soSinergias && !opcoes.soSinergias.includes(`${tipo}:${k}`)) continue;
     const dentro = PERSONAGENS.filter((d) => (tipo === "mundo" ? d.mundo : d.papel) === k);
     // Contexto com este bônus desligado (os outros continuam valendo).
     const semEste: typeof ctx = {

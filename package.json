@@ -11,7 +11,7 @@
     "test:e2e": "playwright test",
     "servidor:build": "vite build --config servidor/vite.config.ts",
     "servidor": "npm run servidor:build && node dist-servidor/index.js",
-    "lote": "vitest run --config ferramentas/vitest.config.ts --silent=false --reporter=basic 2>&1 | grep -v \"^ *$\"",
+    "lote": "vitest run --config ferramentas/vitest.config.ts --silent=false 2>&1 | grep -v \"^ *$\"",
     "arte": "vite build --config ferramentas/arte/vite.config.ts --logLevel warn && node dist-ferramentas/montar_atlas.js",
     "arte:atlas": "vite build --config ferramentas/arte/vite.config.ts --logLevel warn && node dist-ferramentas/montar_atlas.js --so-atlas",
     "lint": "tsc --noEmit && eslint . && prettier --check .",
