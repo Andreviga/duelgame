@@ -3,6 +3,7 @@ import { estaVivo } from "../sim/partida/partida";
 import { corDoJogador, desenharFundo } from "./desenho";
 import { ALTURA, criarTexto, dentro, desenharBotao, LARGURA, type Ret } from "./interface";
 import { meuNumero, jogo, NOME_DO_NIVEL, partidaAtual, sairDaSalaOnline } from "./jogo";
+import { musica, tocar } from "./som";
 
 const DE_NOVO: Ret = { x: 450, y: 560, largura: 300, altura: 64 };
 const POSICOES = ["1º", "2º", "3º", "4º"];
@@ -27,6 +28,8 @@ export class CenaResultado extends Phaser.Scene {
       ? humano !== undefined && estaVivo(humano)
       : classificacao[0] === meuNumero();
     const posicao = classificacao.indexOf(meuNumero());
+    musica(null);
+    tocar(venceu ? "vitoria" : "derrota");
     const titulo = venceu
       ? "VOCÊ VENCEU!"
       : duplas

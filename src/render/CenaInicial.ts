@@ -13,6 +13,8 @@ import {
   novaPartida,
   retomarSalaOnline,
 } from "./jogo";
+import { carregarSprites, posarRetrato, temSprite } from "./sprites";
+import { musica } from "./som";
 
 const MODOS: { modo: Modo; titulo: string; descricao: string; ret: Ret }[] = [
   {
@@ -45,8 +47,13 @@ export class CenaInicial extends Phaser.Scene {
     super("inicial");
   }
 
+  preload(): void {
+    carregarSprites(this);
+  }
+
   create(): void {
     document.body.dataset["cena"] = "inicial";
+    musica("preparacao");
     const params = new URLSearchParams(window.location.search);
     jogo.automatico = params.has("auto") && !jogo.automaticoJaRodou;
     const modoParam = params.get("modo");
@@ -63,10 +70,17 @@ export class CenaInicial extends Phaser.Scene {
 
     // Quatro personagens de enfeite, um de cada cor.
     ["ancora", "lamina", "faisca", "maestro"].forEach((id, i) => {
+      const x = 120 + (i < 2 ? i * 90 : 780 + i * 90);
+      const def = personagem(id);
+      if (temSprite(this, id)) {
+        const img = this.add.image(0, 0, id, "parado_0");
+        posarRetrato(this, img, id, x, 200 + def.altura * 0.65, def.altura * 1.3, i >= 2);
+        return;
+      }
       const g = this.add.graphics();
-      const l = criarLutador(personagem(id), 0, i < 2 ? 0 : 1, 0, 0, 1, i);
+      const l = criarLutador(def, 0, i < 2 ? 0 : 1, 0, 0, 1, i);
       desenharCorpo(g, l, 0);
-      g.setPosition(120 + (i < 2 ? i * 90 : 780 + i * 90), 200).setScale(1.3);
+      g.setPosition(x, 200).setScale(1.3);
     });
 
     criarTexto(this, LARGURA / 2, 120, "ARENA DE ESQUADRÕES", 64);

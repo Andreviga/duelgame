@@ -15,7 +15,8 @@ import {
   desenharIcone,
   desenharPinos,
 } from "./desenho";
-import spritesJson from "../dados/sprites.json";
+import { carregarSprites, escalaDoSprite } from "./sprites";
+import { musica, opcoes, tocar } from "./som";
 import {
   animacaoDoLutador,
   ESPEC,
@@ -32,9 +33,6 @@ const FONTE = "'Trebuchet MS', 'Segoe UI', Arial, sans-serif";
 const MS_ENTRE_RODADAS = 3800;
 const LADOS: readonly Lado[] = [0, 1];
 const VELOCIDADES = [1, 2, 4];
-const SPRITES: readonly string[] = spritesJson;
-/** O sprite é desenhado um pouco maior que a caixa de colisão, para a arma e os gestos aparecerem. */
-const FOLGA_DO_SPRITE = 1.45;
 
 /** Estado só visual de cada lutador (não existe na simulação). */
 interface Visual {
@@ -116,12 +114,7 @@ export class CenaCombate extends Phaser.Scene {
   }
 
   preload(): void {
-    // Atlas dos personagens que já têm sprite (os outros continuam como formas geométricas).
-    for (const id of SPRITES) {
-      if (this.textures.exists(id)) continue;
-      this.load.atlas(id, `sprites/${id}.png`, `sprites/${id}.json`);
-      this.load.json(`${id}:atlas`, `sprites/${id}.json`);
-    }
+    carregarSprites(this);
   }
 
   create(): void {
@@ -136,6 +129,8 @@ export class CenaCombate extends Phaser.Scene {
     const param = Number(params.get("semente"));
     this.semente = Number.isFinite(param) && param > 0 ? Math.floor(param) : 1;
     this.debug = params.has("debug");
+    this.velocidade = opcoes.velocidade;
+    musica("combate");
     const v = Number(params.get("velocidade"));
     if (VELOCIDADES.includes(v)) this.velocidade = v;
     if (jogo.online) this.velocidade = 1;
@@ -414,6 +409,7 @@ export class CenaCombate extends Phaser.Scene {
         fx.faiscas(ev.x, ev.y, ev.direcao, ev.forca * (ev.critico ? 1.8 : 1), cor(ev.atacante));
         if (ev.critico) this.anel(ev.x, ev.y, 80, 0xffd54a, 8, 300);
         fx.tremor = Math.max(fx.tremor, Math.min(14, 1 + ev.forca * 0.6));
+        tocar(ev.forca >= 9 || ev.critico ? "golpeForte" : "golpe");
         if (visual) {
           visual.brilho = 1;
           visual.pulso = 1;
@@ -433,6 +429,7 @@ export class CenaCombate extends Phaser.Scene {
         if (visualDaSaida) visualDaSaida.saida = { x, y, tick: e.tick };
         const lado = e.lutadores[ev.id]?.lado ?? 0;
         fx.explosao(x, y, ang, cor(ev.id));
+        tocar("nocaute");
         const acabou = !e.lutadores.some((l) => l.vivo && l.lado === lado);
         this.cameraLenta = acabou ? 750 : 200;
       } else if (ev.tipo === "pulo") {
@@ -449,9 +446,11 @@ export class CenaCombate extends Phaser.Scene {
         if (visual) visual.elastico = -0.12;
       } else if (ev.tipo === "tiro") {
         fx.faiscas(ev.x, ev.y, e.lutadores[ev.id]?.direcao ?? 1, 2, cor(ev.id));
+        tocar("tiro");
       } else if (ev.tipo === "habilidade") {
         const l = e.lutadores[ev.id];
         const visual = this.visuais[ev.id];
+        tocar("habilidade");
         this.anel(ev.x, ev.y - (l?.def.altura ?? 60) / 2, 70, 0xffffff, 6, 260);
         this.anel(ev.x, ev.y - (l?.def.altura ?? 60) / 2, 110, cor(ev.id), 4, 340);
         if (visual) {
@@ -635,11 +634,7 @@ export class CenaCombate extends Phaser.Scene {
     const quadro = l.vivo ? animacaoDoLutador(l, tick) : quadroDeNocaute(depoisDaSaida);
     const x = l.vivo ? l.x : (v.saida?.x ?? l.x);
     const y = l.vivo ? l.y : (v.saida?.y ?? l.y);
-    const meta: unknown = this.cache.json.get(`${l.def.id}:atlas`);
-    const altura =
-      (meta as { meta?: { alturaDoPersonagem?: number } } | undefined)?.meta?.alturaDoPersonagem ??
-      180;
-    const escala = (l.def.altura / altura) * FOLGA_DO_SPRITE;
+    const escala = escalaDoSprite(this, l.def.id, l.def.altura);
     const esquerda = l.direcao === -1;
     const alfa = l.invisivel > 0 ? 0.3 : 1;
     const posicionar = (img: Phaser.GameObjects.Image, dx: number, dy: number): void => {

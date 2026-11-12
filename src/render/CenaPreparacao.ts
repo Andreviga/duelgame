@@ -39,6 +39,8 @@ import {
   jogo,
   partidaAtual,
 } from "./jogo";
+import { carregarSprites, posarRetrato, temSprite } from "./sprites";
+import { musica, tocar, type Efeito } from "./som";
 
 const LARGURA = 1200;
 const ALTURA = 675;
@@ -90,6 +92,7 @@ export class CenaPreparacao extends Phaser.Scene {
   private painel!: Phaser.GameObjects.Graphics;
   private sobre!: Phaser.GameObjects.Graphics;
   private bonecos = new Map<string, Phaser.GameObjects.Graphics>();
+  private retratos = new Map<string, Phaser.GameObjects.Image>();
   private rotulos = new Map<string, Phaser.GameObjects.Text>();
   private usados = new Set<string>();
   private modelos = new Map<string, Lutador>();
@@ -100,14 +103,23 @@ export class CenaPreparacao extends Phaser.Scene {
     super("preparacao");
   }
 
+  preload(): void {
+    carregarSprites(this);
+  }
+
   create(): void {
     this.bonecos = new Map();
+    this.retratos = new Map();
     this.rotulos = new Map();
     this.arrasto = null;
 
     document.body.dataset["cena"] = "preparacao";
+    musica("preparacao");
     this.laco = { estado: partidaAtual().economia, acumulado: 0 };
-    jogo.aoErro = (erro) => this.avisar(MENSAGENS[erro as Erro] ?? erro, 0xff6b6b);
+    jogo.aoErro = (erro) => {
+      tocar("erro");
+      this.avisar(MENSAGENS[erro as Erro] ?? erro, 0xff6b6b);
+    };
 
     ZOOM = Math.min(0.8, 640 / arenaAtual().chao.largura);
     this.fundo = this.add.graphics().setDepth(0);
@@ -181,12 +193,20 @@ export class CenaPreparacao extends Phaser.Scene {
   /** Envia um comando para a simulação (ou para o servidor) e mostra o erro ou a fusão, se houver. */
   private comando(c: Comando): void {
     const r = comandoDoHumano(c);
-    if (!r) return; // online: a resposta chega depois, pelo servidor
+    const somDoComando: Partial<Record<Comando["tipo"], Efeito>> = {
+      comprar: "compra",
+      vender: "venda",
+      pronto: "pronto",
+    };
+    const som = somDoComando[c.tipo] ?? "clique";
+    if (!r) return tocar(som); // online: a resposta chega depois, pelo servidor
     if (!r.ok) {
+      tocar("erro");
       this.avisar(MENSAGENS[r.erro], 0xff6b6b);
       return;
     }
     const fusao = r.fusoes.at(-1);
+    tocar(fusao ? "fusao" : som);
     if (fusao) this.avisar(`Fusão! ${personagem(fusao.personagem).nome} nível ${fusao.nivel}`);
   }
 
@@ -301,6 +321,19 @@ export class CenaPreparacao extends Phaser.Scene {
     }
     this.usados.add(`b:${chave}`);
     g.clear();
+    if (temSprite(this, def.id)) {
+      // Personagem com atlas: o retrato parado no lugar da forma geométrica.
+      let img = this.retratos.get(chave);
+      if (!img) {
+        img = this.add.image(0, 0, def.id, "parado_0");
+        this.retratos.set(chave, img);
+      }
+      posarRetrato(this, img, def.id, x, y, modelo.def.altura * escala, modelo.direcao === -1);
+      img.setAlpha(alfa).setDepth(profundidade).setVisible(true);
+      g.setVisible(false);
+      return;
+    }
+    this.retratos.get(chave)?.setVisible(false);
     desenharCorpo(g, modelo, 0);
     // (x, y) é a base do personagem; o desenho tem origem no centro do corpo.
     g.setPosition(x, y - (modelo.def.altura / 2) * escala);
@@ -391,6 +424,8 @@ export class CenaPreparacao extends Phaser.Scene {
     this.desenharArrasto();
 
     for (const [chave, g] of this.bonecos) if (!this.usados.has(`b:${chave}`)) g.setVisible(false);
+    for (const [chave, img] of this.retratos)
+      if (!this.usados.has(`b:${chave}`)) img.setVisible(false);
     for (const [chave, t] of this.rotulos) if (!this.usados.has(`r:${chave}`)) t.setVisible(false);
   }
 
