@@ -13,5 +13,20 @@
     "id": "vento",
     "fonte": "arte/fontes/vento.blend",
     "gerador": "ferramentas/arte/modelos/vento.py"
+  },
+  {
+    "id": "mare",
+    "fonte": "arte/fontes/mare.blend",
+    "gerador": "ferramentas/arte/modelos/mare.py"
+  },
+  {
+    "id": "canhoneiro",
+    "fonte": "arte/fontes/canhoneiro.blend",
+    "gerador": "ferramentas/arte/modelos/canhoneiro.py"
+  },
+  {
+    "id": "ancora",
+    "fonte": "arte/fontes/ancora.blend",
+    "gerador": "ferramentas/arte/modelos/ancora.py"
   }
 ]
