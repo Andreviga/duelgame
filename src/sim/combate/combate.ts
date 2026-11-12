@@ -34,7 +34,7 @@ const FOLGA_DO_TELEPORTE = 45;
 /** O projétil do canhão é maior que o tiro normal. */
 const ESCALA_DO_CANHAO = 1.8;
 /** Depois de atravessar um alvo, o projétil só causa esta fração do dano, sem arremessar. */
-export const DANO_APOS_ATRAVESSAR = 0.25;
+export const DANO_APOS_ATRAVESSAR = 0.18;
 /** Graus entre um projétil e o seguinte na habilidade "leque" (o primeiro sai reto). */
 export const ABERTURA_DO_LEQUE = 13;
 /** A lâmina da habilidade "bumerangue" (quem a usa não atira no golpe comum). */
@@ -494,6 +494,9 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
         // Atordoa sem arremessar: o alvo larga o que estava fazendo e fica parado para o próximo golpe.
         alvo.dano += hab.dano;
         alvo.atordoado = Math.max(alvo.atordoado, hab.duracao);
+        // Para onde está: atordoado, ele não se seguraria na beirada e cairia sozinho.
+        alvo.vx = 0;
+        alvo.impulso = 0;
         alvo.ataque = { fase: "nenhum", ticks: 0, acertou: false };
         if (!noCasco(alvo)) alvo.hab = semHabilidade();
         alvo.ultimoAtacante = l.id;

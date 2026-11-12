@@ -2,9 +2,9 @@
 
 ## Fase atual
 
-**Fase 9 — Celular e lançamento: a parte do código está pronta; faltam os itens que dependem do André (ver "Próximo passo").**
+**Fase 10 — Itens e elenco ampliado: a parte dos personagens está pronta, aguardando a aprovação do André. Os itens de arena vêm depois.**
 
-Fases 7A, 7B e 8 aprovadas em 2026-11-12.
+Fase 9: a parte de código está pronta; faltam os itens que dependem do André (ver "Próximo passo").
 
 **Celular em pé:** o André decidiu manter o aviso "gire o aparelho" (2026-11-12). O jogo é só deitado.
 
@@ -144,6 +144,12 @@ Pendências herdadas:
 - `src/render/cenarios.ts`: carga das imagens e do `cenario.json`, e a classe que cria céu, longe, perto, chão, plataformas e frente.
 - `src/dados/cenarios.json`: lista das arenas que têm imagens (as três).
 - Reserva por código para arena sem imagens ou com imagem que falhou; testes de navegador para os três casos (`testes/e2e/cenarios.spec.ts`).
+
+### Fase 10 — personagens
+- **Quatro personagens novos**, um por mundo e um por papel: Juíza, Cozinheiro, Cogumelo e Monge do Sino (ver `ELENCO.md`). O elenco tem 16: 4 por mundo e 4 por papel.
+- **Três habilidades novas na simulação**, cada uma com teste: `cartao` (atordoa sem arremessar), `bumerangue` (lâmina que atravessa, volta e acerta de novo) e `leque` (projéteis abertos para cima). O Monge usa `area`, com arremesso baixo.
+- **Arte dos quatro** pelo mesmo pipeline (`ferramentas/arte/modelos/`). O Cogumelo tem esqueleto próprio.
+- **Balanceamento refeito com 16** (`relatorios/lote-fase10-elenco.md`, 10.000 combates): personagens entre 47,0% e 53,2%; trios entre 48,5% e 56,2% (o de Assassino é o único acima de 55%); arenas entre 49,6% e 51,7%; 0 por tempo, 0 quedas sem arremesso, determinismo 1000/1000.
 
 ## Números do lote
 
@@ -323,9 +329,18 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 - `?cenario=imagens` e `?cenario=codigo` no endereço mandam em tudo (para testar).
 - No ambiente de desenvolvimento a troca leva o combate de cerca de 11 para cerca de 30 quadros por segundo.
 
+### Fase 10 — personagens
+- **A seção "Números do lote" acima é a do elenco de 12**; os números atuais estão em `relatorios/lote-fase10-elenco.md`.
+- **O cartão só sai em quem está de pé no chão e zera a velocidade do alvo.** Sem isso, atordoar alguém que voltava para a arena era queda certa (15 casos em 6.000 combates no primeiro lote).
+- **O bumerangue pode ser lançado no ar**: quem o usa chega pulando.
+- **Mexidos para o elenco de 16 ficar equilibrado:** Cozinheiro e Cogumelo enfraquecidos em relação à primeira versão; Sombra, Ponta e Mestre Vento reforçados; Dojo voltou a +6% de velocidade de ataque e de recarga; Monstros +15% de peso (era 20%); Tanque protege 14% e 20% (era 10% e 12%); crítico de Assassino 1,7× (era 2×) e invisibilidade de 2 s (era 3 s); projétil que atravessa causa 18% do dano (era 25%).
+- **Itens desligados por padrão** quando entrarem (recomendação aceita por omissão; o André respondeu só a ordem).
+
 ## Próximo passo
 
-Tudo o que falta para a "Definição de 100%" depende do André:
+Fase 10: aprovar os quatro personagens novos (visual e jeito de jogar); depois, os itens de arena.
+
+Da Fase 9, tudo o que falta para a "Definição de 100%" depende do André:
 
 1. Conferir no celular se o cenário completo fica fluido (em Opções > Cenário dá para forçar "completo" ou "leve").
 2. Confirmar que o servidor está no ar no Render e fazer a conferência do `PUBLICAR.md` em https://duelgame-opal.vercel.app.

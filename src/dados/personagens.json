@@ -101,7 +101,7 @@
     "puloDuplo": 12.5,
     "quedaMaxima": 12,
     "ataque": {
-      "dano": 5,
+      "dano": 6.6,
       "alcance": 36,
       "inicio": 5,
       "ativo": 3,
@@ -119,7 +119,7 @@
       "velocidade": 12,
       "duracao": 50,
       "quantidade": 1,
-      "dano": 8,
+      "dano": 9,
       "arremessoBase": 6,
       "arremessoCrescimento": 0.13,
       "anguloGraus": 78
@@ -427,7 +427,7 @@
     "puloDuplo": 12.5,
     "quedaMaxima": 12,
     "ataque": {
-      "dano": 7,
+      "dano": 7.5,
       "alcance": 38,
       "inicio": 5,
       "ativo": 3,
@@ -492,8 +492,8 @@
       "duracao": 1,
       "quantidade": 1,
       "dano": 4,
-      "arremessoBase": 5,
-      "arremessoCrescimento": 0.1,
+      "arremessoBase": 5.8,
+      "arremessoCrescimento": 0.11,
       "anguloGraus": 18
     }
   },
@@ -553,7 +553,7 @@
     "puloDuplo": 12.5,
     "quedaMaxima": 12,
     "ataque": {
-      "dano": 7,
+      "dano": 6.2,
       "alcance": 38,
       "inicio": 5,
       "ativo": 3,
@@ -566,13 +566,13 @@
     "habilidade": {
       "tipo": "bumerangue",
       "nome": "Cutelo que volta",
-      "recarga": 260,
+      "recarga": 340,
       "alcance": 320,
       "velocidade": 11,
       "duracao": 1,
       "quantidade": 1,
-      "dano": 6,
-      "arremessoBase": 3.5,
+      "dano": 5,
+      "arremessoBase": 3,
       "arremessoCrescimento": 0.1,
       "anguloGraus": 30
     }
@@ -593,7 +593,7 @@
     "puloDuplo": 12,
     "quedaMaxima": 12,
     "ataque": {
-      "dano": 4,
+      "dano": 3.8,
       "alcance": 380,
       "inicio": 9,
       "ativo": 2,
@@ -617,7 +617,7 @@
       "velocidade": 9,
       "duracao": 1,
       "quantidade": 3,
-      "dano": 5,
+      "dano": 4.5,
       "arremessoBase": 3,
       "arremessoCrescimento": 0.09,
       "anguloGraus": 35

@@ -1,7 +1,7 @@
 {
   "raioVizinho": 150,
-  "ticksInvisivel": 180,
-  "multiplicadorCritico": 2,
+  "ticksInvisivel": 120,
+  "multiplicadorCritico": 1.7,
   "explosao": {
     "raio": 650,
     "dano": 22
@@ -52,16 +52,16 @@
       "niveis": [
         {
           "minimo": 2,
-          "descricao": "+20% de peso",
+          "descricao": "+15% de peso",
           "efeitos": {
-            "peso": 1.2
+            "peso": 1.15
           }
         },
         {
           "minimo": 3,
           "descricao": "Ao sair da arena, o monstro explode e fere os inimigos",
           "efeitos": {
-            "peso": 1.2,
+            "peso": 1.15,
             "explosaoAoSair": true
           }
         }
@@ -72,17 +72,17 @@
       "niveis": [
         {
           "minimo": 2,
-          "descricao": "+4% de velocidade de ataque",
+          "descricao": "+6% de velocidade de ataque",
           "efeitos": {
-            "velocidadeDeAtaque": 1.04
+            "velocidadeDeAtaque": 1.06
           }
         },
         {
           "minimo": 3,
-          "descricao": "Habilidades carregam 2% mais rápido",
+          "descricao": "Habilidades carregam 6% mais rápido",
           "efeitos": {
-            "velocidadeDeAtaque": 1.04,
-            "recargaHabilidade": 1.02
+            "velocidadeDeAtaque": 1.06,
+            "recargaHabilidade": 1.06
           }
         }
       ]
@@ -132,16 +132,16 @@
       "niveis": [
         {
           "minimo": 2,
-          "descricao": "Aliados vizinhos recebem 10% menos arremesso",
+          "descricao": "Aliados vizinhos recebem 14% menos arremesso",
           "efeitos": {
-            "protecaoVizinhos": 0.1
+            "protecaoVizinhos": 0.14
           }
         },
         {
           "minimo": 3,
-          "descricao": "Aliados vizinhos recebem 12% menos arremesso",
+          "descricao": "Aliados vizinhos recebem 20% menos arremesso",
           "efeitos": {
-            "protecaoVizinhos": 0.12
+            "protecaoVizinhos": 0.2
           }
         }
       ]

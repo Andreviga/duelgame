@@ -188,7 +188,12 @@ export function alvoDaHabilidade(
       return alvo ? { alvo } : null;
     }
     case "cartao":
-      return atual && atual.atordoado === 0 && dy(atual) < ALINHADO && dx(atual) <= hab.alcance
+      // Só em quem está de pé no chão: atordoar alguém no ar, voltando para a arena, seria queda certa.
+      return atual &&
+        atual.noChao &&
+        atual.atordoado === 0 &&
+        dy(atual) < ALINHADO &&
+        dx(atual) <= hab.alcance
         ? { alvo: atual }
         : null;
     case "bumerangue":

@@ -58,5 +58,25 @@
     "id": "faisca",
     "fonte": "arte/fontes/faisca.blend",
     "gerador": "ferramentas/arte/modelos/faisca.py"
+  },
+  {
+    "id": "juiza",
+    "fonte": "arte/fontes/juiza.blend",
+    "gerador": "ferramentas/arte/modelos/juiza.py"
+  },
+  {
+    "id": "cozinheiro",
+    "fonte": "arte/fontes/cozinheiro.blend",
+    "gerador": "ferramentas/arte/modelos/cozinheiro.py"
+  },
+  {
+    "id": "cogumelo",
+    "fonte": "arte/fontes/cogumelo.blend",
+    "gerador": "ferramentas/arte/modelos/cogumelo.py"
+  },
+  {
+    "id": "monge",
+    "fonte": "arte/fontes/monge.blend",
+    "gerador": "ferramentas/arte/modelos/monge.py"
   }
 ]

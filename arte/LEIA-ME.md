@@ -66,9 +66,8 @@ Os `.blend` em `arte/fontes/` são gerados e não vão para o repositório; os a
 
 ## Estado atual
 
-- Dojo, Piratas e Futebol (9 humanoides): aprovados pelo André.
-- Monstros (`brasa`, `rochedo`, `faisca`): modelados, aguardando a aprovação visual do André.
-- Os 12 personagens têm sprite; nenhum usa mais a forma geométrica no combate.
+- Os 12 personagens iniciais: aprovados pelo André.
+- Os 16 personagens têm sprite. Os quatro da Fase 10 (`juiza`, `cozinheiro`, `cogumelo`, `monge`) aguardam a aprovação visual do André.
 
 Para refazer só alguns: `ARTE_SO=sombra,vento npm run arte`.
 

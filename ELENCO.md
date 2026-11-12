@@ -43,7 +43,19 @@ Todos os números são ponto de partida. O balanceamento da Fase 5 manda.
 | 11 | Sombra | Dojo | Assassino | 3 | Leve | **Passo oculto:** some e reaparece atrás do inimigo de menor peso | Ninja de roupa cinza-escura e cachecol comprido |
 | 12 | Mestre Vento | Dojo | À distância | 5 | Leve | **Tufão:** rajada que empurra todos os inimigos para a borda mais próxima | Mestre idoso de barba longa com um leque gigante |
 
-Distribuição: 3 por mundo, 3 por papel. Custos: dois de 2, cinco de 3, três de 4 e dois de 5. Ajustar na Fase 5 se a simulação pedir.
+### Elenco ampliado (Fase 10, 2026-11-12)
+
+| # | Nome | Mundo | Papel | Custo | Peso | Habilidade | Aparência |
+|---|---|---|---|---|---|---|---|
+| 13 | Juíza | Futebol | Corpo a corpo | 3 | Médio | **Cartão vermelho:** atordoa um inimigo que esteja de pé no chão, sem arremessar, e fica com o golpe pronto | Árbitra de preto e amarelo, rabo de cavalo, apito no pescoço e cartão no bolso |
+| 14 | Cozinheiro | Piratas | Assassino | 3 | Leve | **Cutelo que volta:** lança o cutelo, que atravessa os inimigos, volta e acerta de novo | Cozinheiro de bordo de avental manchado, lenço na cabeça e bigode grande |
+| 15 | Cogumelo | Monstros | À distância | 2 | Leve | **Chuva de esporos:** três esporos em leque, o primeiro reto e os outros para cima | Cogumelo saltador de chapéu roxo com pintas claras e cara de bravo |
+| 16 | Monge do Sino | Dojo | Tanque | 4 | Pesado | **Badalada:** faz o sino soar e empurra para longe, quase na horizontal, quem está em volta | Monge enorme e calmo, de manto ocre, com um sino de bronze na ponta de um cajado |
+
+Com eles: 4 por mundo, 4 por papel. Custos: três de 2, sete de 3, quatro de 4 e dois de 5. As características
+continuam ativando com 2 e com 3 em campo.
+
+Distribuição dos 12 iniciais: 3 por mundo, 3 por papel. Custos: dois de 2, cinco de 3, três de 4 e dois de 5. Ajustar na Fase 5 se a simulação pedir.
 
 ## Base de arte para cada um (Fase 7)
 
