@@ -100,10 +100,12 @@ python3 ferramentas/arte/rodar_blender.py ferramentas/arte/cenarios/arena-basica
   brilho quente só nas bordas. Nada no fundo tem linha clara na altura do chão.
 - **Reproduzível:** Cycles na CPU, semente fixa, sem denoise, só luz direta (sem ruído), sem
   pontilhado e sem data gravada no arquivo. Rodar duas vezes dá os mesmos arquivos, byte a byte.
-- **Luz:** as mesmas duas direções dos personagens (`render_sprites.py`).
+- **Luz:** as mesmas duas direções dos personagens (`render_sprites.py`). Lanternas e janelas usam
+  `lampada()`: a luz é calculada dentro dos materiais da camada (distância e ângulo), sem luz do
+  Blender, para não haver ruído. Brilhos suaves (lua, lanternas, névoa) usam `halo()`.
 - **Peso:** no máximo 1,5 MB por arena.
 
-Estado: `arena-basica` (pátio de dojo à noite) renderizada, 1,0 MB, aguardando a aprovação do André.
+Estado: `arena-basica` (pátio de dojo à noite) renderizada, 1,4 MB, aguardando a aprovação do André.
 **O jogo ainda não carrega essas imagens**: `desenharFundo` e `desenharArena` continuam desenhando
 por código. A troca por camadas com paralaxe é o próximo passo, só em `src/render`.
 

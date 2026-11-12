@@ -30,11 +30,9 @@ c.tom_do_recorte = (0.45, 0.5, 0.9)
 s = c.sorteio
 
 
-def halo(nome, x, y, raio, hexa, forca, profundidade, aneis=5):
-    """Brilho suave: vários discos transparentes, um dentro do outro."""
-    for i in range(aneis):
-        t = (i + 1) / aneis
-        c.disco(f"{nome}_halo{i}", x, y, raio * t, c.brilho(hexa, alfa=forca / aneis), lados=28, profundidade=profundidade - i * 0.2)
+def halo(nome, x, y, raio, hexa, forca, profundidade, queda=2.0, achatar=1.0):
+    """Brilho suave em volta de um ponto, sumindo aos poucos até `raio`."""
+    c.halo(f"{nome}_halo", x, y, raio, hexa, forca, profundidade, queda, achatar)
 
 
 # ---------------------------------------------------------------------------- céu (1600×900)
@@ -48,6 +46,7 @@ c.retangulo(
     c.degrade([(0.0, "#060913"), (0.4, "#121830"), (0.72, "#232748"), (1.0, "#3a3457")], 0, 900),
     profundidade=900,
 )
+halo("horizonte", 800, 930, 1200, "#51457a", 0.55, 895, queda=1.6, achatar=2.4)
 # Faixa de estrelas miúdas atravessando o alto do céu, e algumas maiores, de quatro pontas.
 for i in range(150):
     x = s.uniform(0, 1600)
@@ -61,7 +60,8 @@ for i, (x, y, r) in enumerate(((118, 96, 7), (402, 58, 5), (688, 132, 6), (964, 
     c.placa(f"estrela_g{i}", [(x - r, y), (x - r * 0.22, y - r * 0.22), (x, y - r), (x + r * 0.22, y - r * 0.22), (x + r, y), (x + r * 0.22, y + r * 0.22), (x, y + r), (x - r * 0.22, y + r * 0.22)], c.brilho(tom), profundidade=879)
 # Lua: à direita, emoldurada pelo portal, acima de onde se luta. Clara, mas sem estourar.
 LUA = (1105, 296)
-halo("lua", *LUA, 230, "#8f9bd0", 0.16, 872, aneis=8)
+halo("lua", *LUA, 330, "#8f9bd0", 0.5, 872, queda=2.6)
+halo("lua_perto", *LUA, 130, "#aab4e0", 0.35, 871, queda=1.6)
 c.disco("lua", *LUA, 84, c.brilho("#838fb8"), lados=16, profundidade=866, giro=0.2)
 c.disco("lua_luz", LUA[0] - 10, LUA[1] - 10, 68, c.brilho("#8c98c0"), lados=14, profundidade=865, giro=0.5)
 for i, (dx, dy, r) in enumerate(((-30, -22, 22), (26, 18, 15), (-12, 38, 11), (36, -34, 9), (4, -50, 7), (-52, 14, 8))):
@@ -93,6 +93,18 @@ for i, (x, y, l, a, tom) in enumerate(
             (x - ll * 0.36, yy + aa * 0.45),
         ]
         c.placa(f"nuvem{i}_{parte}", pontos, c.brilho(misturar(tom, "#4a4f80", clareia)), profundidade=860 - i - parte * 0.5)
+        if parte == 0:
+            # A borda de cima pega a luz da lua: mais forte quanto mais perto dela.
+            perto_da_lua = max(0.0, 1 - math.hypot(x - LUA[0], y - LUA[1]) / 900)
+            c.fita(f"nuvem{i}_borda", pontos[1:5], [1.0, 3.0, 2.4, 1.0], c.brilho(misturar(tom, "#8088c0", 0.25 + 0.5 * perto_da_lua)), profundidade=859.6 - i)
+# Uma nuvem fina passando na frente da lua, e uma estrela cadente no canto.
+for i, (dx, dy, l, a, tom) in enumerate(((40, 54, 360, 11, "#2a2f58"), (-90, 72, 220, 7, "#30355f"))):
+    x, y = LUA[0] + dx, LUA[1] + dy
+    pontos = [(x - l / 2, y), (x - l * 0.28, y - a * 0.8), (x + l * 0.05, y - a), (x + l * 0.3, y - a * 0.5), (x + l / 2, y), (x + l * 0.3, y + a * 0.6), (x - l * 0.2, y + a * 0.7)]
+    c.placa(f"nuvem_lua{i}", pontos, c.brilho(tom), profundidade=850 - i)
+    c.fita(f"nuvem_lua{i}_borda", pontos[1:4], [1.0, 2.6, 1.0], c.brilho("#7c86be"), profundidade=849.5 - i)
+c.fita("cadente", [(505, 168), (560, 146), (604, 128)], [0.4, 1.6, 3.0], c.brilho("#b9c4ea"), profundidade=878)
+c.disco("cadente_ponta", 606, 127, 2.6, c.brilho("#e6ecff"), lados=6, profundidade=877)
 
 # -------------------------------------------------------------------------- longe (2000×900)
 c.camada("longe", 2000, 900)
@@ -138,6 +150,23 @@ for andar in range(3):
     c.retangulo(f"pagode_corpo{andar}", px - largura * 0.52, y, px + largura * 0.52, y + 24, PAGODE, profundidade=-900)
     c.retangulo(f"pagode_luz{andar}", px - 3, y + 8, px + 3, y + 17, c.brilho("#b98a4a"), profundidade=-901)
 c.placa("pagode_ponta", [(px - 3, py - 79), (px, py - 118), (px + 3, py - 79)], PAGODE, profundidade=-900)
+# Mata na beira do vale: fileira de pinheirinhos em silhueta, mais densa nas pontas.
+MATA = c.brilho("#0d101e")
+x = -10.0
+while x < 2010:
+    centro = abs(x - 1000) / 1000
+    altura = s.uniform(14, 30) + 22 * centro * s.random()
+    c.placa(f"mata{int(x)}", [(x - altura * 0.3, HORIZONTE + 14), (x, HORIZONTE + 14 - altura), (x + altura * 0.3, HORIZONTE + 14)], MATA, profundidade=-940)
+    x += s.uniform(9, 22)
+# Duas vilas ao pé da serra: pontinhos de luz quente, bem longe.
+for nome, cx, cy, n in (("vila_d", 1560, 628, 16), ("vila_e", 560, 636, 9)):
+    halo(nome, cx, cy, 120, "#c98a4a", 0.2, -930, queda=2.0, achatar=2.6)
+    for i in range(n):
+        vx, vy = cx + s.gauss(0, 46), cy + s.uniform(-10, 8)
+        c.retangulo(f"{nome}_luz{i}", vx - 1.4, vy - 1.6, vx + 1.4, vy + 1.6, c.brilho(misturar("#b9803f", "#f0c070", s.random())), profundidade=-941)
+# Tufos de névoa deitados no vale.
+for i, (nx, ny, nr) in enumerate(((300, 640, 420), (1050, 652, 520), (1720, 636, 440), (760, 600, 300))):
+    halo(f"tufo{i}", nx, ny, nr, "#3a4070", 0.32, -945 - i, queda=1.8, achatar=7.0)
 # Chão distante: fecha a camada até embaixo, escurecendo.
 c.retangulo("base_longe", -10, HORIZONTE, 2010, 910, c.degrade([(0, "#141728"), (1, "#0e1222")], HORIZONTE, 900), profundidade=-950)
 
@@ -156,6 +185,13 @@ COPA = c.mat("#111a26", ambiente=0.55, luz=0.5)
 COPA_FUNDO = c.mat("#0e1522", ambiente=0.6, luz=0.3)
 FLOR = c.mat("#4a2a42", ambiente=0.5, luz=0.5, base=0.6)  # cerejeira à noite: rosa bem fechado
 FLOR_CLARA = c.mat("#59324e", ambiente=0.5, luz=0.55, base=0.65)
+FLOR_LUZ = c.mat("#7a4868", ambiente=0.5, luz=0.6, base=0.8)
+BAMBU = c.mat("#1c2b2a", ambiente=0.5, luz=0.55, base=0.75)
+BAMBU_NO = c.mat("#121c1c", ambiente=0.5, luz=0.4, base=1.0)
+PALHA = c.mat("#4a3d30", ambiente=0.45, luz=0.5, base=0.7)
+TECIDO = c.mat("#2a2440", ambiente=0.5, luz=0.5, base=0.7)
+TECIDO_CLARO = c.mat("#8a7fa0", ambiente=0.5, luz=0.5, base=0.9)
+CAIBRO = c.mat("#3b2a30", ambiente=0.5, luz=0.55, base=1.0)
 TRONCO = c.brilho("#0b0e18")
 GALHO = c.mat("#1a1420", ambiente=0.5, luz=0.4, base=1.0)
 LUZ = c.brilho("#ffcf73")
@@ -178,6 +214,9 @@ def cerejeira(nome, x, altura, profundidade=0.0, lado=1):
     for i, (fx, fy) in enumerate(copas + [(topo[0] - a * 0.12, topo[1] - a * 0.2), (topo[0] + a * 0.16, topo[1] - a * 0.3)]):
         r = a * s.uniform(0.17, 0.23)
         c.bolha(f"{nome}_copa{i}", fx, fy, r * 1.25, r * 0.85, FLOR if i % 2 else FLOR_CLARA, profundidade - 30 - i * 6, detalhe=2)
+        # cachos de flor mais claros, do lado que pega a lua
+        for k in range(5):
+            c.bolha(f"{nome}_cacho{i}_{k}", fx + s.uniform(-0.9, 0.7) * r, fy + s.uniform(-0.7, 0.2) * r, r * s.uniform(0.2, 0.3), r * s.uniform(0.15, 0.22), FLOR_LUZ, profundidade - 70 - i * 6, torto=0.25)
 
 
 # Pinheiros nas bordas, atrás de tudo. No meio (atrás da luta) não há árvore.
@@ -214,7 +253,8 @@ for j, x0 in enumerate((CASA - 136, CASA - 52)):
         c.retangulo(f"dojo_grade_v{j}_{i}", x0 + i * 20 - 1.5, 520, x0 + i * 20 + 1.5, 660, TRONCO, profundidade=-12)
     for i in range(1, 4):
         c.retangulo(f"dojo_grade_h{j}_{i}", x0, 520 + i * 35 - 1.5, x0 + 60, 520 + i * 35 + 1.5, TRONCO, profundidade=-12)
-halo("dojo", CASA - 76, 590, 120, "#ffb060", 0.08, -13, aneis=5)
+halo("dojo", CASA - 76, 590, 170, "#ffb060", 0.3, -13)
+c.lampada("dojo_luz", CASA - 76, 600, -110, "#ffb060", forca=1.3, raio=170)
 c.telhado_curvo("dojo_telhado", CASA - 270, CASA + 360, 480, 376, TELHA, TELHA_ESCURA, avanco=90, levanta=30, trechos=12, recuo=0.22, costelas=18)
 c.caixa("dojo_cumeeira", CASA - 136, 364, CASA + 226, 380, TELHA_ESCURA, frente=-8, fundo=8, chanfro=3)
 c.caixa("dojo_varanda", CASA - 200, PATIO - 22, CASA + 260, PATIO + 6, MADEIRA, frente=-60, fundo=-10, chanfro=4)
@@ -251,12 +291,32 @@ for i in range(len(VIGA_ALTA) - 1):
     )
 c.telhado_curvo("portal_telhado", COL_E - 214, COL_D + 214, 190, 138, TELHA, TELHA_ESCURA, avanco=70, levanta=34, trechos=16, recuo=0.05, costelas=40)
 c.caixa("portal_cumeeira", COL_E - 150, 128, COL_D + 150, 142, TELHA_ESCURA, frente=-10, fundo=10, chanfro=3)
+for nome, x, lado in (("e", COL_E - 150, -1), ("d", COL_D + 150, 1)):
+    c.placa(f"portal_cumeeira_ponta_{nome}", [(x, 126), (x + lado * 30, 118), (x + lado * 22, 142), (x, 144)], TELHA_ESCURA, profundidade=-12)
+# Caibros: a fileira de pontas de madeira sob o beiral, acompanhando a curva do telhado.
+X0_TELHADO, X1_TELHADO = COL_E - 214, COL_D + 214
+x = X0_TELHADO + 30
+while x < X1_TELHADO - 20:
+    t = (x - X0_TELHADO) / (X1_TELHADO - X0_TELHADO)
+    y = 190 - 34 * ((2 * t - 1) ** 2) ** 1.5 + 9
+    c.caixa(f"portal_caibro{int(x)}", x - 6, y, x + 6, y + 11, CAIBRO, frente=-76, fundo=-50, chanfro=2)
+    x += 34
+for nome, x, lado in (("e", X0_TELHADO, -1), ("d", X1_TELHADO, 1)):
+    c.placa(f"portal_ponta_{nome}", [(x - lado * 30, 160), (x + lado * 4, 152), (x + lado * 22, 124), (x + lado * 2, 166)], TELHA_ESCURA, profundidade=-72)
+# Corda grossa trançada na viga de baixo, com três borlas: detalhe de santuário, sem símbolo nenhum.
+CORDA = c.mat("#6a5a40", ambiente=0.5, luz=0.5, base=0.8)
+pontos_da_corda = [(COL_E + 150 + (COL_D - COL_E - 300) * i / 24, 300 + 10 * math.sin(math.pi * i / 24)) for i in range(25)]
+c.fita("portal_corda", pontos_da_corda, [5 + 5 * math.sin(math.pi * i / 24) for i in range(25)], CORDA, profundidade=-38)
+for i in (6, 12, 18):
+    bx, by = pontos_da_corda[i]
+    c.placa(f"portal_borla{i}", [(bx - 4, by + 3), (bx + 4, by + 3), (bx + 6, by + 26), (bx, by + 32), (bx - 6, by + 26)], CORDA, profundidade=-39)
 
 # Lanternas de papel penduradas na viga, junto das colunas: o único brilho quente perto da luta,
 # e fica nas pontas.
 for nome, x in (("e", COL_E + 84), ("d", COL_D - 84)):
     c.retangulo(f"lanterna_fio_{nome}", x - 1.5, 296, x + 1.5, 326, TRONCO, profundidade=-20)
-    halo(f"lanterna_{nome}", x, 350, 74, "#ffbe66", 0.16, -52, aneis=6)
+    halo(f"lanterna_{nome}", x, 350, 96, "#ffbe66", 0.5, -52, queda=2.2)
+    c.lampada(f"lanterna_luz_{nome}", x, 352, -110, "#ffb45a", forca=1.35, raio=130)
     corpo = [(x - 9, 328), (x + 9, 328), (x + 16, 338), (x + 16, 362), (x + 9, 372), (x - 9, 372), (x - 16, 362), (x - 16, 338)]
     c.placa(f"lanterna_{nome}", corpo, LUZ, profundidade=-56)
     c.placa(f"lanterna_miolo_{nome}", [(x - 5, 334), (x + 5, 334), (x + 9, 342), (x + 9, 358), (x + 5, 366), (x - 5, 366), (x - 9, 358), (x - 9, 342)], c.brilho("#ffe6a8"), profundidade=-57)
@@ -273,7 +333,8 @@ def lanterna_de_pedra(nome, x, escala=1.0):
     c.caixa(f"{nome}_base", x - 28 * e, y - 14 * e, x + 28 * e, y, PEDRA, frente=-74, fundo=-26, chanfro=5 * e)
     c.cilindro(f"{nome}_haste", x, y - 92 * e, y - 14 * e, 8 * e, 11 * e, PEDRA, lados=6, profundidade=-50)
     c.caixa(f"{nome}_mesa", x - 25 * e, y - 104 * e, x + 25 * e, y - 92 * e, PEDRA, frente=-72, fundo=-28, chanfro=4 * e)
-    halo(nome, x, y - 124 * e, 58 * e, "#ffb85c", 0.1, -72, aneis=6)
+    halo(nome, x, y - 124 * e, 84 * e, "#ffb85c", 0.42, -72, queda=2.2)
+    c.lampada(f"{nome}_luz", x, y - 124 * e, -120, "#ffb45a", forca=1.4, raio=120)
     c.caixa(f"{nome}_caixa", x - 18 * e, y - 144 * e, x + 18 * e, y - 104 * e, PEDRA_ESCURA, frente=-66, fundo=-34, chanfro=2 * e)
     c.retangulo(f"{nome}_fogo", x - 11 * e, y - 138 * e, x + 11 * e, y - 110 * e, LUZ_FRACA, profundidade=-74)
     c.retangulo(f"{nome}_fogo_miolo", x - 6 * e, y - 130 * e, x + 6 * e, y - 112 * e, c.brilho("#ffd98a"), profundidade=-74.5)
@@ -294,6 +355,43 @@ for i, (x, r) in enumerate(((560, 34), (640, 24), (1770, 28), (1820, 20), (300, 
     c.bolha(f"arbusto{i}", x, PATIO - r * 0.5, r * 1.5, r, COPA, -60, torto=0.22)
 for i, (x, r) in enumerate(((610, 13), (1745, 16), (2010, 12), (410, 10))):
     c.bolha(f"pedra{i}", x, PATIO + 2, r * 1.4, r, PEDRA, -84, torto=0.2)
+
+# Bambuzal atrás dos estandartes.
+for nome, x0, lado in (("e", 548, 1), ("d", 1852, -1)):
+    for i in range(8):
+        x = x0 + lado * (i * 9 + s.uniform(-3, 3))
+        topo = s.uniform(300, 430)
+        inclina = lado * s.uniform(-6, 22)
+        c.fita(f"bambu_{nome}{i}", [(x, PATIO + 6), (x + inclina * 0.4, (PATIO + topo) / 2), (x + inclina, topo)], [6.0, 5.0, 3.5], BAMBU, profundidade=8 - i)
+        for k in range(1, 7):
+            t = k / 7
+            c.retangulo(f"bambu_no_{nome}{i}_{k}", x + inclina * t * t - 3.5, PATIO + 6 + (topo - PATIO - 6) * t - 1, x + inclina * t * t + 3.5, PATIO + 6 + (topo - PATIO - 6) * t + 1, BAMBU_NO, profundidade=7 - i)
+        for k in range(4):
+            fx, fy = x + inclina + s.uniform(-6, 6), topo + s.uniform(0, 60)
+            giro = lado * s.uniform(0.2, 1.0)
+            c.placa(f"bambu_folha_{nome}{i}_{k}", [(fx, fy), (fx + 22 * math.cos(giro), fy + 9 * math.sin(giro) - 4), (fx + 34 * math.cos(giro), fy + 16)], BAMBU, profundidade=6 - i)
+
+# Estandartes do dojo: pano escuro com um círculo claro (emblema inventado, sem letra nenhuma).
+for nome, x, lado in (("e", 604, 1), ("d", 1796, -1)):
+    c.fita(f"estandarte_mastro_{nome}", [(x, PATIO + 6), (x, 318)], 5, TRONCO, profundidade=-30)
+    c.retangulo(f"estandarte_travessa_{nome}", min(x - lado * 4, x + lado * 48), 334, max(x - lado * 4, x + lado * 48), 339, TRONCO, profundidade=-31)
+    xa, xb = sorted((x + lado * 8, x + lado * 44))
+    meio = (xa + xb) / 2
+    c.placa(f"estandarte_pano_{nome}", [(xa, 339), (xb, 339), (xb + 2, 500), (meio, 524), (xa - 2, 500)], TECIDO, profundidade=-32)
+    c.disco(f"estandarte_emblema_{nome}", meio, 392, 11, TECIDO_CLARO, lados=16, profundidade=-33)
+    c.disco(f"estandarte_emblema_miolo_{nome}", meio, 392, 6, TECIDO, lados=12, profundidade=-34)
+    for dy in (352, 476):
+        c.retangulo(f"estandarte_listra_{nome}{dy}", xa + 3, dy, xb - 3, dy + 3, TECIDO_CLARO, profundidade=-33)
+
+# Bonecos de treino de palha, apagados, depois das pontas do chão da luta.
+for nome, x in (("e", 664), ("d", 1736)):
+    y = PATIO + 6
+    c.cilindro(f"boneco_poste_{nome}", x, y - 150, y, 7, 9, MADEIRA_ESCURA, lados=6, profundidade=-40)
+    c.cilindro(f"boneco_corpo_{nome}", x, y - 142, y - 70, 19, 16, PALHA, lados=8, profundidade=-40)
+    c.caixa(f"boneco_bracos_{nome}", x - 44, y - 128, x + 44, y - 117, MADEIRA_ESCURA, frente=-62, fundo=-50, chanfro=2)
+    c.bolha(f"boneco_cabeca_{nome}", x, y - 160, 15, 15, PALHA, -40, torto=0.06)
+    for dy in (132, 108, 84):
+        c.retangulo(f"boneco_corda_{nome}{dy}", x - 19, y - dy - 2, x + 19, y - dy + 2, TRONCO, profundidade=-60)
 
 # Pinheiros da frente, só nas pontas.
 for i, (x, altura) in enumerate(((95, 310), (2330, 300))):
@@ -319,6 +417,15 @@ c.retangulo(
     c.degrade([(0, "#2c3158"), (1, "#2c3158")], 560, 820, alfas=[(0.0, 0.0), (0.55, 0.3), (1.0, 0.0)]),
     profundidade=-120,
 )
+
+for i, (nx, ny, nr) in enumerate(((260, 742, 460), (2120, 746, 480), (1200, 770, 620), (760, 720, 300), (1660, 716, 300))):
+    halo(f"tufo_patio{i}", nx, ny, nr, "#3b4274", 0.3, -125 - i, queda=1.8, achatar=7.5)
+# Vaga-lumes, só perto das pontas.
+for i in range(9):
+    vx = s.uniform(60, 560) if i % 2 else s.uniform(1840, 2340)
+    vy = s.uniform(470, 700)
+    halo(f"vagalume{i}", vx, vy, 11, "#c9dc8a", 0.3, -130)
+    c.disco(f"vagalume_ponto{i}", vx, vy, 1.5, c.brilho("#dbe8a8"), lados=6, profundidade=-131)
 
 # --------------------------------------------------------------------------- chão (1600×80)
 chao = ARENA["chao"]
@@ -351,6 +458,20 @@ for i in range(9):
     x = s.uniform(20, LARGURA_DO_CHAO - 60)
     c.placa(f"musgo{i}", [(x, 18), (x + s.uniform(26, 60), 18), (x + s.uniform(14, 30), 18 + s.uniform(6, 13)), (x + 6, 18 + s.uniform(3, 7))], c.brilho("#2b3d45"), profundidade=-22)
 
+# Medalhão entalhado no meio e tachas de pedra ao longo da primeira fiada.
+MEIO = LARGURA_DO_CHAO / 2
+c.disco("medalhao_fundo", MEIO, 48, 25, c.brilho("#1c2436"), lados=8, profundidade=-24, giro=math.pi / 8)
+c.disco("medalhao_aro", MEIO, 48, 21, c.brilho("#6f82a8"), lados=8, profundidade=-25, giro=math.pi / 8)
+c.disco("medalhao_miolo", MEIO, 48, 16, c.brilho("#27324a"), lados=8, profundidade=-26, giro=math.pi / 8)
+c.disco("medalhao_centro", MEIO, 48, 7, c.brilho("#8fa3c8"), lados=4, profundidade=-27)
+for x in range(100, LARGURA_DO_CHAO, 200):
+    if abs(x - MEIO) > 60:
+        c.disco(f"tacha{x}", x, 33, 5, c.brilho("#5a6c90"), lados=4, profundidade=-24)
+        c.disco(f"tacha_luz{x}", x - 1, 32, 2.2, c.brilho("#9db3d6"), lados=4, profundidade=-25)
+# As pontas do chão pegam um pouco da luz quente das lanternas.
+for nome, x in (("e", 0), ("d", LARGURA_DO_CHAO)):
+    c.halo(f"chao_calor_{nome}", x, 34, 240, "#ffb45a", 0.05, -12, queda=2.0, achatar=1.6)
+
 # --------------------------------------------------------------------- plataforma (380×40)
 c.camada("plataforma", 380, 40)
 # A metade de cima é a tábua (10 unidades do mundo); a de baixo, a sombra dela, quase sumindo.
@@ -363,6 +484,11 @@ for x in (95, 190, 285):
 for x0, x1 in ((0, 10), (370, 380)):
     c.retangulo(f"tabua_ponta{x0}", x0, 0, x1, 20, c.brilho("#8b6a3c"), profundidade=-7)
     c.retangulo(f"tabua_ponta_luz{x0}", x0, 0, x1, 3, c.brilho("#c9a469"), profundidade=-8)
+for x in (30, 350):
+    c.retangulo(f"tabua_corda{x}", x - 5, 6, x + 5, 20, c.brilho("#6a5a40"), profundidade=-9)
+    for dy in (9, 13, 17):
+        c.retangulo(f"tabua_corda_risco{x}_{dy}", x - 5, dy, x + 5, dy + 1, c.brilho("#3d3324"), profundidade=-10)
+c.retangulo("tabua_veio", 44, 11, 336, 12, c.brilho("#465678"), profundidade=-5)
 c.retangulo("tabua_sombra", 6, 20, 374, 40, c.degrade([(0, "#05070d"), (1, "#05070d")], 20, 40, alfas=[(0.0, 0.42), (1.0, 0.0)]), profundidade=0)
 
 # ------------------------------------------------------------------------- frente (2400×900)
@@ -370,6 +496,12 @@ c.camada("frente", 2400, 900)
 SOMBRA = c.brilho("#07090f")
 FLOR_FRENTE = c.mat("#3d2236", ambiente=0.5, luz=0.5, base=0.6)
 FLOR_FRENTE_CLARA = c.mat("#4b2a42", ambiente=0.5, luz=0.5, base=0.65)
+FLOR_FRENTE_LUZ = c.mat("#6a3d5a", ambiente=0.5, luz=0.55, base=0.8)
+for i in range(6):
+    vx = s.uniform(40, 460) if i % 2 else s.uniform(1940, 2360)
+    vy = s.uniform(330, 720)
+    halo(f"frente_vagalume{i}", vx, vy, 15, "#c9dc8a", 0.32, -140)
+    c.disco(f"frente_vagalume_ponto{i}", vx, vy, 2.0, c.brilho("#dbe8a8"), lados=6, profundidade=-141)
 # Galhos de cerejeira entrando pelos cantos de cima, bem escuros, longe do centro.
 for nome, lado, x0 in (("e", 1, 0), ("d", -1, 2400)):
     galhos = (((0, 40), (330, 150)), ((0, 150), (230, 250)), ((150, 100), (300, 60)), ((240, 124), (430, 190)))
@@ -379,6 +511,8 @@ for nome, lado, x0 in (("e", 1, 0), ("d", -1, 2400)):
         c.placa(f"frente_galho_{nome}{i}", [(ax, ay - g), (ax, ay + g), (bx, by + g * 0.3), (bx, by - g * 0.3)], SOMBRA, profundidade=-i)
     for i, (dx, dy, r) in enumerate(((60, 40, 80), (200, 70, 70), (330, 150, 60), (120, 170, 60), (230, 250, 48), (300, 56, 50), (430, 190, 40), (20, 110, 70))):
         c.bolha(f"frente_copa_{nome}{i}", x0 + lado * dx, dy, r * 1.25, r * 0.8, FLOR_FRENTE if i % 3 else FLOR_FRENTE_CLARA, -40 - i * 5, detalhe=2)
+        for k in range(4):
+            c.bolha(f"frente_cacho_{nome}{i}_{k}", x0 + lado * dx + s.uniform(-0.9, 0.9) * r, dy + s.uniform(-0.5, 0.5) * r, r * s.uniform(0.16, 0.26), r * s.uniform(0.12, 0.2), FLOR_FRENTE_LUZ, -120 - i * 5, torto=0.25)
 # Pétalas caindo, só perto das bordas.
 for i in range(34):
     lado = i % 2
