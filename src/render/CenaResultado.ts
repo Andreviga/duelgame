@@ -4,6 +4,7 @@ import { corDoJogador, desenharFundo } from "./desenho";
 import { ALTURA, criarTexto, dentro, desenharBotao, LARGURA, type Ret } from "./interface";
 import { meuNumero, jogo, NOME_DO_NIVEL, partidaAtual, sairDaSalaOnline } from "./jogo";
 import { musica, tocar } from "./som";
+import { areaDeToque } from "./toque";
 
 const DE_NOVO: Ret = { x: 450, y: 560, largura: 300, altura: 64 };
 const POSICOES = ["1º", "2º", "3º", "4º"];
@@ -83,7 +84,7 @@ export class CenaResultado extends Phaser.Scene {
       26,
     );
     this.input.on("pointerdown", (ponteiro: Phaser.Input.Pointer) => {
-      if (dentro(DE_NOVO, ponteiro.x, ponteiro.y)) {
+      if (dentro(areaDeToque(DE_NOVO), ponteiro.x, ponteiro.y)) {
         if (jogo.online) void sairDaSalaOnline();
         jogo.partida = null;
         jogo.automatico = false;

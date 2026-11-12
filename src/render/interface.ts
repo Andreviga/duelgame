@@ -1,15 +1,11 @@
 import type Phaser from "phaser";
+import type { Ret } from "./toque";
 
 export const LARGURA = 1200;
 export const ALTURA = 675;
 export const FONTE = "'Trebuchet MS', 'Segoe UI', Arial, sans-serif";
 
-export interface Ret {
-  x: number;
-  y: number;
-  largura: number;
-  altura: number;
-}
+export type { Ret } from "./toque";
 
 export const dentro = (r: Ret, x: number, y: number): boolean =>
   x >= r.x && x <= r.x + r.largura && y >= r.y && y <= r.y + r.altura;

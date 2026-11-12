@@ -48,6 +48,8 @@ export const jogo: {
   /** Momento (performance.now) em que a fase atual acaba, segundo o servidor. */
   prazo: number;
   conexaoCaiu: boolean;
+  /** Recado para o menu mostrar uma vez (ex.: a sala online caiu). */
+  recado: string;
   /** Trocar de tela; definido em main.ts. */
   irPara: (cena: string) => void;
   /** Mostrar um erro vindo do servidor na tela atual. */
@@ -64,6 +66,7 @@ export const jogo: {
   sala: null,
   prazo: 0,
   conexaoCaiu: false,
+  recado: "",
   irPara: () => undefined,
   aoErro: () => undefined,
 };
@@ -220,6 +223,7 @@ function ouvintes(): Ouvintes {
       if (estavaJogando && jogo.partida?.fase !== "fim") {
         jogo.partida = null;
         jogo.sala = null;
+        jogo.recado = "A conexão com a sala caiu e não voltou. Você está de novo no menu.";
         jogo.irPara("inicial");
       }
     },

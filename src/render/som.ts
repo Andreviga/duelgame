@@ -62,7 +62,7 @@ export function destravar(): void {
     const dados = ruido.getChannelData(0);
     for (let i = 0; i < dados.length; i++) dados[i] = Math.random() * 2 - 1;
   }
-  if (ctx.state === "suspended") void ctx.resume();
+  if (ctx.state === "suspended") void ctx.resume().catch(() => undefined);
   if (musicaAtual && relogio === null) iniciarRelogio();
 }
 

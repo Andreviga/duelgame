@@ -18,6 +18,7 @@ import {
 import { carregarSprites, escalaDoSprite } from "./sprites";
 import { musica, opcoes, tocar } from "./som";
 import { resumoDosNocautes } from "./resumo";
+import { ALVO_MINIMO } from "./toque";
 import {
   animacaoDoLutador,
   ESPEC,
@@ -82,6 +83,7 @@ export class CenaCombate extends Phaser.Scene {
   private fundo!: Phaser.GameObjects.Graphics;
   private mundo!: Phaser.GameObjects.Container;
   private cenario!: Phaser.GameObjects.Graphics;
+  private fundoDesenhado = "";
   private fx!: Phaser.GameObjects.Graphics;
   private marcas!: Phaser.GameObjects.Graphics;
   private tela!: Phaser.GameObjects.Graphics;
@@ -123,6 +125,7 @@ export class CenaCombate extends Phaser.Scene {
 
   create(): void {
     document.body.dataset["cena"] = "combate";
+    this.fundoDesenhado = "";
     // A cena é reaberta a cada rodada: os objetos antigos já foram destruídos pelo Phaser.
     this.visuais = [];
     this.textoLado = [];
@@ -207,7 +210,10 @@ export class CenaCombate extends Phaser.Scene {
           padding: { x: 12, y: 8 },
         })
         .setInteractive({ useHandCursor: true });
+      // A área de toque desce além do desenho, para o dedo acertar no celular.
       t.on("pointerdown", aoClicar);
+      const area = t.input?.hitArea as Phaser.Geom.Rectangle | undefined;
+      if (area) area.height = Math.max(area.height, ALVO_MINIMO - 14);
       return t;
     };
     this.botaoVelocidade = botao(14, () => this.trocarVelocidade());
@@ -388,8 +394,15 @@ export class CenaCombate extends Phaser.Scene {
     }
 
     this.atualizarCamera(ms);
-    desenharFundo(this.fundo, this.cam.x, this.cam.y, this.laco.estado.arena.id);
-    desenharArena(this.cenario, this.laco.estado.arena);
+    // O fundo só é redesenhado quando a câmera andou o bastante para a paralaxe mudar 1 pixel.
+    const arena = this.laco.estado.arena;
+    const chaveDoFundo = `${arena.id}:${Math.round(this.cam.x / 8)}:${Math.round(this.cam.y / 12)}`;
+    if (chaveDoFundo !== this.fundoDesenhado) {
+      this.fundoDesenhado = chaveDoFundo;
+      desenharFundo(this.fundo, this.cam.x, this.cam.y, arena.id);
+    }
+    // A arena é redesenhada sempre: o mesmo Graphics recebe os anéis no chão, que mudam a cada quadro.
+    desenharArena(this.cenario, arena);
     // Anel no chão com a cor do jogador, para os personagens com sprite.
     for (const l of this.laco.estado.lutadores) {
       if (!l.vivo || !this.visuais[l.id]?.sprite) continue;

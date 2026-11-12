@@ -1,8 +1,9 @@
 import Phaser from "phaser";
 import { desenharFundo } from "./desenho";
-import { ALTURA, criarTexto, dentro, desenharBotao, LARGURA, type Ret } from "./interface";
+import { ALTURA, criarTexto, desenharBotao, LARGURA, type Ret } from "./interface";
 import { DEGRAUS_DE_VOLUME, type Opcoes } from "./opcoes";
 import { opcoes, salvarOpcoes, tocar } from "./som";
+import { alvoTocado } from "./toque";
 
 const VOLTAR: Ret = { x: 450, y: 560, largura: 300, altura: 60 };
 const LINHAS: { rotulo: string; chave: "efeitos" | "musica"; y: number }[] = [
@@ -58,19 +59,25 @@ export class CenaOpcoes extends Phaser.Scene {
     this.desenhar();
 
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
-      if (dentro(VOLTAR, p.x, p.y)) {
-        tocar("clique");
-        this.scene.start("inicial");
-        return;
-      }
-      for (const linha of LINHAS) {
-        DEGRAUS_DE_VOLUME.forEach((v, i) => {
-          if (dentro(degrau(i, linha.y), p.x, p.y)) opcoes[linha.chave] = v;
-        });
-      }
-      VELOCIDADES.forEach((v, i) => {
-        if (dentro(degrau(i, Y_VELOCIDADE), p.x, p.y)) opcoes.velocidade = v;
-      });
+      const tocado = alvoTocado<() => void>(
+        [
+          { id: () => this.scene.start("inicial"), ret: VOLTAR },
+          ...LINHAS.flatMap((linha) =>
+            DEGRAUS_DE_VOLUME.map((v, i) => ({
+              id: () => void (opcoes[linha.chave] = v),
+              ret: degrau(i, linha.y),
+            })),
+          ),
+          ...VELOCIDADES.map((v, i) => ({
+            id: () => void (opcoes.velocidade = v),
+            ret: degrau(i, Y_VELOCIDADE),
+          })),
+        ],
+        p.x,
+        p.y,
+      );
+      if (!tocado) return;
+      tocado();
       salvarOpcoes();
       tocar("golpe");
       this.desenhar();

@@ -3,7 +3,7 @@ import { ARENA_BASICA, personagem } from "../dados";
 import { criarLutador } from "../sim/combate/combate";
 import type { Modo, NivelBot } from "../sim/partida/tipos";
 import { desenharArena, desenharCorpo, desenharFundo } from "./desenho";
-import { ALTURA, criarTexto, dentro, desenharBotao, LARGURA, type Ret } from "./interface";
+import { ALTURA, criarTexto, desenharBotao, LARGURA, type Ret } from "./interface";
 import {
   criarSalaOnline,
   entrarNaSalaOnline,
@@ -14,7 +14,8 @@ import {
   retomarSalaOnline,
 } from "./jogo";
 import { carregarSprites, posarRetrato, temSprite } from "./sprites";
-import { musica, opcoes } from "./som";
+import { musica, opcoes, tocar } from "./som";
+import { alvoTocado } from "./toque";
 
 const MODOS: { modo: Modo; titulo: string; descricao: string; ret: Ret }[] = [
   {
@@ -38,6 +39,7 @@ const CRIAR_SALA: Ret = { x: 350, y: 606, largura: 240, altura: 46 };
 const ENTRAR_NA_SALA: Ret = { x: 610, y: 606, largura: 240, altura: 46 };
 const OPCOES: Ret = { x: 1036, y: 18, largura: 144, altura: 44 };
 const TUTORIAL: Ret = { x: 880, y: 18, largura: 144, altura: 44 };
+const CREDITOS: Ret = { x: 20, y: 18, largura: 144, altura: 44 };
 const CHAVE_DO_NOME = "arena:nome";
 
 /** Tela inicial: escolha de modo e de dificuldade dos bots. */
@@ -123,6 +125,7 @@ export class CenaInicial extends Phaser.Scene {
     for (const [ret, rotulo] of [
       [OPCOES, "Opções"],
       [TUTORIAL, "Tutorial"],
+      [CREDITOS, "Créditos"],
     ] as const) {
       criarTexto(this, ret.x + ret.largura / 2, ret.y + ret.altura / 2, rotulo, 18).setDepth(2);
     }
@@ -136,23 +139,40 @@ export class CenaInicial extends Phaser.Scene {
         0xffd54a,
       );
     }
-    this.aviso = criarTexto(this, LARGURA / 2, 664, "", 14, 0xff6b6b).setDepth(2);
+    this.aviso = criarTexto(this, LARGURA / 2, 664, jogo.recado, 14, 0xff6b6b).setDepth(2);
+    jogo.recado = "";
     this.desenhar();
 
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => this.aoApertar(p.x, p.y));
     if (jogo.automatico) this.comecar();
     // Recarregou a página no meio de uma partida online? Volta para ela.
-    else void retomarSalaOnline();
+    else void retomarSalaOnline().catch(() => undefined);
   }
 
   private aoApertar(x: number, y: number): void {
-    for (const m of MODOS) if (dentro(m.ret, x, y)) jogo.modo = m.modo;
-    for (const n of NIVEIS) if (dentro(n.ret, x, y)) jogo.dificuldade = n.nivel;
-    if (dentro(JOGAR, x, y)) return this.comecar();
-    if (dentro(OPCOES, x, y)) return void this.scene.start("opcoes");
-    if (dentro(TUTORIAL, x, y)) return this.comecar(true);
-    if (dentro(CRIAR_SALA, x, y)) return void this.online(false);
-    if (dentro(ENTRAR_NA_SALA, x, y)) return void this.online(true);
+    const tocado = alvoTocado<string>(
+      [
+        ...MODOS.map((m) => ({ id: `modo:${m.modo}`, ret: m.ret })),
+        ...NIVEIS.map((n) => ({ id: `nivel:${n.nivel}`, ret: n.ret })),
+        { id: "jogar", ret: JOGAR },
+        { id: "opcoes", ret: OPCOES },
+        { id: "tutorial", ret: TUTORIAL },
+        { id: "creditos", ret: CREDITOS },
+        { id: "criar", ret: CRIAR_SALA },
+        { id: "entrar", ret: ENTRAR_NA_SALA },
+      ],
+      x,
+      y,
+    );
+    if (tocado) tocar("clique");
+    for (const m of MODOS) if (tocado === `modo:${m.modo}`) jogo.modo = m.modo;
+    for (const n of NIVEIS) if (tocado === `nivel:${n.nivel}`) jogo.dificuldade = n.nivel;
+    if (tocado === "jogar") return this.comecar();
+    if (tocado === "opcoes") return void this.scene.start("opcoes");
+    if (tocado === "tutorial") return this.comecar(true);
+    if (tocado === "creditos") return void this.scene.start("creditos");
+    if (tocado === "criar") return void this.online(false);
+    if (tocado === "entrar") return void this.online(true);
     this.desenhar();
   }
 
@@ -209,6 +229,7 @@ export class CenaInicial extends Phaser.Scene {
     desenharBotao(this.g, CRIAR_SALA, 0x2f5c8a);
     desenharBotao(this.g, ENTRAR_NA_SALA, 0x2f5c8a);
     desenharBotao(this.g, OPCOES, 0x26324a);
+    desenharBotao(this.g, CREDITOS, 0x26324a);
     desenharBotao(this.g, TUTORIAL, opcoes.tutorialVisto ? 0x26324a : 0x8a6a1f);
   }
 }

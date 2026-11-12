@@ -1,14 +1,17 @@
 import Phaser from "phaser";
 import { CenaCombate } from "./render/CenaCombate";
+import { CenaCreditos } from "./render/CenaCreditos";
 import { CenaInicial } from "./render/CenaInicial";
 import { CenaOpcoes } from "./render/CenaOpcoes";
 import { CenaPreparacao } from "./render/CenaPreparacao";
 import { CenaResultado } from "./render/CenaResultado";
 import { CenaSala } from "./render/CenaSala";
+import { vigiarFalhas } from "./render/falhas";
 import { jogo } from "./render/jogo";
 import { destravar } from "./render/som";
 
-const outras = [CenaPreparacao, CenaResultado, CenaSala, CenaOpcoes];
+const outras = [CenaPreparacao, CenaResultado, CenaSala, CenaOpcoes, CenaCreditos];
+vigiarFalhas();
 // Com ?demo o jogo abre direto no combate de demonstração (4x4 solto, sem partida).
 const demo = new URLSearchParams(window.location.search).has("demo");
 

@@ -41,6 +41,7 @@ import {
 } from "./jogo";
 import { carregarSprites, posarRetrato, temSprite } from "./sprites";
 import { musica, opcoes, salvarOpcoes, tocar, type Efeito } from "./som";
+import { alvoTocado } from "./toque";
 import { dicaDoTutorial } from "./tutorial";
 
 const LARGURA = 1200;
@@ -261,12 +262,19 @@ export class CenaPreparacao extends Phaser.Scene {
   }
 
   private aoApertar(x: number, y: number): void {
-    if (jogo.tutorial && dentro(PULAR_TUTORIAL, x, y))
-      return this.encerrarTutorial("Tutorial pulado.");
+    const botao = alvoTocado(
+      [
+        ...(jogo.tutorial ? [{ id: "pular" as const, ret: PULAR_TUTORIAL }] : []),
+        { id: "atualizar" as const, ret: BOTAO_ATUALIZAR },
+        { id: "lutar" as const, ret: BOTAO_LUTAR },
+      ],
+      x,
+      y,
+    );
+    if (botao === "pular") return this.encerrarTutorial("Tutorial pulado.");
     if (this.eu.pronto) return;
-    if (dentro(BOTAO_ATUALIZAR, x, y))
-      return this.comando({ tipo: "atualizar", jogador: meuNumero() });
-    if (dentro(BOTAO_LUTAR, x, y)) return this.comando({ tipo: "pronto", jogador: meuNumero() });
+    if (botao === "atualizar") return this.comando({ tipo: "atualizar", jogador: meuNumero() });
+    if (botao === "lutar") return this.comando({ tipo: "pronto", jogador: meuNumero() });
     for (let i = 0; i < this.eu.loja.length; i++) {
       if (this.eu.loja[i] !== null && dentro(this.retDaCarta(i), x, y)) {
         return this.comando({ tipo: "comprar", jogador: meuNumero(), carta: i });

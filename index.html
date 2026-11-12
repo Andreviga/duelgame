@@ -2,7 +2,10 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <title>Arena</title>
     <link
       rel="icon"
@@ -14,6 +17,50 @@
         margin: 0;
         height: 100%;
         background: #0d1117;
+        /* No celular: nada de rolar, dar zoom ou selecionar enquanto se arrasta um personagem. */
+        overflow: hidden;
+        overscroll-behavior: none;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+      }
+      .cortina {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 18px;
+        padding: 24px;
+        text-align: center;
+        background: #0d1117;
+        color: #e8eef7;
+        font:
+          bold 20px "Trebuchet MS",
+          "Segoe UI",
+          Arial,
+          sans-serif;
+      }
+      .cortina button {
+        min-width: 200px;
+        min-height: 52px;
+        border: 0;
+        border-radius: 12px;
+        background: #2f9e5b;
+        color: #fff;
+        font: inherit;
+      }
+      #falha.visivel {
+        display: flex;
+      }
+      /* Celular em pé: o jogo é deitado, então pede para girar. */
+      @media (orientation: portrait) and (max-width: 700px) {
+        #girar {
+          display: flex;
+        }
       }
       #aviso-rede {
         display: none;
@@ -40,6 +87,14 @@
   </head>
   <body>
     <div id="jogo"></div>
+    <div id="girar" class="cortina">
+      <div style="font-size: 54px">⟳</div>
+      <div>Gire o aparelho para jogar deitado</div>
+    </div>
+    <div id="falha" class="cortina">
+      <div id="falha-texto"></div>
+      <button id="falha-botao" type="button">Tentar de novo</button>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

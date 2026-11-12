@@ -2,9 +2,11 @@
 
 ## Fase atual
 
-**Fase 8 — Impacto e interface: pronta, aguardando o André jogar e aprovar.**
+**Fase 9 — Celular e lançamento: a parte do código está pronta; faltam os itens que dependem do André (ver "Próximo passo").**
 
-Fases 7A e 7B aprovadas em 2026-11-12 (os 12 personagens modelados por script).
+Fases 7A, 7B e 8 aprovadas em 2026-11-12.
+
+**Desvio do plano a decidir:** o plano pede layout "em pé e deitado". Hoje o jogo funciona deitado e, em pé, pede para girar o aparelho. Um layout em pé de verdade exige refazer as seis telas (todas têm posições fixas para 1200×675).
 
 Fases 0 a 6 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
 
@@ -21,9 +23,9 @@ Pendências herdadas:
 - [ ] Partida online completa com 4 pessoas em redes diferentes, com uma reconexão no meio. *Automatizado na mesma máquina: 4 clientes de rede jogam a partida inteira (`testes/servidor.test.ts`) e duas abas com reconexão (`npm run test:e2e`). Falta publicar e jogar com 4 pessoas.*
 - [ ] Os 12 personagens com todas as animações. *Pipeline pronto (Fase 7A); 12 de 12 modelados e aprovados pelo André (2026-11-12).*
 - [ ] Som e efeitos em todos os eventos da Fase 8. *Feito na Fase 8: efeitos visuais e som por síntese em acerto, tiro, habilidade, nocaute, compra, venda, fusão, erro e fim de partida; música de preparação e de combate. Falta o André ouvir e aprovar.*
-- [ ] Jogável no celular por toque, a 60 quadros por segundo. *Fase 9.*
+- [ ] Jogável no celular por toque, a 60 quadros por segundo. *Toque: feito e testado em tela de celular deitado (`testes/e2e/celular.spec.ts`). Os 60 quadros por segundo não foram medidos: o ambiente de desenvolvimento não tem placa de vídeo. Falta o André medir no aparelho.*
 - [ ] Tutorial concluído por uma pessoa de fora sem ajuda. *Tutorial pronto (Fase 8); falta o teste com uma pessoa de fora.*
-- [ ] `CREDITOS.md` lista cada asset de terceiros. *Hoje não há nenhum asset de terceiros.*
+- [x] `CREDITOS.md` lista cada asset de terceiros. *Não há nenhum; o arquivo diz isso e lista as bibliotecas. Aparece no jogo em Menu > Créditos.*
 
 ## Pronto
 
@@ -122,6 +124,16 @@ Pendências herdadas:
 - **Tutorial** (`src/render/tutorial.ts`): partida fixa contra bots fáceis, com dicas em 3 rodadas (comprar, posicionar e lutar; elixir e fusão; sinergias), contorno piscando no alvo, relógio parado e botão de pular. O menu destaca o tutorial para quem nunca fez.
 - **Por que ganhei ou perdi** (`src/render/resumo.ts`): no fim da rodada, uma linha diz quem mais nocauteou de cada lado e quantos caíram sozinhos.
 - **Já existia antes da fase:** faíscas, poeira, rastro, explosão de nocaute, tremor, pausa no golpe forte, cartas com custo, mundo e papel, e o painel de sinergias.
+
+### Fase 9
+- **Alvos de toque** (`src/render/toque.ts`): todo botão responde em uma área de pelo menos 76 unidades do jogo (44 px em um celular deitado de 390 px de altura), mesmo que o desenho seja menor; entre dois botões vizinhos, ganha o de centro mais próximo.
+- **Página preparada para celular** (`index.html`): sem rolagem, zoom ou seleção de texto ao arrastar; em pé, uma cortina pede para girar o aparelho.
+- **Atlas menores:** quadros recortados e arrumados em prateleiras (até 1024 de largura, em vez de 2048×2304) e cores em 5 bits por canal. `public/sprites` foi de 12 MB para 4,3 MB, e a memória de vídeo por personagem caiu para cerca de um quinto.
+- **Barra de carregamento** enquanto os atlas baixam.
+- **Falhas** (`src/render/falhas.ts`): se um arquivo não carrega ou ocorre um erro não tratado, uma tela explica e oferece "Tentar de novo". Se a sala online cai e não volta, o menu mostra o recado.
+- **Créditos** no menu, lendo o `CREDITOS.md`.
+- **`ROTEIRO-DE-TESTE.md`** para o teste com pessoas de fora, e a conferência pós-publicação no `PUBLICAR.md`.
+- O fundo do combate só é redesenhado quando a câmera anda.
 
 ## Números do lote
 
@@ -271,7 +283,20 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 - **Os ícones pequenos do placar do combate continuam geométricos** (formas por papel).
 - **Briefing para outra IA melhorar a arte no Blender:** `arte/BRIEFING-BLENDER.md`.
 
+### Fase 9
+- **Em pé, o jogo pede para girar** em vez de ter um layout próprio. É um desvio do plano, aguardando decisão do André.
+- **O mínimo de toque (76 unidades) foi calculado para um celular deitado de 390 px de altura.** Em aparelhos menores a área fica proporcionalmente menor.
+- **Redução de cor nos atlas** (5 bits por canal): `ARTE_BITS=8 npm run arte:atlas` desliga. Só a ferramenta de atlas mudou; os scripts de modelo não (opção A do André).
+- **Desempenho não medido de verdade.** No ambiente de desenvolvimento (sem placa de vídeo) o combate 2x2 roda a cerca de 23 quadros por segundo, e 90% do tempo é o desenho por software; o código do jogo usa cerca de 10% do tempo do quadro. Não dá para concluir nada sobre celular daqui.
+- **A tela de falha recarrega a página** em vez de tentar se recuperar: é o caminho que sempre funciona.
+
 ## Próximo passo
 
-1. André: jogar a Fase 8 (som, tutorial, opções, cenários) e aprovar ou pedir ajustes; publicar o servidor no Render (`PUBLICAR.md`).
-2. Depois: Fase 9, só com o "aprovado" e o plano curto.
+Tudo o que falta para a "Definição de 100%" depende do André:
+
+1. Decidir sobre o layout em pé (refazer as telas ou manter "gire o aparelho").
+2. Publicar o servidor (Render) e o cliente (Vercel) e fazer a conferência do `PUBLICAR.md`.
+3. Medir os quadros por segundo em um celular intermediário, com 16 personagens em combate (2x2, rodadas finais).
+4. Jogar online com 4 pessoas em redes diferentes, com uma reconexão.
+5. Aplicar o `ROTEIRO-DE-TESTE.md` com 8 pessoas e trazer os 5 problemas mais citados para corrigir.
+6. Ouvir o som e pedir ajustes.

@@ -28,6 +28,19 @@ Use **uma instância só**: as salas ficam na memória do processo.
 3. Publique. O modo contra bots funciona mesmo sem servidor; "Criar sala" e "Entrar com código"
    dependem dele.
 
+## Conferência depois de publicar
+
+1. Abra o endereço da Vercel no computador: o menu aparece depois da barra "carregando…".
+2. Abra no celular, deitado. Em pé, o jogo pede para girar o aparelho.
+3. Jogue uma partida contra bots até a tela de resultado.
+4. "Criar sala online": se aparecer "Não deu para falar com o servidor de jogo", confira o `VITE_SERVIDOR`
+   (tem de começar com `wss://`) e se o serviço do Render está acordado.
+5. Com 4 aparelhos em redes diferentes, jogue uma partida; no meio, feche e reabra o jogo em um deles:
+   ele tem de voltar para a mesma sala.
+6. Menu > Créditos mostra o conteúdo do `CREDITOS.md`.
+
+Depois disso, o teste com pessoas de fora segue o `ROTEIRO-DE-TESTE.md`.
+
 ## 3. Jogar na rede de casa, sem publicar
 
 ```bash

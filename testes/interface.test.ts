@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { gravarOpcoes, lerOpcoes, OPCOES_PADRAO } from "../src/render/opcoes";
 import { resumoDosNocautes } from "../src/render/resumo";
+import { ALVO_MINIMO, alvoTocado, areaDeToque } from "../src/render/toque";
 import { dicaDoTutorial } from "../src/render/tutorial";
 
 describe("opções guardadas no navegador", () => {
@@ -57,5 +58,43 @@ describe("resumo do fim da rodada", () => {
 
   it("sem nocautes, não diz nada", () => {
     expect(resumoDosNocautes([])).toBe("");
+  });
+});
+
+describe("área de toque", () => {
+  const atualizar = { x: 1014, y: 548, largura: 162, altura: 44 };
+  const lutar = { x: 1014, y: 602, largura: 162, altura: 48 };
+  const alvos = [
+    { id: "atualizar", ret: atualizar },
+    { id: "lutar", ret: lutar },
+  ];
+
+  it("cresce o botão pequeno até o mínimo, em volta do centro", () => {
+    expect(areaDeToque(atualizar)).toEqual({ x: 1014, y: 532, largura: 162, altura: ALVO_MINIMO });
+    expect(areaDeToque({ x: 0, y: 0, largura: 200, altura: 100 })).toEqual({
+      x: 0,
+      y: 0,
+      largura: 200,
+      altura: 100,
+    });
+  });
+
+  it("toque dentro do desenho acerta aquele botão", () => {
+    expect(alvoTocado(alvos, 1050, 560)).toBe("atualizar");
+    expect(alvoTocado(alvos, 1050, 640)).toBe("lutar");
+  });
+
+  it("toque na folga em volta também vale", () => {
+    expect(alvoTocado(alvos, 1050, 536)).toBe("atualizar");
+    expect(alvoTocado(alvos, 1050, 660)).toBe("lutar");
+  });
+
+  it("entre dois botões, ganha o de centro mais próximo", () => {
+    expect(alvoTocado(alvos, 1050, 595)).toBe("atualizar");
+    expect(alvoTocado(alvos, 1050, 599)).toBe("lutar");
+  });
+
+  it("longe de todos, não acerta nenhum", () => {
+    expect(alvoTocado(alvos, 600, 300)).toBeNull();
   });
 });

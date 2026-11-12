@@ -3,6 +3,7 @@ import { MAXIMO_DE_JOGADORES } from "../rede/protocolo";
 import { corDoJogador, desenharFundo } from "./desenho";
 import { ALTURA, criarTexto, dentro, desenharBotao, LARGURA, type Ret } from "./interface";
 import { jogo, meuNumero, NOME_DO_NIVEL, sairDaSalaOnline } from "./jogo";
+import { areaDeToque } from "./toque";
 
 const COMECAR: Ret = { x: 450, y: 548, largura: 300, altura: 64 };
 const SAIR: Ret = { x: 24, y: 24, largura: 120, altura: 44 };
@@ -30,10 +31,10 @@ export class CenaSala extends Phaser.Scene {
       criarTexto(this, SAIR.x + SAIR.largura / 2, SAIR.y + SAIR.altura / 2, "Sair", 18),
     ];
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
-      if (dentro(SAIR, p.x, p.y)) {
+      if (dentro(areaDeToque(SAIR), p.x, p.y)) {
         void sairDaSalaOnline();
         this.scene.start("inicial");
-      } else if (dentro(COMECAR, p.x, p.y) && meuNumero() === 0) {
+      } else if (dentro(areaDeToque(COMECAR), p.x, p.y) && meuNumero() === 0) {
         jogo.online?.comecar();
       }
     });
