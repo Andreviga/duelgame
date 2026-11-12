@@ -41,13 +41,14 @@ class Tartaruga(Humanoide):
 h = Tartaruga(tamanho=1.0)
 h.arma_padrao = "costas"
 
-PEDRA = h.mat("pedra", (0.42, 0.4, 0.38), aspereza=0.95)
-PEDRA_ESCURA = h.mat("pedra_escura", (0.25, 0.24, 0.24), aspereza=0.95)
+PEDRA = h.mat("pedra", (0.27, 0.27, 0.26), aspereza=0.95)
+PEDRA_CLARA = h.mat("pedra_clara", (0.4, 0.39, 0.36), aspereza=0.95)
+PEDRA_ESCURA = h.mat("pedra_escura", (0.14, 0.14, 0.15), aspereza=0.95)
 MUSGO = h.mat("musgo", (0.3, 0.45, 0.2), aspereza=0.9)
 PELE = h.mat("pele", (0.45, 0.55, 0.36), aspereza=0.8)
 BARRIGA = h.mat("barriga", (0.72, 0.68, 0.5))
-CRISTAL = h.mat("cristal", (0.35, 0.95, 0.9), brilho=1.1, aspereza=0.3)
-CRISTAL_ROXO = h.mat("cristal_roxo", (0.75, 0.45, 1.0), brilho=1.1, aspereza=0.3)
+CRISTAL = h.mat("cristal", (0.08, 0.62, 0.56), brilho=0.55, aspereza=0.3)
+CRISTAL_ROXO = h.mat("cristal_roxo", (0.42, 0.18, 0.72), brilho=0.55, aspereza=0.3)
 OLHO = h.mat("olho", (0.05, 0.04, 0.06))
 
 y = LADO
@@ -58,6 +59,9 @@ h.esfera("borda_do_casco", "tronco", (0, 0, 0.44), 0.62, PEDRA_ESCURA, escala=(1
 h.esfera("barriga", "tronco", (0, 0, 0.36), 0.52, BARRIGA, escala=(1.0, 0.8, 0.3))
 for i, (x, z, g) in enumerate(((0.0, 0.92, 0), (0.3, 0.8, 34), (-0.3, 0.8, -34))):
     h.caixa(f"placa_{i}", "tronco", (x, -0.02, z), (0.26, 0.6, 0.05), PEDRA_ESCURA, chanfro=0.02, giro=g)
+# Blocos de pedra salientes, para o casco parecer rocha e não um casco liso.
+for i, (x, z, lx, lz, g, m) in enumerate(((0.36, 0.62, 0.22, 0.14, 40, PEDRA_CLARA), (-0.4, 0.6, 0.2, 0.13, -44, PEDRA_CLARA), (0.14, 0.82, 0.2, 0.1, 14, PEDRA_CLARA), (-0.16, 0.8, 0.18, 0.1, -16, PEDRA_ESCURA), (0.5, 0.46, 0.14, 0.12, 62, PEDRA_ESCURA), (-0.52, 0.44, 0.14, 0.12, -64, PEDRA_ESCURA))):
+    h.caixa(f"bloco_{i}", "tronco", (x, -0.36, z), (lx, 0.26, lz), m, chanfro=0.03, giro=g)
 h.esfera("musgo", "tronco", (-0.14, -0.3, 0.72), 0.14, MUSGO, escala=(1.4, 0.5, 0.6))
 # Cristais brotando das costas.
 cristais = [(0.02, 0.88, 0.36, 0.1, -4, CRISTAL), (-0.2, 0.82, 0.26, 0.08, -26, CRISTAL_ROXO), (0.2, 0.84, 0.22, 0.07, 22, CRISTAL), (-0.36, 0.7, 0.16, 0.06, -44, CRISTAL), (0.1, 0.9, 0.14, 0.05, 40, CRISTAL_ROXO)]

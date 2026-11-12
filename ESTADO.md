@@ -309,6 +309,12 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 - **Memória de vídeo das camadas da arena básica:** cerca de 30 MB (7,6 milhões de pixels). Fluidez no celular não medida daqui.
 - **O menu usa só o fundo do cenário** (céu, longe e perto), sem chão nem plataformas.
 
+### Retoques de personagem (2026-11-12, a pedido de "faz tudo")
+- Paredão: mais largo, cabeça um pouco maior e sem a faixa da testa (parecia óculos escuros).
+- Canhoneiro: mais corpulento e barba maior.
+- Rochedo: casco de pedra mais escuro com blocos salientes; cristais coloridos em vez de quase brancos.
+- Não mexidos: Brasa, Faísca, Sombra e a corrente da Capitã Maré (listados no `arte/BRIEFING-BLENDER.md`).
+
 ### Tempo real e cenário leve (2026-11-12)
 - **O jogo mede o tempo real de cada quadro** (`src/render/relogio.ts`), não o `delta` do Phaser. O `delta` fica preso perto de 17 ms mesmo a 10 quadros por segundo: em aparelho lento o jogo inteiro rodava em câmera lenta e, online, a luta seria cortada pelo relógio do servidor. Agora o aparelho lento mostra menos quadros, mas a luta dura o mesmo. Um quadro vale no máximo 100 ms.
 - **Opção "Cenário": automático, completo ou leve.** No automático, o combate mede os primeiros 4 segundos com as imagens; abaixo de 24 quadros por segundo, troca para o desenho por código e guarda isso no aparelho. Escolher "automático" de novo nas opções dá outra chance.

@@ -83,9 +83,9 @@ de 256×256 (9 animações). Problemas conhecidos, por ordem de ganho visual:
 3. **Materiais chapados.** Uma cor por peça. Dá para ganhar muito com um degradê simples por peça (mais escuro
    embaixo), luz de recorte por trás e contorno escuro fino, sem sair do low-poly.
 4. **Pontos fracos por personagem:**
-   - Canhoneiro: parece magro e a barba some atrás do braço.
-   - Paredão: não parece enorme; a faixa da testa lembra óculos escuros.
-   - Rochedo: casco liso e claro, pouco "de pedra"; cristais quase brancos.
+   - Canhoneiro: ainda parece magro de perfil (a barba já foi aumentada).
+   - Paredão: ficou mais largo e sem a faixa da testa; ainda poderia parecer maior.
+   - Rochedo: casco escurecido, com blocos, e cristais coloridos; falta textura de pedra de verdade.
    - Brasa: rachaduras de lava são traços retos; deveriam ser irregulares e pulsar.
    - Faísca: mais azul-médio que azul-escuro; chifre grande demais para o corpo.
    - Sombra: escuro sobre fundo escuro; precisa de recorte de luz.

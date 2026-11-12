@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from humanoide import Humanoide  # noqa: E402
 
-h = Humanoide(tamanho=1.1, corpulencia=1.6)
+h = Humanoide(tamanho=1.1, corpulencia=1.85)
 
 PELE = h.mat("pele", (0.9, 0.68, 0.52))
 LIMAO = h.mat("limao", (0.6, 0.92, 0.12))
@@ -22,8 +22,8 @@ CABELO = h.mat("cabelo", (0.75, 0.55, 0.2))
 OLHO = h.mat("olho", (0.05, 0.04, 0.06))
 
 # Camisa de manga comprida verde-limão, calção preto, meião verde.
-h.corpo(PELE, LIMAO, PELE, CHUTEIRA, cabeca=0.2)
-h.rosto(OLHO, cabeca=0.2, sobrancelha=CABELO)
+h.corpo(PELE, LIMAO, PELE, CHUTEIRA, cabeca=0.22)
+h.rosto(OLHO, cabeca=0.22, sobrancelha=CABELO)
 g = h.g
 for lado, y in (("f", -h.quadril), ("t", h.quadril)):
     h.tubo(f"calcao_{lado}", f"coxa_{lado}", (0, y, 0.9), (0, y, 0.6), 0.112 * g, 0.12 * g, PRETO)
@@ -41,9 +41,8 @@ for lado, y in (("f", -h.ombro), ("t", h.ombro)):
     h.caixa(f"faixa_da_luva_{lado}", f"ante_{lado}", (0.02, y, 0.74), (0.21, 0.31, 0.05), LUVA_DETALHE, chanfro=0.02)
     h.caixa(f"dedao_{lado}", f"ante_{lado}", (0.14, y, 0.66), (0.1, 0.12, 0.16), LUVA, chanfro=0.04)
 
-# Cabelo loiro curto e uma faixa na testa.
-h.esfera("cabelo", "cabeca", (-0.03, 0, 1.58), 0.205, CABELO, escala=(1, 1, 0.74))
-h.caixa("testeira", "cabeca", (0.0, 0, 1.65), (0.4, 0.4, 0.045), PRETO, chanfro=0.02)
+# Cabelo loiro curto. (A faixa na testa saiu: de longe parecia óculos escuros.)
+h.esfera("cabelo", "cabeca", (-0.03, 0, 1.61), 0.226, CABELO, escala=(1, 1, 0.74))
 
 # Postura de goleiro: joelhos dobrados, luvas abertas à frente.
 GUARDA = {"braco_f": 40, "ante_f": 50, "braco_t": 30, "ante_t": 50}

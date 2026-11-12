@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from humanoide import Humanoide  # noqa: E402
 
-h = Humanoide(tamanho=0.95, corpulencia=1.35)
+h = Humanoide(tamanho=0.95, corpulencia=1.6)
 # O osso "arma_costas" aqui é o canhão, sempre visível.
 h.arma_padrao = "costas"
 
@@ -41,7 +41,7 @@ for lado, y in (("f", -h.ombro), ("t", h.ombro)):
 h.esfera("lenco", "cabeca", (0.0, 0, 1.6), 0.24, LENCO, escala=(1, 1, 0.72))
 h.caixa("no_do_lenco", "cabeca", (-0.26, 0, 1.56), (0.12, 0.1, 0.08), LENCO, chanfro=0.03, giro=30)
 h.caixa("ponta_do_lenco", "cabeca", (-0.32, 0, 1.47), (0.06, 0.08, 0.16), LENCO, chanfro=0.02, giro=-20)
-h.esfera("barba", "cabeca", (0.1, 0, 1.44), 0.19, BARBA, escala=(1, 1.05, 0.95))
+h.esfera("barba", "cabeca", (0.14, 0, 1.41), 0.215, BARBA, escala=(1, 1.05, 1.0))
 h.caixa("bigode", "cabeca", (0.24, 0, 1.5), (0.06, 0.22, 0.05), BARBA, chanfro=0.02)
 
 # Canhão curto carregado debaixo do braço da frente, com a boca para a frente.
