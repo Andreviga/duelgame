@@ -112,30 +112,63 @@ describe("validação dos quadros", () => {
 });
 
 describe("atlas", () => {
-  it("cada quadro vai para a sua célula, uma animação por linha, no formato que o Phaser lê", () => {
+  it("recorta cada quadro, arruma sem sobrepor e guarda onde o recorte ficava no quadro", () => {
     const m = conjuntoCompleto();
-    const { imagem, json } = montarAtlas("lamina", m, espec);
-    expect([imagem.largura, imagem.altura]).toEqual([8 * 16, 9 * 16]);
+    const { imagem, json } = montarAtlas("lamina", m, espec, 64);
     expect(Object.keys(json.frames)).toHaveLength(49);
-    expect(json.frames["andar_3"]?.frame).toEqual({ x: 48, y: 16, w: 16, h: 16 });
     expect(json.meta.image).toBe("lamina.png");
     expect(json.meta.animacoes["cair"]).toEqual({ quadros: 2, laco: true });
-    // os pixels da célula são os do quadro original
-    const original = m.get("andar_3");
-    const x0 = 48;
-    const y0 = 16;
-    for (const [x, y] of [
-      [0, 0],
-      [5, 7],
-      [15, 15],
-    ] as const) {
-      const noAtlas = imagem.rgba.subarray(
-        ((y0 + y) * imagem.largura + x0 + x) * 4,
-        ((y0 + y) * imagem.largura + x0 + x) * 4 + 4,
-      );
-      const noQuadro = original?.rgba.subarray((y * 16 + x) * 4, (y * 16 + x) * 4 + 4);
-      expect(Array.from(noAtlas)).toEqual(Array.from(noQuadro ?? []));
+    expect(imagem.largura).toBeLessThanOrEqual(64);
+    // menor que a grade de quadros inteiros
+    expect(imagem.largura * imagem.altura).toBeLessThan(8 * 16 * 9 * 16);
+
+    const lista = Object.values(json.frames);
+    for (const f of lista) {
+      expect(f.sourceSize).toEqual({ w: 16, h: 16 });
+      expect([f.spriteSourceSize.w, f.spriteSourceSize.h]).toEqual([f.frame.w, f.frame.h]);
+      expect(f.frame.x + f.frame.w).toBeLessThanOrEqual(imagem.largura);
+      expect(f.frame.y + f.frame.h).toBeLessThanOrEqual(imagem.altura);
     }
+    for (let i = 0; i < lista.length; i++) {
+      for (let k = i + 1; k < lista.length; k++) {
+        const a = lista[i]?.frame;
+        const b = lista[k]?.frame;
+        if (!a || !b) continue;
+        const separados =
+          a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y;
+        expect(separados).toBe(true);
+      }
+    }
+
+    // cada pixel do quadro original está no atlas, na posição que o JSON indica
+    for (const nome of ["andar_3", "parado_0", "nocaute_5"]) {
+      const original = m.get(nome);
+      const f = json.frames[nome];
+      if (!original || !f) throw new Error("sem quadro");
+      for (let y = 0; y < 16; y++) {
+        for (let x = 0; x < 16; x++) {
+          const noQuadro = Array.from(
+            original.rgba.subarray((y * 16 + x) * 4, (y * 16 + x) * 4 + 4),
+          );
+          const dx = x - f.spriteSourceSize.x;
+          const dy = y - f.spriteSourceSize.y;
+          const dentro = dx >= 0 && dy >= 0 && dx < f.frame.w && dy < f.frame.h;
+          if (!dentro) {
+            expect(noQuadro[3]).toBe(0);
+            continue;
+          }
+          const i = ((f.frame.y + dy) * imagem.largura + f.frame.x + dx) * 4;
+          expect(Array.from(imagem.rgba.subarray(i, i + 4))).toEqual(noQuadro);
+        }
+      }
+    }
+  });
+
+  it("monta sempre o mesmo atlas para os mesmos quadros", () => {
+    const a = montarAtlas("x", conjuntoCompleto(), espec);
+    const b = montarAtlas("x", conjuntoCompleto(), espec);
+    expect(a.json).toEqual(b.json);
+    expect(Array.from(a.imagem.rgba)).toEqual(Array.from(b.imagem.rgba));
   });
 
   it("mede a altura do personagem dos pés (linha de base) ao topo", () => {

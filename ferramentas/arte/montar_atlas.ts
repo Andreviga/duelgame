@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { deflateSync, inflateSync } from "node:zlib";
 import especJson from "../../src/dados/animacoes.json";
-import { montarAtlas, validarQuadros, type EspecDeAnimacoes } from "./atlas";
+import { montarAtlas, reduzirCores, validarQuadros, type EspecDeAnimacoes } from "./atlas";
 import { codificarPng, decodificarPng, type Imagem } from "./png";
 
 /**
@@ -24,6 +24,8 @@ interface Entrada {
 
 const espec: EspecDeAnimacoes = especJson;
 const python = process.env["PYTHON"] ?? "python3";
+/** Bits por canal de cor no atlas publicado. ARTE_BITS=8 desliga a redução. */
+const BITS_DE_COR = Number(process.env["ARTE_BITS"] ?? 5);
 const soAtlas = process.argv.includes("--so-atlas");
 /** ARTE_SO=sombra,vento refaz só esses; os outros ficam com o atlas que já está em public/sprites. */
 const so = process.env["ARTE_SO"]?.split(",");
@@ -65,8 +67,8 @@ for (const { id, fonte, gerador } of entradas) {
   }
   const { imagem, json } = montarAtlas(id, quadros, espec);
   mkdirSync("public/sprites", { recursive: true });
-  writeFileSync(`public/sprites/${id}.png`, codificarPng(imagem, (d) => deflateSync(d, { level: 9 })));
-  writeFileSync(`public/sprites/${id}.json`, JSON.stringify(json, null, 2) + "\n");
+  writeFileSync(`public/sprites/${id}.png`, codificarPng(reduzirCores(imagem, BITS_DE_COR), (d) => deflateSync(d, { level: 9 })));
+  writeFileSync(`public/sprites/${id}.json`, JSON.stringify(json) + "\n");
   prontos.push(id);
   console.log(
     `✓ ${id}: ${quadros.size} quadros, atlas ${imagem.largura}x${imagem.altura}, ` +
