@@ -8,7 +8,7 @@ Fases 7A, 7B e 8 aprovadas em 2026-11-12.
 
 **Celular em pé:** o André decidiu manter o aviso "gire o aparelho" (2026-11-12). O jogo é só deitado.
 
-**Cenários no Blender:** as três arenas têm cenário em imagens e em uso. `arena-basica` e `arena-larga` aprovadas pelo André; `arena-torre` (torre de pedra na tempestade) **aguardando a aprovação visual**. Os três pontos em aberto da arena básica (portal, corda, lua) seguem sem decisão.
+**Cenários no Blender:** as três arenas têm cenário em imagens, em uso e aprovados pelo André (2026-11-12). Em aberto: os três pontos da arena básica (portal, corda, lua) e a conferência de fluidez no celular com as camadas (comparar com `?cenario=codigo`).
 
 Fases 0 a 6 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
 
@@ -313,7 +313,7 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 
 Tudo o que falta para a "Definição de 100%" depende do André:
 
-1. Aprovar o cenário da `arena-torre`. Decidir os três pontos em aberto da arena básica (portal, corda, lua).
+1. Comparar no celular a fluidez com e sem as imagens de cenário (`?demo` e `?demo&cenario=codigo`). Decidir os três pontos em aberto da arena básica (portal, corda, lua).
 2. Publicar o servidor (Render) e o cliente (Vercel) e fazer a conferência do `PUBLICAR.md`.
 3. Medir os quadros por segundo em um celular intermediário, com 16 personagens em combate (2x2, rodadas finais).
 4. Jogar online com 4 pessoas em redes diferentes, com uma reconexão.

@@ -109,7 +109,7 @@ Estado:
 
 - `arena-basica` (pátio de dojo à noite): em uso no jogo, aprovada pelo André. 1,41 MB.
 - `arena-larga` (convés de navio ao pôr do sol): em uso no jogo, aprovada pelo André. 0,85 MB.
-- `arena-torre` (torre de pedra na tempestade): em uso no jogo, aguardando a aprovação do André. 1,29 MB.
+- `arena-torre` (torre de pedra na tempestade): em uso no jogo, aprovada pelo André. 1,29 MB.
 
 **Como o jogo usa as imagens** (`src/render/cenarios.ts` e `src/render/camadas.ts`):
 
