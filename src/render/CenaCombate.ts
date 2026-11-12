@@ -15,9 +15,11 @@ import {
   desenharIcone,
   desenharPinos,
 } from "./desenho";
-import { CamadasDoCenario, carregarCenarios } from "./cenarios";
+import { CamadasDoCenario, carregarCenarios, podeSimplificarSozinho } from "./cenarios";
+import { criarMedidor } from "./opcoes";
+import { criarRelogio } from "./relogio";
 import { carregarSprites, escalaDoSprite } from "./sprites";
-import { musica, opcoes, tocar } from "./som";
+import { musica, opcoes, salvarOpcoes, tocar } from "./som";
 import { resumoDosNocautes } from "./resumo";
 import { ALVO_MINIMO } from "./toque";
 import {
@@ -88,6 +90,10 @@ export class CenaCombate extends Phaser.Scene {
   /** Cenário em imagens da arena atual, ou null quando ela é desenhada por código. */
   private camadas: CamadasDoCenario | null = null;
   private arenaDasCamadas = "";
+  private medidor = criarMedidor();
+  private relogio = criarRelogio(() => performance.now());
+  /** Tempo real do último quadro, para medir a fluidez. */
+  private tempoReal = 16;
   private pecasDoCenario: Phaser.GameObjects.GameObject[] = [];
   private camadaDeFundo!: Phaser.GameObjects.Container;
   private camadaDaFrente!: Phaser.GameObjects.Container;
@@ -134,6 +140,8 @@ export class CenaCombate extends Phaser.Scene {
 
   create(): void {
     document.body.dataset["cena"] = "combate";
+    this.relogio = criarRelogio(() => performance.now());
+    this.medidor = criarMedidor();
     this.fundoDesenhado = "";
     // A cena é reaberta a cada rodada: os objetos antigos já foram destruídos pelo Phaser.
     this.visuais = [];
@@ -362,8 +370,10 @@ export class CenaCombate extends Phaser.Scene {
     this.escrever(this.textoSemente, `semente ${this.semente}`);
   }
 
-  override update(_tempo: number, delta: number): void {
-    const ms = Math.min(delta, 50);
+  override update(): void {
+    // Tempo real, não o `delta` do Phaser (ver `relogio.ts`).
+    const { real, ms } = this.relogio.quadro();
+    this.tempoReal = real;
     // Online o servidor dá um tempo fixo para o combate: a câmera lenta e a pausa no golpe
     // esticariam a luta e ela seria cortada antes do fim.
     if (jogo.online) {
@@ -412,6 +422,7 @@ export class CenaCombate extends Phaser.Scene {
     // O fundo só é redesenhado quando a câmera andou o bastante para a paralaxe mudar 1 pixel.
     const arena = this.laco.estado.arena;
     this.usarCenarioDa(arena);
+    this.vigiarFluidez(this.tempoReal);
     const chaveDoFundo = `${arena.id}:${Math.round(this.cam.x / 8)}:${Math.round(this.cam.y / 12)}`;
     if (this.camadas) {
       this.camadas.atualizar(this.cam);
@@ -896,6 +907,18 @@ export class CenaCombate extends Phaser.Scene {
       this.escrever(this.textoResumo, this.resumo());
       this.textoResumo.setVisible(true).setAlpha(entrada);
     }
+  }
+
+  /**
+   * No modo automático, mede os primeiros segundos de combate com o cenário em imagens. Se o
+   * aparelho não der conta, troca para o desenho por código e guarda a escolha para as próximas.
+   */
+  private vigiarFluidez(ms: number): void {
+    if (!this.camadas || !podeSimplificarSozinho()) return;
+    if (this.medidor.medir(ms) !== "lento") return;
+    opcoes.cenarioLento = true;
+    salvarOpcoes();
+    this.arenaDasCamadas = ""; // refaz a escolha no próximo quadro: agora cai no desenho por código
   }
 
   /** Troca as imagens do cenário quando a arena muda; sem imagens, a arena é desenhada por código. */

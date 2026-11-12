@@ -8,7 +8,10 @@ async function abrirCombate(page: Page, arena: string): Promise<string[]> {
   page.on("console", (m) => {
     if (m.type() === "error") erros.push(m.text());
   });
-  await page.goto(`/?auto&semente=5&velocidade=2&arena=${arena}`);
+  // `cenario=imagens` no endereço: sem isso, o ambiente de teste (lento, sem placa de vídeo)
+  // faria o jogo trocar sozinho para o cenário leve.
+  const cenario = arena.includes("cenario=") ? "" : "&cenario=imagens";
+  await page.goto(`/?auto&semente=5&velocidade=2&arena=${arena}${cenario}`);
   await page.waitForSelector('body[data-cena="combate"]', { timeout: 15_000 });
   await page.waitForTimeout(2500);
   return erros;
@@ -66,7 +69,7 @@ test("se uma imagem do cenário falha, a arena cai no desenho por código e o jo
   page,
 }) => {
   await page.route("**/cenarios/arena-basica/perto.png", (rota) => rota.abort());
-  await page.goto("/?auto&semente=5&velocidade=2&arena=arena-basica");
+  await page.goto("/?auto&semente=5&velocidade=2&arena=arena-basica&cenario=imagens");
   await page.waitForSelector('body[data-cena="combate"]', { timeout: 15_000 });
   await page.waitForTimeout(1500);
   await expect(page.locator("body")).toHaveAttribute("data-cenario", "codigo");

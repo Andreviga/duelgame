@@ -8,7 +8,7 @@ Fases 7A, 7B e 8 aprovadas em 2026-11-12.
 
 **Celular em pé:** o André decidiu manter o aviso "gire o aparelho" (2026-11-12). O jogo é só deitado.
 
-**Cenários no Blender:** as três arenas têm cenário em imagens, em uso e aprovados pelo André (2026-11-12). Em aberto: os três pontos da arena básica (portal, corda, lua) e a conferência de fluidez no celular com as camadas (comparar com `?cenario=codigo`).
+**Cenários no Blender:** as três arenas têm cenário em imagens, em uso e aprovados pelo André (2026-11-12). O André pediu "faz tudo": os três pontos da arena básica foram resolvidos (lua menor e mais alta, corda rente à viga com borlas só nas pontas, luz das lanternas mais fraca no portal) e entrou a proteção de desempenho abaixo.
 
 Fases 0 a 6 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
 
@@ -309,11 +309,17 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 - **Memória de vídeo das camadas da arena básica:** cerca de 30 MB (7,6 milhões de pixels). Fluidez no celular não medida daqui.
 - **O menu usa só o fundo do cenário** (céu, longe e perto), sem chão nem plataformas.
 
+### Tempo real e cenário leve (2026-11-12)
+- **O jogo mede o tempo real de cada quadro** (`src/render/relogio.ts`), não o `delta` do Phaser. O `delta` fica preso perto de 17 ms mesmo a 10 quadros por segundo: em aparelho lento o jogo inteiro rodava em câmera lenta e, online, a luta seria cortada pelo relógio do servidor. Agora o aparelho lento mostra menos quadros, mas a luta dura o mesmo. Um quadro vale no máximo 100 ms.
+- **Opção "Cenário": automático, completo ou leve.** No automático, o combate mede os primeiros 4 segundos com as imagens; abaixo de 24 quadros por segundo, troca para o desenho por código e guarda isso no aparelho. Escolher "automático" de novo nas opções dá outra chance.
+- `?cenario=imagens` e `?cenario=codigo` no endereço mandam em tudo (para testar).
+- No ambiente de desenvolvimento a troca leva o combate de cerca de 11 para cerca de 30 quadros por segundo.
+
 ## Próximo passo
 
 Tudo o que falta para a "Definição de 100%" depende do André:
 
-1. Comparar no celular a fluidez com e sem as imagens de cenário (`?demo` e `?demo&cenario=codigo`). Decidir os três pontos em aberto da arena básica (portal, corda, lua).
+1. Conferir no celular se o cenário completo fica fluido (em Opções > Cenário dá para forçar "completo" ou "leve").
 2. Publicar o servidor (Render) e o cliente (Vercel) e fazer a conferência do `PUBLICAR.md`.
 3. Medir os quadros por segundo em um celular intermediário, com 16 personagens em combate (2x2, rodadas finais).
 4. Jogar online com 4 pessoas em redes diferentes, com uma reconexão.

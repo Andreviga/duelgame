@@ -2,6 +2,8 @@ import type Phaser from "phaser";
 import cenariosJson from "../dados/cenarios.json";
 import type { Arena } from "../sim/combate/tipos";
 import { colocarCamada, colocarCeu, type Camera } from "./camadas";
+import { usarImagensDeCenario } from "./opcoes";
+import { opcoes } from "./som";
 
 /** Arenas que têm cenário em imagens em `public/cenarios/<id>/`. As outras são desenhadas por código. */
 export const CENARIOS: readonly string[] = cenariosJson;
@@ -18,12 +20,18 @@ interface DadosDoCenario {
 }
 
 /**
- * Com `?cenario=codigo` no endereço, o jogo ignora as imagens e desenha as arenas por código.
- * Serve para comparar desempenho e para os testes longos, que não dependem do cenário.
+ * Com `?cenario=codigo` no endereço, o jogo ignora as imagens e desenha as arenas por código;
+ * com `?cenario=imagens`, usa as imagens mesmo que o aparelho seja lento. Serve para comparar
+ * desempenho e para os testes.
  */
-const SO_CODIGO =
-  typeof window !== "undefined" &&
-  new URLSearchParams(window.location.search).get("cenario") === "codigo";
+const PEDIDO =
+  typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("cenario");
+
+/** Desenhar as arenas por código? Vale o endereço, depois a opção do jogador (ver `opcoes.ts`). */
+const soCodigo = (): boolean => !usarImagensDeCenario(opcoes, PEDIDO);
+
+/** O jogo pode trocar sozinho para o cenário leve (só no automático e sem pedido no endereço). */
+export const podeSimplificarSozinho = (): boolean => PEDIDO === null && opcoes.cenario === "auto";
 
 const chave = (arena: string, imagem: Imagem): string => `cenario:${arena}:${imagem}`;
 const chaveDosDados = (arena: string): string => `cenario:${arena}:dados`;
@@ -33,7 +41,7 @@ const chaveDosDados = (arena: string): string => `cenario:${arena}:dados`;
  * Cada tela pede só a arena que vai mostrar: carregar as três de uma vez pesaria à toa.
  */
 export function carregarCenarios(cena: Phaser.Scene, arenas: readonly string[]): void {
-  if (SO_CODIGO) return;
+  if (soCodigo()) return;
   for (const arena of arenas) {
     if (!CENARIOS.includes(arena)) continue;
     for (const imagem of IMAGENS) {
@@ -51,7 +59,7 @@ export const ehArquivoDeCenario = (chaveDoArquivo: string): boolean =>
   chaveDoArquivo.startsWith("cenario:");
 
 function dadosDoCenario(cena: Phaser.Scene, arena: string): DadosDoCenario | null {
-  if (SO_CODIGO || !CENARIOS.includes(arena)) return null;
+  if (soCodigo() || !CENARIOS.includes(arena)) return null;
   if (!IMAGENS.every((imagem) => cena.textures.exists(chave(arena, imagem)))) return null;
   const d = cena.cache.json.get(chaveDosDados(arena)) as Partial<DadosDoCenario> | undefined;
   if (!d?.encaixe || !d.paralaxeSugerida || !d.corAbaixo) return null;

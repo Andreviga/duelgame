@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { gravarOpcoes, lerOpcoes, OPCOES_PADRAO } from "../src/render/opcoes";
+import {
+  criarMedidor,
+  gravarOpcoes,
+  lerOpcoes,
+  OPCOES_PADRAO,
+  usarImagensDeCenario,
+} from "../src/render/opcoes";
+import { criarRelogio, TETO_DO_QUADRO_MS } from "../src/render/relogio";
 import { resumoDosNocautes } from "../src/render/resumo";
 import { ALVO_MINIMO, alvoTocado, areaDeToque } from "../src/render/toque";
 import { dicaDoTutorial } from "../src/render/tutorial";
@@ -12,13 +19,27 @@ describe("opções guardadas no navegador", () => {
   });
 
   it("grava e lê de volta o mesmo", () => {
-    const o = { efeitos: 0.25, musica: 0, velocidade: 2 as const, tutorialVisto: true };
+    const o = {
+      efeitos: 0.25,
+      musica: 0,
+      velocidade: 2 as const,
+      tutorialVisto: true,
+      cenario: "codigo" as const,
+      cenarioLento: true,
+    };
     expect(lerOpcoes(gravarOpcoes(o))).toEqual(o);
   });
 
   it("corrige valores fora da faixa", () => {
     const o = lerOpcoes('{"efeitos":7,"musica":-1,"velocidade":3,"tutorialVisto":"sim"}');
-    expect(o).toEqual({ efeitos: 1, musica: 0, velocidade: 1, tutorialVisto: false });
+    expect(o).toEqual({
+      efeitos: 1,
+      musica: 0,
+      velocidade: 1,
+      tutorialVisto: false,
+      cenario: "auto",
+      cenarioLento: false,
+    });
   });
 });
 
@@ -96,5 +117,73 @@ describe("área de toque", () => {
 
   it("longe de todos, não acerta nenhum", () => {
     expect(alvoTocado(alvos, 600, 300)).toBeNull();
+  });
+});
+
+describe("cenário em imagens ou leve", () => {
+  const auto = { ...OPCOES_PADRAO };
+
+  it("no automático usa as imagens até o aparelho se mostrar lento", () => {
+    expect(usarImagensDeCenario(auto, null)).toBe(true);
+    expect(usarImagensDeCenario({ ...auto, cenarioLento: true }, null)).toBe(false);
+  });
+
+  it("a escolha do jogador vale mais que a medida", () => {
+    expect(usarImagensDeCenario({ ...auto, cenario: "imagens", cenarioLento: true }, null)).toBe(
+      true,
+    );
+    expect(usarImagensDeCenario({ ...auto, cenario: "codigo" }, null)).toBe(false);
+  });
+
+  it("o pedido no endereço vale mais que tudo", () => {
+    expect(usarImagensDeCenario({ ...auto, cenario: "imagens" }, "codigo")).toBe(false);
+    expect(usarImagensDeCenario({ ...auto, cenario: "codigo" }, "imagens")).toBe(true);
+  });
+
+  it("o medidor acusa lento abaixo de 24 quadros por segundo, uma vez só, depois de 4 segundos", () => {
+    const lento = criarMedidor();
+    const respostas: (string | null)[] = [];
+    for (let i = 0; i < 60; i++) respostas.push(lento.medir(100)); // 10 quadros por segundo
+    expect(respostas.filter((r) => r !== null)).toEqual(["lento"]);
+    expect(respostas.indexOf("lento")).toBe(39); // no quadro que completa 4 segundos
+
+    const fluido = criarMedidor();
+    const outras: (string | null)[] = [];
+    for (let i = 0; i < 400; i++) outras.push(fluido.medir(16.7));
+    expect(outras.filter((r) => r !== null)).toEqual(["ok"]);
+  });
+});
+
+describe("relógio de quadros", () => {
+  it("mede o tempo real entre quadros, mesmo quando o aparelho está lento", () => {
+    let t = 1000;
+    const relogio = criarRelogio(() => t);
+    expect(relogio.quadro().ms).toBeCloseTo(1000 / 60); // primeiro quadro: não há anterior
+    t += 90; // 11 quadros por segundo
+    expect(relogio.quadro()).toEqual({ real: 90, ms: 90 });
+    t += 16;
+    expect(relogio.quadro()).toEqual({ real: 16, ms: 16 });
+  });
+
+  it("um quadro travado não faz o jogo dar um salto: vale até o teto", () => {
+    let t = 0;
+    const relogio = criarRelogio(() => t);
+    relogio.quadro();
+    t += 5000; // a aba ficou em segundo plano
+    expect(relogio.quadro()).toEqual({ real: 5000, ms: TETO_DO_QUADRO_MS });
+  });
+
+  it("dez segundos reais valem dez segundos de jogo a 60 ou a 12 quadros por segundo", () => {
+    for (const passo of [1000 / 60, 1000 / 12]) {
+      let t = 0;
+      const relogio = criarRelogio(() => t);
+      relogio.quadro();
+      let jogo = 0;
+      while (t < 10_000) {
+        t += passo;
+        jogo += relogio.quadro().ms;
+      }
+      expect(jogo).toBeCloseTo(t, 3);
+    }
   });
 });

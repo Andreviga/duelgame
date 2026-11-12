@@ -58,7 +58,7 @@ test("celular deitado: créditos e opções abrem pelo menu, e as opções ficam
   await cena(page, "inicial");
   await tocar(page, 1108, 40);
   await cena(page, "opcoes");
-  await tocar(page, 596, 337); // música: mudo
+  await tocar(page, 596, 277); // música: mudo
   await page.waitForTimeout(200);
   await page.reload();
   await cena(page, "inicial");

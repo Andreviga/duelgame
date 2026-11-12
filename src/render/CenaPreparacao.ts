@@ -42,6 +42,7 @@ import {
 import { CamadasDoCenario, carregarCenarios } from "./cenarios";
 import { carregarSprites, posarRetrato, temSprite } from "./sprites";
 import { musica, opcoes, salvarOpcoes, tocar, type Efeito } from "./som";
+import { criarRelogio } from "./relogio";
 import { alvoTocado } from "./toque";
 import { dicaDoTutorial } from "./tutorial";
 
@@ -104,6 +105,7 @@ export class CenaPreparacao extends Phaser.Scene {
   private arrasto: Arrasto | null = null;
   private aviso = { texto: "", ms: 0, cor: 0xffffff };
   private pisca = 0;
+  private relogio = criarRelogio(() => performance.now());
 
   constructor() {
     super("preparacao");
@@ -121,6 +123,7 @@ export class CenaPreparacao extends Phaser.Scene {
     this.arrasto = null;
 
     document.body.dataset["cena"] = "preparacao";
+    this.relogio = criarRelogio(() => performance.now());
     musica("preparacao");
     this.laco = { estado: partidaAtual().economia, acumulado: 0 };
     jogo.aoErro = (erro) => {
@@ -424,8 +427,9 @@ export class CenaPreparacao extends Phaser.Scene {
     );
   }
 
-  override update(_tempo: number, delta: number): void {
-    const ms = Math.min(delta, 50);
+  override update(): void {
+    // Tempo real, não o `delta` do Phaser (ver `relogio.ts`).
+    const { ms } = this.relogio.quadro();
     if (!jogo.online) {
       // Contra bots o relógio da preparação anda aqui; online, quem manda é o servidor.
       // No tutorial o relógio fica parado: a rodada só começa quando o jogador toca em LUTAR.

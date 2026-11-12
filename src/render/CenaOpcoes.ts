@@ -1,20 +1,69 @@
 import Phaser from "phaser";
 import { desenharFundo } from "./desenho";
 import { ALTURA, criarTexto, desenharBotao, LARGURA, type Ret } from "./interface";
-import { DEGRAUS_DE_VOLUME, type Opcoes } from "./opcoes";
+import { DEGRAUS_DE_VOLUME } from "./opcoes";
 import { opcoes, salvarOpcoes, tocar } from "./som";
 import { alvoTocado } from "./toque";
 
-const VOLTAR: Ret = { x: 450, y: 560, largura: 300, altura: 60 };
-const LINHAS: { rotulo: string; chave: "efeitos" | "musica"; y: number }[] = [
-  { rotulo: "Volume dos efeitos", chave: "efeitos", y: 210 },
-  { rotulo: "Volume da música", chave: "musica", y: 310 },
-];
-const VELOCIDADES: readonly Opcoes["velocidade"][] = [1, 2, 4];
-const Y_VELOCIDADE = 410;
-const degrau = (i: number, y: number): Ret => ({ x: 560 + i * 84, y, largura: 72, altura: 54 });
+const VOLTAR: Ret = { x: 450, y: 580, largura: 300, altura: 60 };
 
-/** Tela de opções: volume dos efeitos, volume da música e velocidade com que o combate começa. */
+/** Uma linha da tela: um rótulo e as escolhas, das quais uma está marcada. */
+interface Linha {
+  rotulo: string;
+  y: number;
+  largura: number;
+  escolhas: { texto: string; marcada: () => boolean; escolher: () => void }[];
+}
+
+const volume = (chave: "efeitos" | "musica") =>
+  DEGRAUS_DE_VOLUME.map((v) => ({
+    texto: v === 0 ? "mudo" : `${Math.round(v * 100)}%`,
+    marcada: () => opcoes[chave] === v,
+    escolher: () => void (opcoes[chave] = v),
+  }));
+
+const LINHAS: Linha[] = [
+  { rotulo: "Volume dos efeitos", y: 160, largura: 72, escolhas: volume("efeitos") },
+  { rotulo: "Volume da música", y: 250, largura: 72, escolhas: volume("musica") },
+  {
+    rotulo: "Velocidade do combate",
+    y: 340,
+    largura: 72,
+    escolhas: ([1, 2, 4] as const).map((v) => ({
+      texto: `${v}x`,
+      marcada: () => opcoes.velocidade === v,
+      escolher: () => void (opcoes.velocidade = v),
+    })),
+  },
+  {
+    rotulo: "Cenário",
+    y: 430,
+    largura: 128,
+    escolhas: (
+      [
+        ["auto", "automático"],
+        ["imagens", "completo"],
+        ["codigo", "leve"],
+      ] as const
+    ).map(([valor, texto]) => ({
+      texto,
+      marcada: () => opcoes.cenario === valor,
+      escolher: () => {
+        opcoes.cenario = valor;
+        // Escolher de novo o automático dá outra chance ao cenário completo.
+        if (valor === "auto") opcoes.cenarioLento = false;
+      },
+    })),
+  },
+];
+const ret = (linha: Linha, i: number): Ret => ({
+  x: 560 + i * (linha.largura + 12),
+  y: linha.y,
+  largura: linha.largura,
+  altura: 54,
+});
+
+/** Tela de opções: volumes, velocidade inicial do combate e o tipo de cenário. */
 export class CenaOpcoes extends Phaser.Scene {
   private g!: Phaser.GameObjects.Graphics;
 
@@ -27,24 +76,26 @@ export class CenaOpcoes extends Phaser.Scene {
     desenharFundo(this.add.graphics(), 600, 380);
     this.add.graphics().fillStyle(0x0b0f16, 0.6).fillRect(0, 0, LARGURA, ALTURA);
     this.g = this.add.graphics();
-    criarTexto(this, LARGURA / 2, 100, "OPÇÕES", 52);
+    criarTexto(this, LARGURA / 2, 84, "OPÇÕES", 52);
     for (const linha of LINHAS) {
       criarTexto(this, 530, linha.y + 27, linha.rotulo, 22, 0xe8eef7, 1);
-      DEGRAUS_DE_VOLUME.forEach((v, i) => {
-        const r = degrau(i, linha.y);
-        const texto = v === 0 ? "mudo" : `${Math.round(v * 100)}%`;
-        criarTexto(this, r.x + r.largura / 2, r.y + r.altura / 2, texto, 16).setDepth(2);
+      linha.escolhas.forEach((e, i) => {
+        const r = ret(linha, i);
+        criarTexto(this, r.x + r.largura / 2, r.y + r.altura / 2, e.texto, 16).setDepth(2);
       });
     }
-    criarTexto(this, 530, Y_VELOCIDADE + 27, "Velocidade do combate", 22, 0xe8eef7, 1);
-    VELOCIDADES.forEach((v, i) => {
-      const r = degrau(i, Y_VELOCIDADE);
-      criarTexto(this, r.x + r.largura / 2, r.y + r.altura / 2, `${v}x`, 18).setDepth(2);
-    });
     criarTexto(
       this,
       LARGURA / 2,
-      500,
+      520,
+      "No automático, o jogo troca para o cenário leve se o aparelho ficar lento.",
+      14,
+      0x9fb0c8,
+    );
+    criarTexto(
+      this,
+      LARGURA / 2,
+      542,
       "A velocidade também troca durante a luta, pelo botão do canto ou pela tecla V.",
       14,
       0x9fb0c8,
@@ -63,15 +114,8 @@ export class CenaOpcoes extends Phaser.Scene {
         [
           { id: () => this.scene.start("inicial"), ret: VOLTAR },
           ...LINHAS.flatMap((linha) =>
-            DEGRAUS_DE_VOLUME.map((v, i) => ({
-              id: () => void (opcoes[linha.chave] = v),
-              ret: degrau(i, linha.y),
-            })),
+            linha.escolhas.map((e, i) => ({ id: e.escolher, ret: ret(linha, i) })),
           ),
-          ...VELOCIDADES.map((v, i) => ({
-            id: () => void (opcoes.velocidade = v),
-            ret: degrau(i, Y_VELOCIDADE),
-          })),
         ],
         p.x,
         p.y,
@@ -87,13 +131,8 @@ export class CenaOpcoes extends Phaser.Scene {
   private desenhar(): void {
     this.g.clear();
     for (const linha of LINHAS) {
-      DEGRAUS_DE_VOLUME.forEach((v, i) =>
-        desenharBotao(this.g, degrau(i, linha.y), 0x26324a, opcoes[linha.chave] === v),
-      );
+      linha.escolhas.forEach((e, i) => desenharBotao(this.g, ret(linha, i), 0x26324a, e.marcada()));
     }
-    VELOCIDADES.forEach((v, i) =>
-      desenharBotao(this.g, degrau(i, Y_VELOCIDADE), 0x26324a, opcoes.velocidade === v),
-    );
     desenharBotao(this.g, VOLTAR, 0x2f5c8a);
   }
 }
