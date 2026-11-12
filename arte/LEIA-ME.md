@@ -64,8 +64,11 @@ Os `.blend` em `arte/fontes/` são gerados e não vão para o repositório; os a
 
 ## Estado atual
 
-- `lamina`: modelado por script, aguardando a aprovação visual do André.
-- Os outros 11 continuam como formas geométricas até a Fase 7B.
+- `lamina`: aprovado pelo André.
+- `sombra` e `vento`: modelados, aguardando a aprovação visual do André.
+- Os outros 9 continuam como formas geométricas.
+
+Para refazer só alguns: `ARTE_SO=sombra,vento npm run arte`.
 
 ## Licenças
 

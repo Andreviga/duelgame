@@ -2,9 +2,9 @@
 
 ## Fase atual
 
-**Fase 7A — Pipeline de arte com o Lâmina como piloto: pipeline pronto e Lâmina modelado por script, aguardando a aprovação visual do André.**
+**Fase 7B — os outros 11 personagens, por mundo: Dojo pronto (Sombra e Mestre Vento), aguardando a aprovação visual do André.**
 
-O critério da 7A ("`npm run arte` gera o atlas do Lâmina do zero, a validação passa, e ele aparece animado em um combate ao lado dos retângulos") está cumprido com o Lâmina de verdade, modelado por script (ver `arte/LEIA-ME.md`). Falta só o André aprovar o visual.
+Fase 7A aprovada em 2026-11-12 (Lâmina). Na 7B a aprovação é por mundo, na ordem Dojo, Piratas, Futebol, Monstros. Feitos: 3 de 12 (Lâmina, Sombra, Mestre Vento).
 
 Fases 0 a 6 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
 
@@ -19,7 +19,7 @@ Pendências herdadas:
 - [ ] Nenhum personagem, mundo ou papel passa de 55% de vitória. *Personagens: sim. Trios: perto de 55% depois do ajuste de 2026-11-12; o Dojo (perto de 57%) ainda passa. Ver "Números do lote".*
 - [ ] Partida completa contra 3 bots nos dois modos, do menu à tela de resultado, sem erro no console. *Automatizado em `npm run test:e2e`; falta o André jogar.*
 - [ ] Partida online completa com 4 pessoas em redes diferentes, com uma reconexão no meio. *Automatizado na mesma máquina: 4 clientes de rede jogam a partida inteira (`testes/servidor.test.ts`) e duas abas com reconexão (`npm run test:e2e`). Falta publicar e jogar com 4 pessoas.*
-- [ ] Os 12 personagens com todas as animações. *Pipeline pronto (Fase 7A); 1 de 12 modelado (Lâmina), aguardando aprovação visual.*
+- [ ] Os 12 personagens com todas as animações. *Pipeline pronto (Fase 7A); 3 de 12 modelados (Lâmina aprovado; Sombra e Mestre Vento aguardando aprovação).*
 - [ ] Som e efeitos em todos os eventos da Fase 8. *Efeitos visuais já existem; som não.*
 - [ ] Jogável no celular por toque, a 60 quadros por segundo. *Fase 9.*
 - [ ] Tutorial concluído por uma pessoa de fora sem ajuda. *Fase 8.*
@@ -250,5 +250,6 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 
 ## Próximo passo
 
-1. André: aprovar o visual do Lâmina (ou pedir mudanças) e publicar o servidor no Render (`PUBLICAR.md`).
+1. André: aprovar o visual do Sombra e do Mestre Vento (ou pedir mudanças) e publicar o servidor no Render (`PUBLICAR.md`).
+2. Depois: Piratas (Capitã Maré, Canhoneiro, Âncora), Futebol e Monstros.
 2. Fase 7B — os outros 11 personagens, um por vez, com aprovação visual em cada um.

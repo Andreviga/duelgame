@@ -25,6 +25,8 @@ interface Entrada {
 const espec: EspecDeAnimacoes = especJson;
 const python = process.env["PYTHON"] ?? "python3";
 const soAtlas = process.argv.includes("--so-atlas");
+/** ARTE_SO=sombra,vento refaz só esses; os outros ficam com o atlas que já está em public/sprites. */
+const so = process.env["ARTE_SO"]?.split(",");
 const blender = (argumentos: string[]): void => {
   execFileSync(python, ["ferramentas/arte/rodar_blender.py", ...argumentos], { stdio: "inherit" });
 };
@@ -35,6 +37,10 @@ let falhou = false;
 
 for (const { id, fonte, gerador } of entradas) {
   const pasta = `arte/quadros/${id}`;
+  if (so && !so.includes(id)) {
+    if (existsSync(`public/sprites/${id}.json`)) prontos.push(id);
+    continue;
+  }
   if (!soAtlas) {
     if (gerador) blender([gerador, "--", "--saida", fonte]);
     if (!existsSync(fonte)) {

@@ -249,7 +249,8 @@ class Humanoide:
     def acoes_basicas(self, arma="mao", guarda=None):
         """As sete ações comuns a todo humanoide. `atacar` e `habilidade` são de cada personagem."""
         g = guarda or {"braco_f": 12, "ante_f": 35, "braco_t": -8, "ante_t": 25}
-        A = {"arma": arma}
+        # O jeito de segurar a arma (ossos "arma_...") vale para todas as ações básicas.
+        A = {"arma": arma, **{k: v for k, v in g.items() if k.startswith("arma_")}}
 
         def p(**k):
             return {**A, **k}

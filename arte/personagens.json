@@ -3,5 +3,15 @@
     "id": "lamina",
     "fonte": "arte/fontes/lamina.blend",
     "gerador": "ferramentas/arte/modelos/lamina.py"
+  },
+  {
+    "id": "sombra",
+    "fonte": "arte/fontes/sombra.blend",
+    "gerador": "ferramentas/arte/modelos/sombra.py"
+  },
+  {
+    "id": "vento",
+    "fonte": "arte/fontes/vento.blend",
+    "gerador": "ferramentas/arte/modelos/vento.py"
   }
 ]
