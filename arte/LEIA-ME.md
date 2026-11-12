@@ -105,7 +105,11 @@ python3 ferramentas/arte/rodar_blender.py ferramentas/arte/cenarios/arena-basica
   Blender, para não haver ruído. Brilhos suaves (lua, lanternas, névoa) usam `halo()`.
 - **Peso:** no máximo 1,5 MB por arena.
 
-Estado: `arena-basica` (pátio de dojo à noite) renderizada e em uso no jogo, aguardando a aprovação do André.
+Estado:
+
+- `arena-basica` (pátio de dojo à noite): em uso no jogo, aprovada pelo André. 1,41 MB.
+- `arena-larga` (convés de navio ao pôr do sol): em uso no jogo, aguardando a aprovação do André. 0,85 MB.
+- `arena-torre`: ainda desenhada por código.
 
 **Como o jogo usa as imagens** (`src/render/cenarios.ts` e `src/render/camadas.ts`):
 

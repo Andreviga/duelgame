@@ -17,7 +17,8 @@ async function abrirCombate(page: Page, arena: string): Promise<string[]> {
 test("arena com cenário em imagens: o combate usa as camadas, sem erro", async ({ page }) => {
   const pedidos: string[] = [];
   page.on("response", (r) => {
-    if (r.url().includes("/cenarios/") && r.ok()) pedidos.push(r.url().split("/").pop() ?? "");
+    if (r.url().includes("/cenarios/arena-basica/") && r.ok())
+      pedidos.push(r.url().split("/").pop() ?? "");
   });
   const erros = await abrirCombate(page, "arena-basica");
   await expect(page.locator("body")).toHaveAttribute("data-cenario", "imagens");
