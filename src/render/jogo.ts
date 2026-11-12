@@ -39,6 +39,8 @@ export const jogo: {
   automatico: boolean;
   /** O modo automático vale para uma partida só; depois o menu volta ao normal. */
   automaticoJaRodou: boolean;
+  /** Partida de tutorial: a preparação mostra as dicas e o relógio não corre. */
+  tutorial: boolean;
   eu: number;
   /** Conexão com a sala online, ou null jogando contra bots nesta máquina. */
   online: ConexaoOnline | null;
@@ -56,6 +58,7 @@ export const jogo: {
   dificuldade: "medio",
   automatico: false,
   automaticoJaRodou: false,
+  tutorial: false,
   eu: 0,
   online: null,
   sala: null,

@@ -2,9 +2,9 @@
 
 ## Fase atual
 
-**Fase 7B — os outros 11 personagens, por mundo: os 12 modelados. Dojo, Piratas e Futebol aprovados; Monstros (Brasa, Rochedo e Faísca) aguardando a aprovação visual do André.**
+**Fase 8 — Impacto e interface: pronta, aguardando o André jogar e aprovar.**
 
-Fase 7A aprovada em 2026-11-12 (Lâmina). Na 7B a aprovação é por mundo, na ordem Dojo, Piratas, Futebol, Monstros. Feitos: 12 de 12.
+Fases 7A e 7B aprovadas em 2026-11-12 (os 12 personagens modelados por script).
 
 Fases 0 a 6 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
 
@@ -19,10 +19,10 @@ Pendências herdadas:
 - [ ] Nenhum personagem, mundo ou papel passa de 55% de vitória. *Personagens: sim. Trios: perto de 55% depois do ajuste de 2026-11-12; o Dojo (perto de 57%) ainda passa. Ver "Números do lote".*
 - [ ] Partida completa contra 3 bots nos dois modos, do menu à tela de resultado, sem erro no console. *Automatizado em `npm run test:e2e`; falta o André jogar.*
 - [ ] Partida online completa com 4 pessoas em redes diferentes, com uma reconexão no meio. *Automatizado na mesma máquina: 4 clientes de rede jogam a partida inteira (`testes/servidor.test.ts`) e duas abas com reconexão (`npm run test:e2e`). Falta publicar e jogar com 4 pessoas.*
-- [ ] Os 12 personagens com todas as animações. *Pipeline pronto (Fase 7A); 12 de 12 modelados; 9 aprovados, Monstros aguardando aprovação.*
-- [ ] Som e efeitos em todos os eventos da Fase 8. *Efeitos visuais já existem; som não.*
+- [ ] Os 12 personagens com todas as animações. *Pipeline pronto (Fase 7A); 12 de 12 modelados e aprovados pelo André (2026-11-12).*
+- [ ] Som e efeitos em todos os eventos da Fase 8. *Feito na Fase 8: efeitos visuais e som por síntese em acerto, tiro, habilidade, nocaute, compra, venda, fusão, erro e fim de partida; música de preparação e de combate. Falta o André ouvir e aprovar.*
 - [ ] Jogável no celular por toque, a 60 quadros por segundo. *Fase 9.*
-- [ ] Tutorial concluído por uma pessoa de fora sem ajuda. *Fase 8.*
+- [ ] Tutorial concluído por uma pessoa de fora sem ajuda. *Tutorial pronto (Fase 8); falta o teste com uma pessoa de fora.*
 - [ ] `CREDITOS.md` lista cada asset de terceiros. *Hoje não há nenhum asset de terceiros.*
 
 ## Pronto
@@ -110,6 +110,18 @@ Pendências herdadas:
 - **No jogo** (`src/render/animacao.ts` e `CenaCombate`): personagem com atlas aparece como sprite, espelhado quando vira para a esquerda; a animação é escolhida pelo estado da simulação (arremessado > atingido > habilidade > atacar > pular/cair > andar > parado); nocaute por meio segundo depois de sair da arena. A cor do jogador vai no contorno e em um anel no chão. A simulação não mudou.
 - **Modelos por script** (`ferramentas/arte/modelos/`): `humanoide.py` monta esqueleto, corpo e as 7 ações comuns; `lamina.py` define o Lâmina (quimono vermelho, espada nas costas) e as ações `atacar` e `habilidade`.
 - **Testes** (186): PNG, cada regra da validação com quadros defeituosos de propósito, formato do atlas, e a escolha de animação a partir do estado.
+
+### Fase 7B
+- Os 12 personagens têm modelo, as 9 animações e atlas em `public/sprites/`. Humanoides usam `humanoide.py`; os Monstros trocam o esqueleto (`ossos()`), mantendo os nomes de osso.
+
+### Fase 8
+- **Retratos:** cartas da loja, banco, campo da preparação e menu mostram o sprite parado do personagem (`src/render/sprites.ts`).
+- **Som por síntese** (`src/render/som.ts`): 13 efeitos e duas músicas (preparação e combate) gerados no navegador com Web Audio. Não há arquivo de áudio no projeto. O áudio liga no primeiro toque ou tecla.
+- **Opções** (`CenaOpcoes`, `src/render/opcoes.ts`): volume dos efeitos, volume da música e velocidade inicial do combate, guardados no navegador.
+- **Cenário por arena** (`desenharFundo` em `src/render/desenho.ts`): pátio de dojo à noite (básica), convés ao pôr do sol (larga) e torre na tempestade (torre), com cores próprias de chão e plataformas. Tudo desenhado por código.
+- **Tutorial** (`src/render/tutorial.ts`): partida fixa contra bots fáceis, com dicas em 3 rodadas (comprar, posicionar e lutar; elixir e fusão; sinergias), contorno piscando no alvo, relógio parado e botão de pular. O menu destaca o tutorial para quem nunca fez.
+- **Por que ganhei ou perdi** (`src/render/resumo.ts`): no fim da rodada, uma linha diz quem mais nocauteou de cada lado e quantos caíram sozinhos.
+- **Já existia antes da fase:** faíscas, poeira, rastro, explosão de nocaute, tremor, pausa no golpe forte, cartas com custo, mundo e papel, e o painel de sinergias.
 
 ## Números do lote
 
@@ -248,8 +260,18 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 - **Só o combate usa sprites por enquanto.** Cartas, banco e preparação continuam com as formas geométricas; os retratos nas cartas são da Fase 8.
 - **Tipos mínimos do Node** para o servidor e as ferramentas ficam em `node.d.ts` na raiz (sem `@types/node`).
 
+### Fase 7B
+- **Aprovação por mundo** (decisão do André): Dojo, Piratas, Futebol, Monstros.
+- **`ARTE_SO=id1,id2 npm run arte`** refaz só alguns personagens.
+
+### Fase 8
+- **Som gerado por código, sem arquivos** (decisão do André, opção A, 2026-11-12): original, sem nada para o `CREDITOS.md`. O Claude não consegue ouvir o resultado; o ajuste fino é de ouvido, com o André.
+- **Retrato = sprite parado de corpo inteiro**, tirado do atlas que já existe. Não há um render separado de rosto.
+- **Tutorial é uma partida normal com dicas por cima**, não um modo à parte: a mesma simulação, semente fixa (7), arena básica.
+- **Os ícones pequenos do placar do combate continuam geométricos** (formas por papel).
+- **Briefing para outra IA melhorar a arte no Blender:** `arte/BRIEFING-BLENDER.md`.
+
 ## Próximo passo
 
-1. André: aprovar o visual dos Monstros (ou pedir mudanças), o que fecha a Fase 7B, e publicar o servidor no Render (`PUBLICAR.md`).
-2. Depois: Fase 8, só com o "aprovado" e o plano curto.
-2. Fase 7B — os outros 11 personagens, um por vez, com aprovação visual em cada um.
+1. André: jogar a Fase 8 (som, tutorial, opções, cenários) e aprovar ou pedir ajustes; publicar o servidor no Render (`PUBLICAR.md`).
+2. Depois: Fase 9, só com o "aprovado" e o plano curto.

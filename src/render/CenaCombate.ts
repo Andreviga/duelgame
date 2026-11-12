@@ -17,6 +17,7 @@ import {
 } from "./desenho";
 import { carregarSprites, escalaDoSprite } from "./sprites";
 import { musica, opcoes, tocar } from "./som";
+import { resumoDosNocautes } from "./resumo";
 import {
   animacaoDoLutador,
   ESPEC,
@@ -90,6 +91,9 @@ export class CenaCombate extends Phaser.Scene {
   private textoPlacar!: Phaser.GameObjects.Text;
   private textoFaixa!: Phaser.GameObjects.Text;
   private textoSub!: Phaser.GameObjects.Text;
+  private textoResumo!: Phaser.GameObjects.Text;
+  /** Quem saiu da arena nesta rodada e quem levou o crédito, para o resumo do fim. */
+  private nocautes: { vitima: number; autor: number | null }[] = [];
   private textoSemente!: Phaser.GameObjects.Text;
   private textoLado: Phaser.GameObjects.Text[] = [];
   private textoSinergia: Phaser.GameObjects.Text[] = [];
@@ -182,6 +186,10 @@ export class CenaCombate extends Phaser.Scene {
       .setVisible(false);
     this.textoSub = this.add
       .text(LARGURA / 2, ALTURA / 2 + 26, "", estilo(20, "#cfd8e3"))
+      .setOrigin(0.5)
+      .setVisible(false);
+    this.textoResumo = this.add
+      .text(LARGURA / 2, ALTURA / 2 + 60, "", estilo(17, "#ffd54a"))
       .setOrigin(0.5)
       .setVisible(false);
     this.textoSemente = this.add
@@ -328,6 +336,8 @@ export class CenaCombate extends Phaser.Scene {
     this.fimContado = false;
     this.textoFaixa.setVisible(false);
     this.textoSub.setVisible(false);
+    this.textoResumo.setVisible(false);
+    this.nocautes = [];
     this.escrever(this.textoSemente, `semente ${this.semente}`);
   }
 
@@ -378,7 +388,7 @@ export class CenaCombate extends Phaser.Scene {
     }
 
     this.atualizarCamera(ms);
-    desenharFundo(this.fundo, this.cam.x, this.cam.y);
+    desenharFundo(this.fundo, this.cam.x, this.cam.y, this.laco.estado.arena.id);
     desenharArena(this.cenario, this.laco.estado.arena);
     // Anel no chão com a cor do jogador, para os personagens com sprite.
     for (const l of this.laco.estado.lutadores) {
@@ -429,6 +439,10 @@ export class CenaCombate extends Phaser.Scene {
         if (visualDaSaida) visualDaSaida.saida = { x, y, tick: e.tick };
         const lado = e.lutadores[ev.id]?.lado ?? 0;
         fx.explosao(x, y, ang, cor(ev.id));
+        this.nocautes.push({
+          vitima: ev.id,
+          autor: ev.porGolpe ? (e.lutadores[ev.id]?.ultimoAtacante ?? null) : null,
+        });
         tocar("nocaute");
         const acabou = !e.lutadores.some((l) => l.vivo && l.lado === lado);
         this.cameraLenta = acabou ? 750 : 200;
@@ -848,7 +862,27 @@ export class CenaCombate extends Phaser.Scene {
       this.textoFaixa.setVisible(true).setTint(cor).setScale(escala).setAlpha(entrada);
       this.escrever(this.textoSub, sub);
       this.textoSub.setVisible(true).setAlpha(entrada);
+      this.escrever(this.textoResumo, this.resumo());
+      this.textoResumo.setVisible(true).setAlpha(entrada);
     }
+  }
+
+  /** Linha que explica o resultado: quem nocauteou mais de cada lado. Só nas partidas (não na demonstração). */
+  private resumo(): string {
+    if (!this.ctx) return "";
+    const e = this.laco.estado;
+    const { confronto } = this.ctx;
+    const meuLado: Lado = confronto.ladoB.includes(meuNumero()) && !confronto.fantasma ? 1 : 0;
+    return resumoDosNocautes(
+      this.nocautes.map((n) => {
+        const autor = n.autor === null ? undefined : e.lutadores[n.autor];
+        return {
+          vitima: e.lutadores[n.vitima]?.def.nome ?? "?",
+          autor: autor?.def.nome ?? null,
+          autorDoMeuLado: autor?.lado === meuLado,
+        };
+      }),
+    );
   }
 
   /** Sinergias ativas dos jogadores de um lado, em uma linha. */

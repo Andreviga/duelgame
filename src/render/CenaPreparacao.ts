@@ -40,7 +40,8 @@ import {
   partidaAtual,
 } from "./jogo";
 import { carregarSprites, posarRetrato, temSprite } from "./sprites";
-import { musica, tocar, type Efeito } from "./som";
+import { musica, opcoes, salvarOpcoes, tocar, type Efeito } from "./som";
+import { dicaDoTutorial } from "./tutorial";
 
 const LARGURA = 1200;
 const ALTURA = 675;
@@ -64,6 +65,8 @@ const COLUNA = { x: 1014, largura: 162 };
 const BOTAO_ATUALIZAR = { x: COLUNA.x, y: 548, largura: COLUNA.largura, altura: 44 };
 const BOTAO_LUTAR = { x: COLUNA.x, y: 602, largura: COLUNA.largura, altura: 48 };
 const RAIO_DO_PONTO = 46;
+const CAIXA_DO_TUTORIAL = { x: 270, y: 98, largura: 660, altura: 92 };
+const PULAR_TUTORIAL = { x: 810, y: 196, largura: 120, altura: 30 };
 
 interface Ret {
   x: number;
@@ -98,6 +101,7 @@ export class CenaPreparacao extends Phaser.Scene {
   private modelos = new Map<string, Lutador>();
   private arrasto: Arrasto | null = null;
   private aviso = { texto: "", ms: 0, cor: 0xffffff };
+  private pisca = 0;
 
   constructor() {
     super("preparacao");
@@ -123,7 +127,7 @@ export class CenaPreparacao extends Phaser.Scene {
 
     ZOOM = Math.min(0.8, 640 / arenaAtual().chao.largura);
     this.fundo = this.add.graphics().setDepth(0);
-    desenharFundo(this.fundo, MUNDO_X, 380);
+    desenharFundo(this.fundo, MUNDO_X, 380, arenaAtual().id);
     const cenario = this.add.graphics();
     desenharArena(cenario, arenaAtual());
     this.add
@@ -257,6 +261,8 @@ export class CenaPreparacao extends Phaser.Scene {
   }
 
   private aoApertar(x: number, y: number): void {
+    if (jogo.tutorial && dentro(PULAR_TUTORIAL, x, y))
+      return this.encerrarTutorial("Tutorial pulado.");
     if (this.eu.pronto) return;
     if (dentro(BOTAO_ATUALIZAR, x, y))
       return this.comando({ tipo: "atualizar", jogador: meuNumero() });
@@ -399,12 +405,15 @@ export class CenaPreparacao extends Phaser.Scene {
     const ms = Math.min(delta, 50);
     if (!jogo.online) {
       // Contra bots o relógio da preparação anda aqui; online, quem manda é o servidor.
-      this.laco = avancarLaco(
-        { estado: this.estado, acumulado: this.laco.acumulado },
-        ms,
-        tickPreparacao,
-      );
-      jogo.partida = comEconomia(partidaAtual(), this.laco.estado);
+      // No tutorial o relógio fica parado: a rodada só começa quando o jogador toca em LUTAR.
+      if (!jogo.tutorial) {
+        this.laco = avancarLaco(
+          { estado: this.estado, acumulado: this.laco.acumulado },
+          ms,
+          tickPreparacao,
+        );
+        jogo.partida = comEconomia(partidaAtual(), this.laco.estado);
+      }
       if (preparacaoEncerrada(this.estado)) {
         iniciarCombates();
         this.scene.start("combate");
@@ -421,6 +430,7 @@ export class CenaPreparacao extends Phaser.Scene {
     this.desenharTopo();
     this.desenharJogadores();
     this.desenharSinergias();
+    this.desenharTutorial(ms);
     this.desenharArrasto();
 
     for (const [chave, g] of this.bonecos) if (!this.usados.has(`b:${chave}`)) g.setVisible(false);
@@ -695,7 +705,9 @@ export class CenaPreparacao extends Phaser.Scene {
         ? "você foi eliminado · assistindo"
         : jogo.online && this.eu.pronto
           ? "aguardando os outros jogadores…"
-          : "preparação";
+          : jogo.tutorial
+            ? "tutorial · sem relógio"
+            : "preparação";
     this.rotulo("tempoLegenda", LARGURA / 2, 60, legenda, 13, 0x9fb0c8);
     if (this.aviso.ms > 0) {
       const t = this.rotulo(
@@ -710,6 +722,63 @@ export class CenaPreparacao extends Phaser.Scene {
       );
       t.setAlpha(Math.min(1, this.aviso.ms / 300));
     }
+  }
+
+  private encerrarTutorial(aviso: string): void {
+    jogo.tutorial = false;
+    opcoes.tutorialVisto = true;
+    salvarOpcoes();
+    this.avisar(aviso);
+  }
+
+  /** Caixa de dica do tutorial e o contorno piscando na parte da tela de que ela fala. */
+  private desenharTutorial(ms: number): void {
+    if (!jogo.tutorial) return;
+    const dica = dicaDoTutorial({
+      rodada: this.estado.rodada,
+      noBanco: this.eu.banco.length,
+      emCampo: this.eu.campo.length,
+      pronto: this.eu.pronto,
+    });
+    if (!dica) return this.encerrarTutorial("Tutorial concluído! Agora é com você.");
+    this.pisca = (this.pisca + ms) % 900;
+    const g = this.sobre;
+    const c = CAIXA_DO_TUTORIAL;
+    g.fillStyle(0x0b0f16, 0.92);
+    g.fillRoundedRect(c.x, c.y, c.largura, c.altura, 12);
+    g.lineStyle(3, 0xffd54a, 1);
+    g.strokeRoundedRect(c.x, c.y, c.largura, c.altura, 12);
+    this.rotulo("tutTitulo", c.x + 18, c.y + 20, dica.titulo, 19, 0xffd54a, 0, 6);
+    const texto = this.rotulo("tutTexto", c.x + 18, c.y + 58, dica.texto, 14, 0xffffff, 0, 6);
+    texto.setWordWrapWidth(c.largura - 36);
+    g.fillStyle(0x26324a, 1);
+    g.fillRoundedRect(
+      PULAR_TUTORIAL.x,
+      PULAR_TUTORIAL.y,
+      PULAR_TUTORIAL.largura,
+      PULAR_TUTORIAL.altura,
+      8,
+    );
+    this.rotulo(
+      "tutPular",
+      PULAR_TUTORIAL.x + PULAR_TUTORIAL.largura / 2,
+      PULAR_TUTORIAL.y + PULAR_TUTORIAL.altura / 2,
+      "pular tutorial",
+      12,
+      0x9fb0c8,
+      0.5,
+      6,
+    );
+    const alvos = {
+      loja: this.areaDaLoja(),
+      banco: this.areaDoBanco(),
+      lutar: BOTAO_LUTAR,
+      sinergias: { x: 8, y: 84, largura: 258, altura: 120 },
+    };
+    const alvo = dica.alvo ? alvos[dica.alvo] : null;
+    if (!alvo || this.arrasto) return;
+    g.lineStyle(5, 0xffd54a, 0.35 + 0.65 * Math.abs(Math.sin((this.pisca / 900) * Math.PI)));
+    g.strokeRoundedRect(alvo.x - 5, alvo.y - 5, alvo.largura + 10, alvo.altura + 10, 14);
   }
 
   /** Lista dos quatro jogadores, com vida e elixir, no canto direito. */

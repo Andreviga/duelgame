@@ -202,28 +202,196 @@ export function desenharIcone(g: G, papel: string, x: number, y: number, cor: nu
   }
 }
 
-/** Fundo em faixas com formas distantes e um pouco de paralaxe conforme a câmera. */
-export function desenharFundo(g: G, camX: number, camY: number): void {
+interface Tema {
+  /** Céu, de cima para baixo. */
+  ceu: readonly [number, number];
+  chao: number;
+  chaoTopo: number;
+  chaoRisco: number;
+  chaoBase: number;
+  plataforma: number;
+  plataformaTopo: number;
+}
+
+/** Aparência de cada arena. A que não estiver aqui usa o tema da arena básica. */
+const TEMAS: Readonly<Record<string, Tema>> = {
+  // Pátio de dojo ao anoitecer.
+  "arena-basica": {
+    ceu: [0x0c111b, 0x2b2f52],
+    chao: 0x2c384f,
+    chaoTopo: 0x8fa6c9,
+    chaoRisco: 0x3a4863,
+    chaoBase: 0x1b2333,
+    plataforma: 0x4d6185,
+    plataformaTopo: 0xb9cbe8,
+  },
+  // Convés de navio ao pôr do sol.
+  "arena-larga": {
+    ceu: [0x1c1a3a, 0xc8603a],
+    chao: 0x6b4426,
+    chaoTopo: 0xd9a25e,
+    chaoRisco: 0x4f311b,
+    chaoBase: 0x3a2413,
+    plataforma: 0x7a5230,
+    plataformaTopo: 0xe6bd80,
+  },
+  // Torre de pedra no meio da tempestade.
+  "arena-torre": {
+    ceu: [0x0a1014, 0x24423f],
+    chao: 0x3d4a48,
+    chaoTopo: 0x9fc4b8,
+    chaoRisco: 0x2b3534,
+    chaoBase: 0x1c2423,
+    plataforma: 0x4f6660,
+    plataformaTopo: 0xb8e0d2,
+  },
+};
+const TEMA_PADRAO = "arena-basica";
+const temaDe = (arena: string): Tema => TEMAS[arena] ?? (TEMAS[TEMA_PADRAO] as Tema);
+
+/**
+ * Cenário de fundo da arena, em coordenadas de tela, com um pouco de paralaxe conforme a câmera.
+ * É só enfeite: nada aqui existe na simulação.
+ */
+export function desenharFundo(g: G, camX: number, camY: number, arena = TEMA_PADRAO): void {
   g.clear();
+  const tema = temaDe(arena);
   const faixas = 14;
   for (let i = 0; i < faixas; i++) {
-    g.fillStyle(misturar(0x0c111b, 0x24304a, i / (faixas - 1)), 1);
+    g.fillStyle(misturar(tema.ceu[0], tema.ceu[1], i / (faixas - 1)), 1);
     g.fillRect(0, (ALTURA / faixas) * i, LARGURA, ALTURA / faixas + 1);
   }
-  // Formas distantes, com um pouco de paralaxe.
   const px = (600 - camX) * 0.06;
   const py = (380 - camY) * 0.04;
-  g.fillStyle(0x2d3b5c, 0.5);
+
+  if (arena === "arena-larga") {
+    // Sol baixo, reflexo no mar, nuvens e dois navios ao longe.
+    g.fillStyle(0xffd27a, 0.9);
+    g.fillCircle(880 + px, 430 + py, 86);
+    g.fillStyle(0xffe9b0, 0.35);
+    g.fillCircle(880 + px, 430 + py, 120);
+    g.fillStyle(0x3a2a55, 0.55);
+    for (const [x, y, l] of [
+      [180, 150, 220],
+      [520, 110, 300],
+      [960, 180, 240],
+    ] as const) {
+      g.fillEllipse(x + px * 0.5, y + py, l, 34);
+      g.fillEllipse(x + 60 + px * 0.5, y - 16 + py, l * 0.6, 30);
+    }
+    const mar = 470 + py;
+    g.fillStyle(0x1b2748, 1);
+    g.fillRect(0, mar, LARGURA, ALTURA - mar);
+    g.fillStyle(0xffb05c, 0.35);
+    for (let i = 0; i < 7; i++) g.fillRect(800 + px - i * 12, mar + 10 + i * 22, 160 + i * 24, 5);
+    g.fillStyle(0x2c3d6b, 1);
+    for (let i = 0; i < 9; i++) {
+      const y = mar + 16 + i * 24;
+      for (let x = -40 + ((i * 53) % 90); x < LARGURA; x += 150)
+        g.fillEllipse(x + px * 2, y, 70, 5);
+    }
+    g.fillStyle(0x15182c, 0.9);
+    for (const [x, t] of [
+      [210, 1],
+      [1060, 0.7],
+    ] as const) {
+      const bx = x + px * 1.5;
+      g.fillTriangle(bx - 70 * t, mar - 4, bx + 70 * t, mar - 4, bx + 44 * t, mar + 20 * t);
+      g.fillTriangle(bx - 70 * t, mar - 4, bx + 44 * t, mar + 20 * t, bx - 50 * t, mar + 20 * t);
+      g.fillRect(bx - 3 * t, mar - 110 * t, 6 * t, 108 * t);
+      g.fillTriangle(
+        bx + 4 * t,
+        mar - 104 * t,
+        bx + 4 * t,
+        mar - 30 * t,
+        bx + 58 * t,
+        mar - 30 * t,
+      );
+      g.fillTriangle(bx - 6 * t, mar - 90 * t, bx - 6 * t, mar - 36 * t, bx - 44 * t, mar - 36 * t);
+    }
+    return;
+  }
+
+  if (arena === "arena-torre") {
+    // Nuvens pesadas, um raio ao longe, picos de rocha e cristais.
+    g.fillStyle(0x16242a, 0.9);
+    for (const [x, y, l] of [
+      [140, 90, 420],
+      [560, 60, 520],
+      [1020, 110, 460],
+      [360, 170, 380],
+      [860, 200, 420],
+    ] as const) {
+      g.fillEllipse(x + px * 0.5, y + py, l, 70);
+    }
+    g.lineStyle(4, 0xd6fff2, 0.55);
+    g.beginPath();
+    g.moveTo(980 + px, 120 + py);
+    g.lineTo(950 + px, 210 + py);
+    g.lineTo(985 + px, 220 + py);
+    g.lineTo(940 + px, 330 + py);
+    g.strokePath();
+    g.fillStyle(0x13201f, 1);
+    for (const [x, topo, l] of [
+      [60, 300, 200],
+      [300, 380, 260],
+      [760, 340, 240],
+      [1010, 260, 220],
+      [1180, 400, 200],
+    ] as const) {
+      g.fillTriangle(x - l / 2 + px * 2, ALTURA, x + px * 2, topo + py, x + l / 2 + px * 2, ALTURA);
+    }
+    g.fillStyle(0x4fe0cc, 0.5);
+    for (const [x, y, t] of [
+      [120, 470, 1],
+      [330, 520, 0.7],
+      [1040, 430, 1.1],
+      [820, 500, 0.8],
+    ] as const) {
+      const cx = x + px * 2;
+      g.fillTriangle(cx - 10 * t, y + py + 50 * t, cx, y + py, cx + 10 * t, y + py + 50 * t);
+      g.fillTriangle(
+        cx + 6 * t,
+        y + py + 50 * t,
+        cx + 20 * t,
+        y + py + 16 * t,
+        cx + 28 * t,
+        y + py + 50 * t,
+      );
+    }
+    return;
+  }
+
+  // Arena básica: lua, montanhas e um portal de dojo ao longe, com lanternas.
+  g.fillStyle(0xdfe6ff, 0.16);
+  g.fillCircle(930 + px, 150 + py, 96);
+  g.fillStyle(0x4a5a8a, 0.75);
   g.fillCircle(930 + px, 150 + py, 70);
   g.fillStyle(0x1a2338, 0.9);
   g.fillTriangle(-60 + px * 2, ALTURA, 240 + px * 2, 330 + py, 560 + px * 2, ALTURA);
   g.fillTriangle(380 + px * 2, ALTURA, 760 + px * 2, 270 + py, 1120 + px * 2, ALTURA);
   g.fillTriangle(820 + px * 2, ALTURA, 1100 + px * 2, 380 + py, 1340 + px * 2, ALTURA);
+  const bx = 250 + px * 3;
+  const by = 520 + py;
+  g.fillStyle(0x111828, 1);
+  g.fillRect(bx - 70, by - 120, 12, 140);
+  g.fillRect(bx + 58, by - 120, 12, 140);
+  g.fillRect(bx - 92, by - 132, 184, 12);
+  g.fillRect(bx - 78, by - 104, 156, 8);
+  g.fillTriangle(bx - 104, by - 132, bx - 92, by - 144, bx - 92, by - 132);
+  g.fillTriangle(bx + 104, by - 132, bx + 92, by - 144, bx + 92, by - 132);
+  for (const x of [bx - 40, bx + 40, 900 + px * 3, 1010 + px * 3]) {
+    g.fillStyle(0xffb347, 0.22);
+    g.fillCircle(x, by - 70, 18);
+    g.fillStyle(0xffc866, 0.9);
+    g.fillRoundedRect(x - 6, by - 78, 12, 16, 4);
+  }
 }
 
 /** Chão sólido, plataformas e limites da arena, em coordenadas do mundo. */
 export function desenharArena(g: G, a: Arena): void {
   g.clear();
+  const tema = temaDe(a.id);
 
   // Limites da arena: só aparecem quando a câmera abre.
   const lim = a.limites;
@@ -234,7 +402,7 @@ export function desenharArena(g: G, a: Arena): void {
 
   // Chão sólido: bloco com base afunilada.
   const c = a.chao;
-  g.fillStyle(0x1b2333, 1);
+  g.fillStyle(tema.chaoBase, 1);
   g.fillTriangle(
     c.x + 40,
     c.y + c.altura,
@@ -243,20 +411,20 @@ export function desenharArena(g: G, a: Arena): void {
     c.x + c.largura / 2,
     c.y + c.altura + 150,
   );
-  g.fillStyle(0x2c384f, 1);
+  g.fillStyle(tema.chao, 1);
   g.fillRoundedRect(c.x, c.y, c.largura, c.altura, 6);
-  g.fillStyle(0x8fa6c9, 1);
+  g.fillStyle(tema.chaoTopo, 1);
   g.fillRoundedRect(c.x, c.y, c.largura, 7, 3);
-  g.fillStyle(0x3a4863, 1);
+  g.fillStyle(tema.chaoRisco, 1);
   for (let x = c.x + 50; x < c.x + c.largura; x += 100) g.fillRect(x, c.y + 14, 3, c.altura - 20);
 
   // Plataformas atravessáveis: finas e mais claras.
   for (const p of a.plataformas) {
     g.fillStyle(0x0b0f16, 0.35);
     g.fillRoundedRect(p.x + 3, p.y + 5, p.largura, 10, 5);
-    g.fillStyle(0x4d6185, 1);
+    g.fillStyle(tema.plataforma, 1);
     g.fillRoundedRect(p.x, p.y, p.largura, 10, 5);
-    g.fillStyle(0xb9cbe8, 1);
+    g.fillStyle(tema.plataformaTopo, 1);
     g.fillRoundedRect(p.x, p.y, p.largura, 3, 2);
   }
 }

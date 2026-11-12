@@ -14,7 +14,7 @@ import {
   retomarSalaOnline,
 } from "./jogo";
 import { carregarSprites, posarRetrato, temSprite } from "./sprites";
-import { musica } from "./som";
+import { musica, opcoes } from "./som";
 
 const MODOS: { modo: Modo; titulo: string; descricao: string; ret: Ret }[] = [
   {
@@ -36,6 +36,8 @@ const NIVEIS: { nivel: NivelBot; ret: Ret }[] = (["facil", "medio", "dificil"] a
 const JOGAR: Ret = { x: 470, y: 528, largura: 260, altura: 62 };
 const CRIAR_SALA: Ret = { x: 350, y: 606, largura: 240, altura: 46 };
 const ENTRAR_NA_SALA: Ret = { x: 610, y: 606, largura: 240, altura: 46 };
+const OPCOES: Ret = { x: 1036, y: 18, largura: 144, altura: 44 };
+const TUTORIAL: Ret = { x: 880, y: 18, largura: 144, altura: 44 };
 const CHAVE_DO_NOME = "arena:nome";
 
 /** Tela inicial: escolha de modo e de dificuldade dos bots. */
@@ -118,6 +120,22 @@ export class CenaInicial extends Phaser.Scene {
     ] as const) {
       criarTexto(this, ret.x + ret.largura / 2, ret.y + ret.altura / 2, rotulo, 18).setDepth(2);
     }
+    for (const [ret, rotulo] of [
+      [OPCOES, "Opções"],
+      [TUTORIAL, "Tutorial"],
+    ] as const) {
+      criarTexto(this, ret.x + ret.largura / 2, ret.y + ret.altura / 2, rotulo, 18).setDepth(2);
+    }
+    if (!opcoes.tutorialVisto) {
+      criarTexto(
+        this,
+        TUTORIAL.x + TUTORIAL.largura / 2,
+        76,
+        "primeira vez? comece aqui",
+        13,
+        0xffd54a,
+      );
+    }
     this.aviso = criarTexto(this, LARGURA / 2, 664, "", 14, 0xff6b6b).setDepth(2);
     this.desenhar();
 
@@ -131,6 +149,8 @@ export class CenaInicial extends Phaser.Scene {
     for (const m of MODOS) if (dentro(m.ret, x, y)) jogo.modo = m.modo;
     for (const n of NIVEIS) if (dentro(n.ret, x, y)) jogo.dificuldade = n.nivel;
     if (dentro(JOGAR, x, y)) return this.comecar();
+    if (dentro(OPCOES, x, y)) return void this.scene.start("opcoes");
+    if (dentro(TUTORIAL, x, y)) return this.comecar(true);
     if (dentro(CRIAR_SALA, x, y)) return void this.online(false);
     if (dentro(ENTRAR_NA_SALA, x, y)) return void this.online(true);
     this.desenhar();
@@ -164,12 +184,15 @@ export class CenaInicial extends Phaser.Scene {
     }
   }
 
-  private comecar(): void {
+  private comecar(tutorial = false): void {
     const param = Number(new URLSearchParams(window.location.search).get("semente"));
     const semente =
       Number.isFinite(param) && param > 0 ? Math.floor(param) : Math.floor(Math.random() * 1e9) + 1;
     const arenaFixa = new URLSearchParams(window.location.search).get("arena") ?? undefined;
-    novaPartida(jogo.modo, jogo.dificuldade, semente, arenaFixa);
+    jogo.tutorial = tutorial;
+    // O tutorial é sempre a mesma partida: todos contra todos, bots fáceis, arena básica.
+    if (tutorial) novaPartida("todos", "facil", 7, "arena-basica");
+    else novaPartida(jogo.modo, jogo.dificuldade, semente, arenaFixa);
     if (jogo.automatico) {
       iniciarCombates();
       this.scene.start("combate");
@@ -185,5 +208,7 @@ export class CenaInicial extends Phaser.Scene {
     desenharBotao(this.g, JOGAR, 0x2f9e5b);
     desenharBotao(this.g, CRIAR_SALA, 0x2f5c8a);
     desenharBotao(this.g, ENTRAR_NA_SALA, 0x2f5c8a);
+    desenharBotao(this.g, OPCOES, 0x26324a);
+    desenharBotao(this.g, TUTORIAL, opcoes.tutorialVisto ? 0x26324a : 0x8a6a1f);
   }
 }
