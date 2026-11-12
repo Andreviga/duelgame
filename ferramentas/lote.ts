@@ -1,7 +1,7 @@
 import { ARENAS, CONTEXTO as ctx, PERSONAGENS } from "../src/dados";
 import { criarAleatorio, proximo } from "../src/sim/aleatorio";
 import { criarCombate, stepCombate } from "../src/sim/combate/combate";
-import type { Arena, DefPersonagem, Esquadrao, Lado } from "../src/sim/combate/tipos";
+import type { Arena, DefPersonagem, Esquadrao, Lado, ConfigItens } from "../src/sim/combate/tipos";
 import { copiasDoNivel, montarEsquadrao, sinergiasDoJogador } from "../src/sim/economia/economia";
 import type { EstadoJogador } from "../src/sim/economia/tipos";
 
@@ -44,6 +44,8 @@ export interface OpcoesDeLote {
   personagens?: readonly DefPersonagem[];
   /** Medir só estas sinergias (ex.: "mundo:piratas"). Sem isto, mede todas. */
   soSinergias?: readonly string[];
+  /** Regras dos itens de arena; sem isto, os combates do lote são sem itens. */
+  itens?: ConfigItens | null;
 }
 
 const taxa = (c: Contagem): number => (c.jogos === 0 ? 0 : c.vitorias / c.jogos);
@@ -129,7 +131,7 @@ export function rodarLote(opcoes: OpcoesDeLote): RelatorioDeLote {
       Esquadrao,
       Esquadrao,
     ];
-    let e = criarCombate(arena, esquadroes, inteiro(2 ** 31));
+    let e = criarCombate(arena, esquadroes, inteiro(2 ** 31), opcoes.itens ?? null);
     const ultimo = e.lutadores.map((l) => ({ x: l.x, y: l.y, tick: 0 }));
     while (!e.fim) {
       const antes = e;

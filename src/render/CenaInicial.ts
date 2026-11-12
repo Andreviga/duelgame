@@ -41,12 +41,14 @@ const ENTRAR_NA_SALA: Ret = { x: 610, y: 606, largura: 240, altura: 46 };
 const OPCOES: Ret = { x: 1036, y: 18, largura: 144, altura: 44 };
 const TUTORIAL: Ret = { x: 880, y: 18, largura: 144, altura: 44 };
 const CREDITOS: Ret = { x: 20, y: 18, largura: 144, altura: 44 };
+const ITENS: Ret = { x: 880, y: 528, largura: 200, altura: 62 };
 const CHAVE_DO_NOME = "arena:nome";
 
 /** Tela inicial: escolha de modo e de dificuldade dos bots. */
 export class CenaInicial extends Phaser.Scene {
   private g!: Phaser.GameObjects.Graphics;
   private aviso!: Phaser.GameObjects.Text;
+  private textoDosItens!: Phaser.GameObjects.Text;
 
   constructor() {
     super("inicial");
@@ -64,6 +66,7 @@ export class CenaInicial extends Phaser.Scene {
     jogo.automatico = params.has("auto") && !jogo.automaticoJaRodou;
     const modoParam = params.get("modo");
     if (modoParam === "duplas" || modoParam === "todos") jogo.modo = modoParam;
+    if (params.has("itens")) jogo.itens = true;
 
     const camadas = CamadasDoCenario.para(this, ARENA_BASICA);
     if (camadas) {
@@ -148,6 +151,21 @@ export class CenaInicial extends Phaser.Scene {
         0xffd54a,
       );
     }
+    this.textoDosItens = criarTexto(
+      this,
+      ITENS.x + ITENS.largura / 2,
+      ITENS.y + ITENS.altura / 2 - 8,
+      "",
+      18,
+    ).setDepth(2);
+    criarTexto(
+      this,
+      ITENS.x + ITENS.largura / 2,
+      ITENS.y + ITENS.altura / 2 + 14,
+      "fruta, bomba, mola, escudo, martelo",
+      11,
+      0xcfd8e3,
+    ).setDepth(2);
     this.aviso = criarTexto(this, LARGURA / 2, 664, jogo.recado, 14, 0xff6b6b).setDepth(2);
     jogo.recado = "";
     this.desenhar();
@@ -167,6 +185,7 @@ export class CenaInicial extends Phaser.Scene {
         { id: "opcoes", ret: OPCOES },
         { id: "tutorial", ret: TUTORIAL },
         { id: "creditos", ret: CREDITOS },
+        { id: "itens", ret: ITENS },
         { id: "criar", ret: CRIAR_SALA },
         { id: "entrar", ret: ENTRAR_NA_SALA },
       ],
@@ -176,6 +195,7 @@ export class CenaInicial extends Phaser.Scene {
     if (tocado) tocar("clique");
     for (const m of MODOS) if (tocado === `modo:${m.modo}`) jogo.modo = m.modo;
     for (const n of NIVEIS) if (tocado === `nivel:${n.nivel}`) jogo.dificuldade = n.nivel;
+    if (tocado === "itens") jogo.itens = !jogo.itens;
     if (tocado === "jogar") return this.comecar();
     if (tocado === "opcoes") return void this.scene.start("opcoes");
     if (tocado === "tutorial") return this.comecar(true);
@@ -239,6 +259,8 @@ export class CenaInicial extends Phaser.Scene {
     desenharBotao(this.g, ENTRAR_NA_SALA, 0x2f5c8a);
     desenharBotao(this.g, OPCOES, 0x26324a);
     desenharBotao(this.g, CREDITOS, 0x26324a);
+    desenharBotao(this.g, ITENS, jogo.itens ? 0x8a6a1f : 0x26324a, jogo.itens);
+    this.textoDosItens.setText(jogo.itens ? "Itens: ligados" : "Itens: desligados");
     desenharBotao(this.g, TUTORIAL, opcoes.tutorialVisto ? 0x26324a : 0x8a6a1f);
   }
 }

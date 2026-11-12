@@ -5,6 +5,7 @@ import { foraDosLimites, moverLutador } from "./fisica";
 import { alvoDaHabilidade, decidir } from "./ia";
 import type {
   Arena,
+  ConfigItens,
   DefImpacto,
   DefPersonagem,
   DefProjetil,
@@ -12,11 +13,12 @@ import type {
   EstadoCombate,
   Evento,
   FimCombate,
+  Item,
   Lado,
   Lutador,
   Projetil,
 } from "./tipos";
-import { SEM_BONUS, type BonusDeCombate } from "./tipos";
+import { SEM_BONUS, TIPOS_DE_ITEM, type BonusDeCombate } from "./tipos";
 
 /** Duração máxima de uma rodada. */
 export const TICKS_MAXIMOS = 99 * TICKS_POR_SEGUNDO;
@@ -37,6 +39,10 @@ const ESCALA_DO_CANHAO = 1.8;
 export const DANO_APOS_ATRAVESSAR = 0.18;
 /** Graus entre um projétil e o seguinte na habilidade "leque" (o primeiro sai reto). */
 export const ABERTURA_DO_LEQUE = 13;
+/** Itens de arena: caem desta altura acima do chão, longe das beiradas, até esta velocidade. */
+export const ALTURA_DE_QUEDA_DOS_ITENS = 420;
+const MARGEM_DOS_ITENS = 60;
+const QUEDA_MAXIMA_DOS_ITENS = 9;
 /** A lâmina da habilidade "bumerangue" (quem a usa não atira no golpe comum). */
 const LAMINA_QUE_VOLTA: DefProjetil = { velocidade: 0, largura: 26, altura: 12, vida: 0 };
 /** Dentro do casco, o dano recebido é reduzido por este fator. */
@@ -86,6 +92,8 @@ export function criarLutador(
     alvo: null,
     ia: "procurar",
     vivo: true,
+    escudo: 0,
+    martelo: 0,
   };
 }
 
@@ -94,6 +102,8 @@ export function criarCombate(
   arena: Arena,
   esquadroes: readonly [Esquadrao, Esquadrao],
   semente: number,
+  /** Regras dos itens de arena; null (o padrão) desliga os itens. */
+  itens: ConfigItens | null = null,
 ): EstadoCombate {
   const lutadores: Lutador[] = [];
   esquadroes.forEach((esquadrao, i) => {
@@ -122,6 +132,9 @@ export function criarCombate(
     proximoProjetil: 0,
     eventos: [],
     fim: null,
+    itens: [],
+    proximoItem: 0,
+    configItens: itens,
   };
 }
 
@@ -245,13 +258,16 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
   const semHabilidade = () => ({ ticks: 0, atingidos: [], restante: 0, alvo: null });
 
   const noCasco = (l: Lutador): boolean => l.def.habilidade.tipo === "casco" && l.hab.ticks > 0;
+  /** Não pode ser arremessado agora: no casco (habilidade) ou com escudo (item). */
+  const imune = (l: Lutador): boolean => noCasco(l) || l.escudo > 0;
 
   /**
    * Um acerto: soma dano e arremessa. `golpe` diz se conta como golpe do atacante
    * (para o bônus de primeiro golpe); `multiplicador` escala o arremesso.
    */
   const aplicarImpacto = (
-    atacante: Lutador,
+    /** Quem bateu, ou null para a bomba, que não é de ninguém e não dá crédito de nocaute. */
+    atacante: Lutador | null,
     alvo: Lutador,
     imp: DefImpacto,
     direcao: -1 | 1,
@@ -259,21 +275,24 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
     /** Fração do dano, sem arremesso nem atordoamento (projétil que já atravessou alguém). */
     soDano = 0,
   ): void => {
-    const critico = atacante.golpes === 0 && atacante.bonus.primeiroGolpe > 1;
-    const bonusDano = atacante.golpes === 0 ? atacante.bonus.primeiroGolpe : 1;
-    atacante.golpes++;
+    const b0 = atacante?.bonus ?? SEM_BONUS;
+    const primeiro = atacante !== null && atacante.golpes === 0;
+    const critico = primeiro && b0.primeiroGolpe > 1;
+    const bonusDano = primeiro ? b0.primeiroGolpe : 1;
+    if (atacante) atacante.golpes++;
+    const idDoAtacante = atacante?.id ?? -1;
     const dano =
       imp.dano * bonusDano * (soDano > 0 ? soDano : 1) * (1 + (sortear() * 2 - 1) * VARIACAO_DANO);
     const angulo = imp.anguloGraus + (sortear() * 2 - 1) * VARIACAO_ANGULO;
-    alvo.ultimoAtacante = atacante.id;
+    if (atacante) alvo.ultimoAtacante = atacante.id;
     const x = alvo.x;
     const y = alvo.y - alvo.def.altura / 2;
 
-    if (soDano > 0 && !noCasco(alvo)) {
+    if (soDano > 0 && !imune(alvo)) {
       alvo.dano += dano;
       eventos.push({
         tipo: "golpe",
-        atacante: atacante.id,
+        atacante: idDoAtacante,
         alvo: alvo.id,
         x,
         y,
@@ -283,12 +302,12 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
       });
       return;
     }
-    if (noCasco(alvo)) {
+    if (imune(alvo)) {
       // Imune a arremesso: só leva parte do dano e continua onde está.
       alvo.dano += dano * DANO_NO_CASCO;
       eventos.push({
         tipo: "golpe",
-        atacante: atacante.id,
+        atacante: idDoAtacante,
         alvo: alvo.id,
         x,
         y,
@@ -301,6 +320,11 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
 
     alvo.dano += dano;
     let forca = forcaArremesso(imp, alvo.dano, alvo.def.peso) * multiplicador;
+    if (atacante && atacante.martelo > 0) {
+      // Martelo (item): este golpe arremessa mais, e o martelo se gasta.
+      forca *= atacante.martelo;
+      atacante.martelo = 0;
+    }
     // Tanque aliado por perto amortece o arremesso.
     const b = alvo.bonus;
     if (b.protecaoVizinhos > 0) {
@@ -315,7 +339,7 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
       if (protegido) forca *= 1 - b.protecaoVizinhos;
     }
     const v = velocidadeDeArremesso(forca, angulo, direcao);
-    alvo.vx = v.vx * atacante.bonus.arremessoHorizontal;
+    alvo.vx = v.vx * b0.arremessoHorizontal;
     alvo.vy = v.vy;
     alvo.atordoado = ticksDeAtordoamento(forca);
     alvo.noChao = false;
@@ -328,7 +352,7 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
     alvo.ia = "recuperar";
     eventos.push({
       tipo: "golpe",
-      atacante: atacante.id,
+      atacante: idDoAtacante,
       alvo: alvo.id,
       x,
       y,
@@ -539,12 +563,13 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
     if (!l.vivo) continue;
     const anterior = e.lutadores[i];
     if (!anterior) continue;
-    const decisao = decidir(anterior, e.lutadores, arena, sortear(), e.projeteis);
+    const decisao = decidir(anterior, e.lutadores, arena, sortear(), e.projeteis, e.itens);
     l.ia = decisao.ia;
     l.alvo = decisao.alvo;
     if (l.atordoado > 0) l.atordoado--;
     if (l.habRecarga > 0) l.habRecarga--;
     if (l.invisivel > 0) l.invisivel--;
+    if (l.escudo > 0) l.escudo--;
 
     if (l.ia === "voltar") {
       // Voltar para a arena tem prioridade: larga o golpe ou a habilidade em andamento.
@@ -643,6 +668,102 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
       a.x = Math.min(dir - 15, Math.max(esq + 15, a.x - sentido * empurrao));
       b.x = Math.min(dir - 15, Math.max(esq + 15, b.x + sentido * empurrao));
     }
+  }
+
+  // 3b: itens de arena (só com `configItens`). Nascem em ponto sorteado, caem até pousar, e o
+  // primeiro lutador que encostar pega. A bomba ninguém pega: explode sozinha depois de pousar.
+  let itens: Item[] = e.itens.map((i) => ({ ...i }));
+  let proximoItem = e.proximoItem;
+  const cfgItens = e.configItens;
+  if (cfgItens) {
+    const naHora =
+      tick >= cfgItens.primeiro && (tick - cfgItens.primeiro) % cfgItens.intervalo === 0;
+    if (naHora && itens.length < cfgItens.maximo) {
+      const tipo = TIPOS_DE_ITEM[Math.floor(sortear() * TIPOS_DE_ITEM.length)] ?? "fruta";
+      const x = Math.round(
+        esq + MARGEM_DOS_ITENS + sortear() * (chao.largura - MARGEM_DOS_ITENS * 2),
+      );
+      const y = chao.y - ALTURA_DE_QUEDA_DOS_ITENS;
+      itens.push({
+        id: proximoItem++,
+        tipo,
+        x,
+        y,
+        vy: 0,
+        noChao: false,
+        vida: cfgItens.vida,
+        pavio: tipo === "bomba" ? cfgItens.bomba.pavio : 0,
+        raio: tipo === "bomba" ? cfgItens.bomba.raio : 0,
+      });
+      eventos.push({ tipo: "item_caiu", item: tipo, x, y });
+    }
+    const ficam: Item[] = [];
+    for (const it of itens) {
+      if (!it.noChao) {
+        // Cai até a primeira superfície abaixo: uma plataforma ou o chão.
+        const antes = it.y;
+        it.vy = Math.min(it.vy + arena.gravidade, QUEDA_MAXIMA_DOS_ITENS);
+        it.y += it.vy;
+        const superficies = [chao, ...arena.plataformas].filter(
+          (s) => it.x >= s.x && it.x <= s.x + s.largura && antes <= s.y && it.y >= s.y,
+        );
+        const pouso = superficies.reduce<number | null>(
+          (m, s) => (m === null || s.y < m ? s.y : m),
+          null,
+        );
+        if (pouso !== null) {
+          it.y = pouso;
+          it.vy = 0;
+          it.noChao = true;
+        }
+      }
+      it.vida--;
+      const meio = cfgItens.tamanho / 2;
+      if (it.tipo === "bomba") {
+        if (it.noChao && --it.pavio <= 0) {
+          const cy = it.y - meio;
+          for (const o of ls) {
+            if (!o.vivo) continue;
+            if (Math.hypot(o.x - it.x, o.y - o.def.altura / 2 - cy) > it.raio) continue;
+            aplicarImpacto(null, o, cfgItens.bomba, o.x >= it.x ? 1 : -1);
+          }
+          eventos.push({ tipo: "bomba", x: it.x, y: cy, raio: it.raio });
+          continue;
+        }
+      } else {
+        // Quem está atordoado não pega nada; entre dois, pega o de menor id (ordem fixa).
+        const quem = ls.find(
+          (l) =>
+            l.vivo &&
+            l.atordoado === 0 &&
+            sobrepoe(
+              l.x - l.def.largura / 2,
+              l.y - l.def.altura,
+              l.def.largura,
+              l.def.altura,
+              it.x - meio,
+              it.y - cfgItens.tamanho,
+              cfgItens.tamanho,
+              cfgItens.tamanho,
+            ),
+        );
+        if (quem) {
+          if (it.tipo === "fruta") quem.dano = Math.max(0, quem.dano - cfgItens.cura);
+          else if (it.tipo === "escudo") quem.escudo = cfgItens.ticksEscudo;
+          else if (it.tipo === "martelo") quem.martelo = cfgItens.multiplicadorMartelo;
+          else {
+            // mola: lança para cima
+            quem.vy = -cfgItens.impulsoMola;
+            quem.noChao = false;
+            quem.emPlataforma = false;
+          }
+          eventos.push({ tipo: "item", item: it.tipo, id: quem.id, x: it.x, y: it.y - meio });
+          continue;
+        }
+      }
+      if (it.vida > 0 && it.y < arena.limites.fundo) ficam.push(it);
+    }
+    itens = ficam;
   }
 
   // 4: projéteis. Andam em linha reta ou perseguem o alvo; somem ao acertar (a não ser que
@@ -806,7 +927,19 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
     }
   }
 
-  return { tick, rng, arena, lutadores: ls, projeteis, proximoProjetil, eventos, fim };
+  return {
+    tick,
+    rng,
+    arena,
+    lutadores: ls,
+    projeteis,
+    proximoProjetil,
+    eventos,
+    fim,
+    itens,
+    proximoItem,
+    configItens: cfgItens,
+  };
 }
 
 /** Roda o combate até acabar (sem render). */

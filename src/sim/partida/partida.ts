@@ -1,6 +1,6 @@
 import { criarAleatorio, proximo, type EstadoAleatorio } from "../aleatorio";
 import { criarCombate, simularCombate } from "../combate/combate";
-import type { Arena, Esquadrao, Lado } from "../combate/tipos";
+import type { Arena, ConfigItens, Esquadrao, Lado } from "../combate/tipos";
 import {
   criarEconomia,
   iniciarRodada,
@@ -130,6 +130,8 @@ export function criarPartida(
   semente: number,
   /** Arenas possíveis; uma é sorteada para a partida inteira. */
   arenas: readonly string[] = ["arena-basica"],
+  /** Regras dos itens de arena; null (o padrão) cria a partida sem itens. */
+  itens: ConfigItens | null = null,
 ): EstadoPartida {
   if (participantes.length !== JOGADORES_POR_PARTIDA) {
     throw new Error(`a partida precisa de ${JOGADORES_POR_PARTIDA} jogadores`);
@@ -154,6 +156,7 @@ export function criarPartida(
     confrontos: [],
     resultados: [],
     classificacao: null,
+    itens,
   };
   return abrirRodada(inicial, ctx);
 }
@@ -196,7 +199,7 @@ export function combater(
   if (p.fase !== "preparacao") return p;
   const resultados: ResultadoConfronto[] = p.confrontos.map((c) => {
     const final = simularCombate(
-      criarCombate(arena, esquadroesDoConfronto(p, ctx, arena, c), c.semente),
+      criarCombate(arena, esquadroesDoConfronto(p, ctx, arena, c), c.semente, p.itens),
     );
     const conta = (lado: Lado) => final.lutadores.filter((l) => l.vivo && l.lado === lado).length;
     const sobreviventes: [number, number] = [conta(0), conta(1)];

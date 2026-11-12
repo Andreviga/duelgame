@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { ARENAS, CONTEXTO, espelhar, FORMACOES } from "../dados";
+import { ARENAS, CONTEXTO, espelhar, FORMACOES, ITENS } from "../dados";
 import { TICKS_POR_SEGUNDO } from "../sim/constantes";
 import { criarCombate, stepCombate, TICKS_MAXIMOS } from "../sim/combate/combate";
 import type { Arena, EstadoCombate, Lado } from "../sim/combate/tipos";
@@ -20,6 +20,7 @@ import { criarMedidor } from "./opcoes";
 import { criarRelogio } from "./relogio";
 import { carregarSprites, escalaDoSprite } from "./sprites";
 import { musica, opcoes, salvarOpcoes, tocar } from "./som";
+import { COR_DO_ITEM, desenharItem } from "./itens";
 import { resumoDosNocautes } from "./resumo";
 import { ALVO_MINIMO } from "./toque";
 import {
@@ -291,6 +292,7 @@ export class CenaCombate extends Phaser.Scene {
         arenaAtual(),
         esquadroesDoConfronto(partida, CONTEXTO, arenaAtual(), confronto),
         confronto.semente,
+        partida.itens,
       );
     } else {
       // Demonstração: a cada rodada muda a formação de um dos lados, para comparar posições.
@@ -303,6 +305,8 @@ export class CenaCombate extends Phaser.Scene {
         this.arenaDaDemo(),
         [fa.vagas, espelhar(fb.vagas, this.arenaDaDemo())],
         this.semente,
+        // `?demo&itens` liga os itens na demonstração.
+        new URLSearchParams(window.location.search).has("itens") ? ITENS : null,
       );
     }
     this.laco = { estado, acumulado: 0 };
@@ -555,6 +559,20 @@ export class CenaCombate extends Phaser.Scene {
         this.anel(ev.x, ev.y, 46, 0xff4d5e, 8, 320);
         this.anel(ev.x, ev.y, 26, 0xffffff, 5, 220);
         tocar("erro");
+      } else if (ev.tipo === "item_caiu") {
+        this.anel(ev.x, ev.y, 30, 0xffffff, 4, 260);
+      } else if (ev.tipo === "item") {
+        // alguém pegou um item: um aro da cor do item e o nome dele subindo
+        const visual = this.visuais[ev.id];
+        if (visual) visual.pulso = 1;
+        this.anel(ev.x, ev.y, 54, COR_DO_ITEM[ev.item], 7, 320);
+        this.anel(ev.x, ev.y, 30, 0xffffff, 4, 220);
+        tocar(ev.item === "mola" ? "pronto" : "compra");
+      } else if (ev.tipo === "bomba") {
+        this.anel(ev.x, ev.y, ev.raio, 0xff8a3d, 18, 520);
+        this.anel(ev.x, ev.y, ev.raio * 0.55, 0xffffff, 10, 340);
+        fx.tremor = Math.max(fx.tremor, 18);
+        tocar("nocaute");
       } else {
         // explosão de um monstro ao sair da arena
         this.anel(ev.x, ev.y, ev.raio, 0xf2713d, 16, 520);
@@ -739,6 +757,11 @@ export class CenaCombate extends Phaser.Scene {
       l.vida -= 0.08;
     }
     this.linhas = this.linhas.filter((l) => l.vida > 0);
+
+    // Itens de arena (só nas partidas com itens).
+    if (e.configItens) {
+      for (const item of e.itens) desenharItem(g, item, e.configItens.tamanho, e.tick);
+    }
 
     // Projéteis: tiro reto é um traço; bola e bala de canhão são redondas.
     for (const p of e.projeteis) {

@@ -1,6 +1,6 @@
 import { jogarBot } from "../bots/bot";
 import { jogarBots } from "../bots/partida";
-import { arena, CONTEXTO, IDS_DAS_ARENAS, PARTIDA } from "../dados";
+import { arena, CONTEXTO, IDS_DAS_ARENAS, ITENS, PARTIDA } from "../dados";
 import type { Arena } from "../sim/combate/tipos";
 import { aplicar } from "../sim/economia/economia";
 import type { Comando, Resultado } from "../sim/economia/tipos";
@@ -35,6 +35,8 @@ export const jogo: {
   partida: EstadoPartida | null;
   modo: Modo;
   dificuldade: NivelBot;
+  /** A próxima partida criada nesta máquina terá itens de arena. */
+  itens: boolean;
   /** Modo de teste: o humano também é jogado por um bot. */
   automatico: boolean;
   /** O modo automático vale para uma partida só; depois o menu volta ao normal. */
@@ -58,6 +60,7 @@ export const jogo: {
   partida: null,
   modo: "todos",
   dificuldade: "medio",
+  itens: false,
   automatico: false,
   automaticoJaRodou: false,
   tutorial: false,
@@ -123,6 +126,7 @@ export function novaPartida(
       participantes,
       semente,
       arenaFixa && IDS_DAS_ARENAS.includes(arenaFixa) ? [arenaFixa] : IDS_DAS_ARENAS,
+      jogo.itens ? ITENS : null,
     ),
   );
   return jogo.partida;
@@ -199,6 +203,7 @@ function ouvintes(): Ouvintes {
       jogo.sala = v.sala;
       jogo.modo = v.sala.modo;
       jogo.dificuldade = v.sala.dificuldade;
+      jogo.itens = v.sala.itens;
       jogo.prazo = performance.now() + v.msRestantes;
       // Troca de tela só quando muda a fase ou a rodada; no resto do tempo a tela atual se redesenha.
       const chave = `${cenaDaVisao(v)}:${v.partida?.economia.rodada ?? 0}`;
@@ -233,7 +238,7 @@ function ouvintes(): Ouvintes {
 export async function criarSalaOnline(nome: string): Promise<void> {
   chaveDaCena = "";
   jogo.online = await ConexaoOnline.criar(
-    { nome, modo: jogo.modo, dificuldade: jogo.dificuldade },
+    { nome, modo: jogo.modo, dificuldade: jogo.dificuldade, itens: jogo.itens },
     ouvintes(),
   );
 }

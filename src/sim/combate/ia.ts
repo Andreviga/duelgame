@@ -1,4 +1,4 @@
-import type { Arena, Entrada, EstadoIA, Lutador, Projetil } from "./tipos";
+import type { Arena, Entrada, EstadoIA, Item, Lutador, Projetil } from "./tipos";
 
 export interface Decisao {
   readonly ia: EstadoIA;
@@ -15,6 +15,12 @@ export const CHANCE_DE_REAGIR = 0.22;
 /** Só troca de alvo se o novo estiver pelo menos isto mais perto (evita ficar alternando). */
 const VANTAGEM_PARA_TROCAR = 70;
 /** Diferença de altura em que um tiro reto ainda acerta. */
+/** Itens: a quantos ticks do estouro a IA começa a fugir da bomba, e com que folga além do raio. */
+const AVISO_DA_BOMBA = 70;
+const FOLGA_DA_BOMBA = 40;
+/** Distância máxima que a IA desvia para pegar um item, e a % a partir da qual a fruta interessa. */
+const ALCANCE_PARA_ITEM = 230;
+const DANO_PARA_FRUTA = 25;
 const ALINHADO = 40;
 const PENALIDADE_FORA = 500;
 /** O tufão só vale a pena quando algum inimigo já acumulou este dano. */
@@ -234,6 +240,7 @@ export function decidir(
   arena: Arena,
   sorteio: number,
   projeteis: readonly Readonly<Projetil>[] = [],
+  itens: readonly Readonly<Item>[] = [],
 ): Decisao {
   if (l.atordoado > 0) return { ia: "recuperar", entrada: entrada({}), alvo: l.alvo };
   const chao = arena.chao;
@@ -311,9 +318,31 @@ export function decidir(
     }
   };
 
+  // Bomba para estourar por perto: sai de perto dela antes de qualquer outra coisa.
+  const bomba = itens.find(
+    (i) =>
+      i.tipo === "bomba" &&
+      i.noChao &&
+      i.pavio <= AVISO_DA_BOMBA &&
+      Math.hypot(i.x - l.x, i.y - l.y) < i.raio + FOLGA_DA_BOMBA,
+  );
+  // Item útil no mesmo nível e mais perto que o alvo: vale o desvio.
+  const item = itens.find(
+    (i) =>
+      i.noChao &&
+      Math.abs(i.y - l.y) < 30 &&
+      Math.abs(i.x - l.x) < Math.min(ALCANCE_PARA_ITEM, dist) &&
+      (i.tipo === "escudo" ||
+        (i.tipo === "martelo" && l.martelo === 0) ||
+        (i.tipo === "fruta" && l.dano >= DANO_PARA_FRUTA)),
+  );
+
   if (l.ataque.fase !== "nenhum") {
     ia = "atacar";
     if (!l.noChao && Math.abs(dxMover) > 10) mover = sinal(dxMover);
+  } else if (bomba && l.noChao) {
+    ia = "recuar";
+    mover = l.x >= bomba.x ? 1 : -1;
   } else if (alvoDaHabilidade(l, todos, arena, projeteis)) {
     ia = "habilidade";
     habilidade = sorteio < CHANCE_DE_REAGIR;
@@ -331,6 +360,9 @@ export function decidir(
   } else if (atira && alturaOk && dist <= alcance * 0.85) {
     ia = "aproximar"; // já está em boa posição: espera a recarga virado para o alvo
     encarar = sentido;
+  } else if (item && l.noChao) {
+    ia = "item";
+    mover = sinal(item.x - l.x);
   } else {
     ia = "aproximar";
     aproximarDoAlvo();

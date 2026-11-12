@@ -1,0 +1,19 @@
+{
+  "primeiro": 360,
+  "intervalo": 420,
+  "maximo": 2,
+  "vida": 720,
+  "tamanho": 30,
+  "cura": 25,
+  "ticksEscudo": 180,
+  "multiplicadorMartelo": 1.8,
+  "impulsoMola": 19,
+  "bomba": {
+    "pavio": 120,
+    "raio": 150,
+    "dano": 12,
+    "arremessoBase": 8,
+    "arremessoCrescimento": 0.14,
+    "anguloGraus": 50
+  }
+}

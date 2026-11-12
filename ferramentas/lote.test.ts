@@ -1,3 +1,4 @@
+import { ITENS } from "../src/dados";
 import { it } from "vitest";
 import {
   conferirDeterminismo,
@@ -15,9 +16,11 @@ it("lote de balanceamento", () => {
   const combates = Number(process.env["LOTE_COMBATES"] ?? 4000);
   const porSinergia = Number(process.env["LOTE_SINERGIAS"] ?? 400);
   const semente = Number(process.env["LOTE_SEMENTE"] ?? 1);
+  // LOTE_ITENS=1 roda os combates gerais com itens de arena (as sinergias são medidas sem).
+  const itens = process.env["LOTE_ITENS"] ? ITENS : null;
   const base = { semente, orcamento: 14, maximoEmCampo: 4 };
   const inicio = performance.now();
-  if (combates > 0) console.log(formatarRelatorio(rodarLote({ ...base, combates })));
+  if (combates > 0) console.log(formatarRelatorio(rodarLote({ ...base, combates, itens })));
   if (porSinergia > 0) {
     const so = process.env["LOTE_SO"]?.split(",");
     const opcoes = { ...base, combates: porSinergia, ...(so ? { soSinergias: so } : {}) };

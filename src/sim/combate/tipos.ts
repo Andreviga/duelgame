@@ -164,7 +164,7 @@ export const SEM_BONUS: BonusDeCombate = {
 };
 
 export type EstadoIA =
-  "procurar" | "aproximar" | "atacar" | "habilidade" | "recuar" | "recuperar" | "voltar";
+  "procurar" | "aproximar" | "atacar" | "habilidade" | "recuar" | "recuperar" | "voltar" | "item";
 export type FaseAtaque = "nenhum" | "inicio" | "ativo" | "recuperacao";
 export type Lado = 0 | 1;
 
@@ -213,6 +213,10 @@ export interface Lutador {
   alvo: number | null;
   ia: EstadoIA;
   vivo: boolean;
+  /** Ticks restantes do escudo (item): imune a arremesso, como no casco. */
+  escudo: number;
+  /** Multiplicador de arremesso do próximo golpe (item martelo); 0 = sem martelo. */
+  martelo: number;
 }
 
 export interface Projetil extends DefImpacto {
@@ -261,6 +265,7 @@ export interface Entrada {
 export type Evento =
   | {
       readonly tipo: "golpe";
+      /** Quem bateu; -1 quando foi uma bomba (item), que não é de ninguém. */
       readonly atacante: number;
       readonly alvo: number;
       readonly x: number;
@@ -331,6 +336,16 @@ export type Evento =
       readonly deY: number;
     }
   | { readonly tipo: "devolveu"; readonly id: number; readonly x: number; readonly y: number }
+  | { readonly tipo: "item_caiu"; readonly item: TipoItem; readonly x: number; readonly y: number }
+  | {
+      /** O lutador `id` pegou um item. */
+      readonly tipo: "item";
+      readonly item: TipoItem;
+      readonly id: number;
+      readonly x: number;
+      readonly y: number;
+    }
+  | { readonly tipo: "bomba"; readonly x: number; readonly y: number; readonly raio: number }
   | {
       readonly tipo: "explosao";
       readonly id: number;
@@ -338,6 +353,50 @@ export type Evento =
       readonly y: number;
       readonly raio: number;
     };
+
+export type TipoItem = "fruta" | "bomba" | "mola" | "escudo" | "martelo";
+export const TIPOS_DE_ITEM: readonly TipoItem[] = ["fruta", "bomba", "mola", "escudo", "martelo"];
+
+/**
+ * Regras dos itens de arena (`src/dados/itens.json`). Com itens ligados, um item cai de tempos em
+ * tempos em um ponto sorteado pela semente; quem encosta primeiro pega e usa na hora.
+ *  - fruta:   tira `cura` pontos da % de quem pega.
+ *  - bomba:   ninguém pega; `pavio` ticks depois de pousar, arremessa todos a até `raio`, dos dois lados.
+ *  - mola:    lança para cima quem pisa, com `impulsoMola`.
+ *  - escudo:  `ticksEscudo` ticks imune a arremesso.
+ *  - martelo: o próximo golpe de quem pega arremessa `multiplicadorMartelo` vezes mais.
+ */
+export interface ConfigItens {
+  /** Tick em que cai o primeiro item, e de quantos em quantos ticks caem os seguintes. */
+  readonly primeiro: number;
+  readonly intervalo: number;
+  /** Máximo de itens na arena ao mesmo tempo. */
+  readonly maximo: number;
+  /** Ticks até um item esquecido sumir. */
+  readonly vida: number;
+  /** Lado do quadrado que serve de caixa de contato do item. */
+  readonly tamanho: number;
+  readonly cura: number;
+  readonly ticksEscudo: number;
+  readonly multiplicadorMartelo: number;
+  readonly impulsoMola: number;
+  readonly bomba: DefImpacto & { readonly pavio: number; readonly raio: number };
+}
+
+export interface Item {
+  readonly id: number;
+  readonly tipo: TipoItem;
+  readonly x: number;
+  /** Base do item (onde ele encosta no chão). */
+  y: number;
+  vy: number;
+  noChao: boolean;
+  vida: number;
+  /** Só na bomba: ticks até explodir, contados depois de pousar. */
+  pavio: number;
+  /** Só na bomba: raio da explosão (a IA usa para fugir). */
+  readonly raio: number;
+}
 
 export interface FimCombate {
   /** Lado vencedor, ou `null` em caso de empate. */
@@ -366,4 +425,8 @@ export interface EstadoCombate {
   readonly proximoProjetil: number;
   readonly eventos: readonly Evento[];
   readonly fim: FimCombate | null;
+  /** Itens na arena. Sempre vazio quando `configItens` é null (itens desligados). */
+  readonly itens: readonly Item[];
+  readonly proximoItem: number;
+  readonly configItens: ConfigItens | null;
 }

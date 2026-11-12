@@ -3,6 +3,7 @@ import arenaLargaJson from "./arena-larga.json";
 import arenaTorreJson from "./arena-torre.json";
 import economiaJson from "./economia.json";
 import formacoesJson from "./formacoes.json";
+import itensJson from "./itens.json";
 import partidaJson from "./partida.json";
 import personagensJson from "./personagens.json";
 import sinergiasJson from "./sinergias.json";
@@ -11,6 +12,7 @@ import {
   validarArena,
   validarEconomia,
   validarFormacoes,
+  validarItens,
   validarPartida,
   validarPersonagens,
   validarSinergias,
@@ -31,6 +33,8 @@ export const FORMACOES = validarFormacoes(formacoesJson, PERSONAGENS, ARENA_BASI
 export const ECONOMIA = validarEconomia(economiaJson);
 export const PARTIDA = validarPartida(partidaJson);
 export const SINERGIAS = validarSinergias(sinergiasJson);
+/** Regras dos itens de arena. Só valem na partida criada com itens ligados. */
+export const ITENS = validarItens(itensJson);
 
 for (const a of ARENAS) {
   if (a.pontos.length !== ARENA_BASICA.pontos.length) {

@@ -2,7 +2,7 @@
 
 ## Fase atual
 
-**Fase 10 — Itens e elenco ampliado: a parte dos personagens está pronta, aguardando a aprovação do André. Os itens de arena vêm depois.**
+**Fase 10 — Itens e elenco ampliado: personagens aprovados (2026-11-12); itens de arena prontos, aguardando o André jogar e aprovar.**
 
 Fase 9: a parte de código está pronta; faltam os itens que dependem do André (ver "Próximo passo").
 
@@ -10,7 +10,7 @@ Fase 9: a parte de código está pronta; faltam os itens que dependem do André 
 
 **Cenários no Blender:** as três arenas têm cenário em imagens, em uso e aprovados pelo André (2026-11-12). O André pediu "faz tudo": os três pontos da arena básica foram resolvidos (lua menor e mais alta, corda rente à viga com borlas só nas pontas, luz das lanternas mais fraca no portal) e entrou a proteção de desempenho abaixo.
 
-**Publicado:** o cliente está em https://duelgame-opal.vercel.app (projeto `duelgame` na Vercel do André, com deploy automático a cada push no `main`). A variável `VITE_SERVIDOR` já está definida lá; falta confirmar que o servidor do Render está no ar e que o online funciona.
+**Publicado:** o cliente está em https://duelgame-opal.vercel.app (projeto `duelgame` na Vercel do André, com deploy automático a cada push no `main`) e o servidor em https://duelgame-servidor.onrender.com. A `VITE_SERVIDOR` aponta para ele; falta conferir o online jogando.
 
 Fases 0 a 6 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
 
@@ -150,6 +150,13 @@ Pendências herdadas:
 - **Três habilidades novas na simulação**, cada uma com teste: `cartao` (atordoa sem arremessar), `bumerangue` (lâmina que atravessa, volta e acerta de novo) e `leque` (projéteis abertos para cima). O Monge usa `area`, com arremesso baixo.
 - **Arte dos quatro** pelo mesmo pipeline (`ferramentas/arte/modelos/`). O Cogumelo tem esqueleto próprio.
 - **Balanceamento refeito com 16** (`relatorios/lote-fase10-elenco.md`, 10.000 combates): personagens entre 47,0% e 53,2%; trios entre 48,5% e 56,2% (o de Assassino é o único acima de 55%); arenas entre 49,6% e 51,7%; 0 por tempo, 0 quedas sem arremesso, determinismo 1000/1000.
+
+### Fase 10 — itens de arena
+- **Regra na simulação** (`src/sim/combate/combate.ts`, fase 3b; números em `src/dados/itens.json`): com itens ligados, um item cai a cada 7 s (o primeiro aos 6 s) em um ponto sorteado pela semente, pousa na primeira superfície abaixo e some depois de 12 s; no máximo 2 ao mesmo tempo. Quem encosta primeiro pega; atordoado não pega.
+- **Cinco itens:** fruta (tira 25 da %), bomba (ninguém pega; 2 s depois de pousar arremessa todos em volta, dos dois lados, sem dar crédito de nocaute), mola (lança para cima), escudo (3 s imune a arremesso) e martelo (o próximo golpe arremessa 1,8 vezes mais).
+- **IA:** foge de bomba prestes a estourar; desvia para pegar escudo, martelo (se não tem) e fruta (com 25% ou mais) que estejam no mesmo nível e mais perto que o inimigo.
+- **Desligados por padrão.** Ligam no botão "Itens" do menu (contra bots e ao criar sala online: vale a escolha de quem cria) ou com `?itens` no endereço (`?demo&itens` na demonstração). Sem itens, a simulação dá exatamente os mesmos resultados de antes.
+- **Testes:** `testes/itens.test.ts` (13). Lote com itens (`LOTE_ITENS=1`, 5.000 combates): 0 por tempo, 0 quedas sem arremesso, personagens entre 46,8% e 53,3%.
 
 ## Números do lote
 
@@ -336,9 +343,15 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 - **Mexidos para o elenco de 16 ficar equilibrado:** Cozinheiro e Cogumelo enfraquecidos em relação à primeira versão; Sombra, Ponta e Mestre Vento reforçados; Dojo voltou a +6% de velocidade de ataque e de recarga; Monstros +15% de peso (era 20%); Tanque protege 14% e 20% (era 10% e 12%); crítico de Assassino 1,7× (era 2×) e invisibilidade de 2 s (era 3 s); projétil que atravessa causa 18% do dano (era 25%).
 - **Itens desligados por padrão** quando entrarem (recomendação aceita por omissão; o André respondeu só a ordem).
 
+### Fase 10 — itens
+- **Os itens são desenhados por código** (`src/render/itens.ts`), não pelo Blender como o plano dizia: são ícones de 30 unidades, no mesmo estilo dos efeitos.
+- **A bomba não é de ninguém:** o golpe dela tem atacante -1 e não muda quem leva o crédito do nocaute.
+- **O balanceamento das sinergias foi medido sem itens.** Com itens só foi conferida a saúde da luta e a faixa dos personagens.
+- **`VITE_SERVIDOR` na Vercel:** gravada em 2026-11-12 com `wss://duelgame-servidor.onrender.com` (endereço enviado pelo André). O online ainda não foi conferido de ponta a ponta.
+
 ## Próximo passo
 
-Fase 10: aprovar os quatro personagens novos (visual e jeito de jogar); depois, os itens de arena.
+Fase 10: jogar com itens ligados e aprovar (ou pedir ajuste nos números de `src/dados/itens.json`).
 
 Da Fase 9, tudo o que falta para a "Definição de 100%" depende do André:
 

@@ -33,6 +33,8 @@ export interface InfoDaSala {
   readonly codigo: string;
   readonly modo: Modo;
   readonly dificuldade: NivelBot;
+  /** A partida desta sala tem itens de arena. */
+  readonly itens: boolean;
   readonly iniciada: boolean;
   readonly vagas: readonly VagaDaSala[];
 }
@@ -57,4 +59,5 @@ export interface OpcoesDeEntrada {
   readonly nome?: string;
   readonly modo?: Modo;
   readonly dificuldade?: NivelBot;
+  readonly itens?: boolean;
 }

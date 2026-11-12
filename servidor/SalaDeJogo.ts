@@ -37,6 +37,7 @@ export class SalaDeJogo extends Room {
         opcoes.dificuldade === "facil" || opcoes.dificuldade === "dificil"
           ? opcoes.dificuldade
           : "medio",
+      itens: opcoes.itens === true,
       semente: Math.floor(Math.random() * 2 ** 31) + 1,
       segundosDeReconexao: SEGUNDOS_DE_RECONEXAO,
       escalaDeTempo: Number.isFinite(escala) && escala > 0 ? escala : 1,

@@ -1,6 +1,6 @@
 import { jogarBot } from "../src/bots/bot";
 import { jogarBots } from "../src/bots/partida";
-import { arena, CONTEXTO, IDS_DAS_ARENAS, PARTIDA } from "../src/dados";
+import { arena, CONTEXTO, IDS_DAS_ARENAS, ITENS, PARTIDA } from "../src/dados";
 import { TICKS_POR_SEGUNDO } from "../src/sim/constantes";
 import { aplicar, preparacaoEncerrada } from "../src/sim/economia/economia";
 import type { Erro } from "../src/sim/economia/tipos";
@@ -24,6 +24,8 @@ export interface OpcoesDaMesa {
   codigo: string;
   modo: Modo;
   dificuldade: NivelBot;
+  /** Partida com itens de arena (padrão: sem). */
+  itens?: boolean;
   semente: number;
   /** Tempo, depois do combate mais longo, antes de abrir a rodada seguinte. */
   segundosExtrasDeCombate?: number;
@@ -52,6 +54,7 @@ export class Mesa {
   readonly codigo: string;
   private modo: Modo;
   private dificuldade: NivelBot;
+  private readonly itens: boolean;
   private readonly semente: number;
   private readonly extrasDeCombate: number;
   private readonly reconexao: number;
@@ -68,6 +71,7 @@ export class Mesa {
     this.codigo = opcoes.codigo;
     this.modo = opcoes.modo;
     this.dificuldade = opcoes.dificuldade;
+    this.itens = opcoes.itens === true;
     this.semente = opcoes.semente;
     this.extrasDeCombate = opcoes.segundosExtrasDeCombate ?? 6;
     this.reconexao = opcoes.segundosDeReconexao ?? 60;
@@ -161,6 +165,7 @@ export class Mesa {
       participantes,
       this.semente,
       IDS_DAS_ARENAS,
+      this.itens ? ITENS : null,
     );
     this.abrirPreparacao(agora);
     return null;
@@ -261,6 +266,7 @@ export class Mesa {
       codigo: this.codigo,
       modo: this.modo,
       dificuldade: this.dificuldade,
+      itens: this.itens,
       iniciada: this.iniciada,
       vagas: this.vagas.map((v, i) => ({
         nome: v.nome,

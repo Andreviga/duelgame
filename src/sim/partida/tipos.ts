@@ -1,5 +1,5 @@
 import type { EstadoAleatorio } from "../aleatorio";
-import type { Lado } from "../combate/tipos";
+import type { ConfigItens, Lado } from "../combate/tipos";
 import type { EstadoEconomia } from "../economia/tipos";
 
 export interface ConfigPartida {
@@ -59,6 +59,8 @@ export interface EstadoPartida {
   readonly resultados: readonly ResultadoConfronto[];
   /** Jogadores do primeiro ao último lugar, quando a partida acaba. */
   readonly classificacao: readonly number[] | null;
+  /** Regras dos itens de arena desta partida, ou null se ela foi criada sem itens. */
+  readonly itens: ConfigItens | null;
 }
 
 export interface Participante {

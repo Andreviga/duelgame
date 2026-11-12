@@ -3,6 +3,7 @@ import type { ConfigEconomia } from "../sim/economia/tipos";
 import type { ConfigPartida } from "../sim/partida/tipos";
 import type {
   Arena,
+  ConfigItens,
   DefAtaque,
   DefHabilidade,
   DefImpacto,
@@ -407,6 +408,32 @@ export function validarSinergias(json: unknown): ConfigSinergias {
     explosao: {
       raio: num(ex, "raio", `${c}.explosao`, "positivo"),
       dano: num(ex, "dano", `${c}.explosao`, "positivo"),
+    },
+  };
+}
+
+/** Regras dos itens de arena (`itens.json`). */
+export function validarItens(json: unknown): ConfigItens {
+  const c = "itens";
+  const o = obj(json, c);
+  const b = obj(o["bomba"], `${c}.bomba`);
+  return {
+    primeiro: inteiro(o, "primeiro", c),
+    intervalo: inteiro(o, "intervalo", c),
+    maximo: inteiro(o, "maximo", c),
+    vida: inteiro(o, "vida", c),
+    tamanho: num(o, "tamanho", c, "positivo"),
+    cura: num(o, "cura", c, "naoNegativo"),
+    ticksEscudo: inteiro(o, "ticksEscudo", c),
+    multiplicadorMartelo: num(o, "multiplicadorMartelo", c, "positivo"),
+    impulsoMola: num(o, "impulsoMola", c, "positivo"),
+    bomba: {
+      pavio: inteiro(b, "pavio", `${c}.bomba`),
+      raio: num(b, "raio", `${c}.bomba`, "positivo"),
+      dano: num(b, "dano", `${c}.bomba`, "naoNegativo"),
+      arremessoBase: num(b, "arremessoBase", `${c}.bomba`, "naoNegativo"),
+      arremessoCrescimento: num(b, "arremessoCrescimento", `${c}.bomba`, "naoNegativo"),
+      anguloGraus: num(b, "anguloGraus", `${c}.bomba`, "naoNegativo"),
     },
   };
 }
