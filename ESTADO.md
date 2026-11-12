@@ -2,25 +2,24 @@
 
 ## Fase atual
 
-**Fase 7A — Pipeline de arte com o Lâmina como piloto: pipeline pronto, aguardando o modelo de verdade e a aprovação visual do André.**
+**Fase 7A — Pipeline de arte com o Lâmina como piloto: pipeline pronto e Lâmina modelado por script, aguardando a aprovação visual do André.**
 
-O critério da 7A ("`npm run arte` gera o atlas do Lâmina do zero, a validação passa, e ele aparece animado em um combate ao lado dos retângulos") está cumprido com um **boneco de teste** feito de formas simples. Falta o modelo real do Lâmina, que depende do André (ver `arte/LEIA-ME.md`).
+O critério da 7A ("`npm run arte` gera o atlas do Lâmina do zero, a validação passa, e ele aparece animado em um combate ao lado dos retângulos") está cumprido com o Lâmina de verdade, modelado por script (ver `arte/LEIA-ME.md`). Falta só o André aprovar o visual.
 
 Fases 0 a 6 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
 
 Pendências herdadas:
 - Fase 6: publicar o servidor e jogar com 4 pessoas em redes diferentes (`PUBLICAR.md`).
-- Fase 5: três trios de sinergia perto de 60% no lote (Piratas, Dojo e Futebol), sem decisão do André.
 
 ## Definição de 100% (seção 9 do plano)
 
 - [ ] `npm run test`, `lint` e `build` passam sem aviso. *Hoje: passam (186 testes); o build não emite aviso.*
 - [x] Determinismo: 1.000 combates repetidos com a mesma semente dão resultado idêntico. *`npm run lote` com `LOTE_DETERMINISMO=1000`: 0 divergiram (2026-11-11, `relatorios/lote-fase5.md`).*
 - [x] 10.000 combates simulados terminam sem personagem preso e sem estourar o tempo. *`LOTE_COMBATES=10000`: 0 por tempo, 0 quedas sem arremesso (2026-11-11, `relatorios/lote-fase5.md`).*
-- [ ] Nenhum personagem, mundo ou papel passa de 55% de vitória. *Personagens: sim (ver números abaixo). Sinergias de 3: algumas ainda passam; ver "Números do lote".*
+- [ ] Nenhum personagem, mundo ou papel passa de 55% de vitória. *Personagens: sim. Trios: perto de 55% depois do ajuste de 2026-11-12; o Dojo (perto de 57%) ainda passa. Ver "Números do lote".*
 - [ ] Partida completa contra 3 bots nos dois modos, do menu à tela de resultado, sem erro no console. *Automatizado em `npm run test:e2e`; falta o André jogar.*
 - [ ] Partida online completa com 4 pessoas em redes diferentes, com uma reconexão no meio. *Automatizado na mesma máquina: 4 clientes de rede jogam a partida inteira (`testes/servidor.test.ts`) e duas abas com reconexão (`npm run test:e2e`). Falta publicar e jogar com 4 pessoas.*
-- [ ] Os 12 personagens com todas as animações. *Pipeline pronto (Fase 7A); 0 de 12 com arte final. O Lâmina usa um boneco de teste.*
+- [ ] Os 12 personagens com todas as animações. *Pipeline pronto (Fase 7A); 1 de 12 modelado (Lâmina), aguardando aprovação visual.*
 - [ ] Som e efeitos em todos os eventos da Fase 8. *Efeitos visuais já existem; som não.*
 - [ ] Jogável no celular por toque, a 60 quadros por segundo. *Fase 9.*
 - [ ] Tutorial concluído por uma pessoa de fora sem ajuda. *Fase 8.*
@@ -109,7 +108,7 @@ Pendências herdadas:
 - **`src/dados/animacoes.json`**: as 9 animações, quantos quadros e se é laço. Lido pelo Blender, pela ferramenta de atlas e pelo jogo.
 - **`ferramentas/arte/montar_atlas.ts`** com PNG lido e escrito à mão (`png.ts`, sem dependência) e a validação (`atlas.ts`): animação ausente, número de quadros errado, quadro sobrando, tamanho errado, quadro vazio, quadro repetido em `andar`.
 - **No jogo** (`src/render/animacao.ts` e `CenaCombate`): personagem com atlas aparece como sprite, espelhado quando vira para a esquerda; a animação é escolhida pelo estado da simulação (arremessado > atingido > habilidade > atacar > pular/cair > andar > parado); nocaute por meio segundo depois de sair da arena. A cor do jogador vai no contorno e em um anel no chão. A simulação não mudou.
-- **Boneco de teste** (`ferramentas/arte/criar_boneco_teste.py`): formas simples + esqueleto + as 9 ações, gerado por script. Está no lugar do Lâmina só para provar o pipeline.
+- **Modelos por script** (`ferramentas/arte/modelos/`): `humanoide.py` monta esqueleto, corpo e as 7 ações comuns; `lamina.py` define o Lâmina (quimono vermelho, espada nas costas) e as ações `atacar` e `habilidade`.
 - **Testes** (186): PNG, cada regra da validação com quadros defeituosos de propósito, formato do atlas, e a escolha de animação a partir do estado.
 
 ## Números do lote
@@ -135,7 +134,7 @@ Relatório completo: `relatorios/lote-fase5.md` (gerado em 2026-11-11 com `LOTE_
 | Tanque | 2 / 3 | 51,1% / 57,0% | 42,9% / 45,9% |
 | Assassino | 2 / 3 | 47,8% / 52,5% | 44,3% / 32,5% |
 
-**O que ainda passa da meta de 55%:** três trios completos, Piratas (61,6%), Dojo (61,2%) e Futebol (59,2%). No caso de Piratas e Dojo o trio já é forte sem bônus nenhum (59,8% e 54,5%): são os trios mais caros (12 de elixir em três vagas) e as habilidades combinam entre si. Baixar mais exige mexer nos personagens, não na sinergia. Todos os degraus de 2 estão entre 47% e 54%.
+**Ajuste dos trios (2026-11-12, decisão do André: enfraquecer até 55%).** Números novos em `relatorios/lote-ajuste-trios.md`; a tabela acima é a anterior ao ajuste. Trios completos agora: Futebol 54,5%, Piratas 55,5%, Dojo perto de 57% (56,7% na medição de 3.000 combates; chegou a 60% em um lote menor, então ainda é o trio a vigiar) (eram 59,2%, 61,6% e 61,2%). Personagens entre 46,4% e 54,6%. Os bônus desses três mundos ficaram pequenos (2% a 6%): o que sobra de vantagem vem da combinação dos três personagens, não do bônus. O Mestre Vento ficou no piso (46% a 47%) porque o Tufão é o que deixa o trio do Dojo forte. Outros trios no teto: Corpo a corpo 56,1% e Monstros 56,0%.
 
 **Mais de uma estratégia vencedora:** sim. Sete dos oito trios ficam entre 51% e 62%, com composições bem diferentes (três baratos de Monstros ou de Assassino empatam com trios caros).
 
@@ -236,16 +235,20 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 - **Bots do servidor jogam no nível escolhido pelo anfitrião**, inclusive quando substituem alguém que caiu.
 
 ### Fase 7A
-- **Blender 5.3:** os scripts foram escritos para a API dessa versão e testados com o módulo `bpy` 5.3.0 (o Blender não está instalado no ambiente de desenvolvimento). O André ainda não informou a versão dele.
+- **Modelos feitos pelo Claude por script, sem packs de terceiros** (decisão do André, 2026-11-12). Substitui a base de arte do `ELENCO.md`; não há nada a registrar em `CREDITOS.md`.
+- **Servidor de jogo no Render** (decisão do André, 2026-11-12): `render.yaml` na raiz; passos em `PUBLICAR.md`.
+- **Quadro com 3 unidades de altura** (era 2,5) e sprite 1,45× a caixa de colisão, para a espada caber e o personagem não ficar pequeno.
+- **`npm run lote` consertado:** o relator `basic` saiu do Vitest e o comando falhava.
+- **Blender 5.3:** os scripts foram escritos para a API dessa versão e testados com o módulo `bpy` 5.3.0 (o Blender não está instalado no ambiente de desenvolvimento). O André confirmou a 5.3 (2026-11-12).
 - **Motor de render: Cycles na CPU**, 24 amostras, sem redução de ruído. É o que roda em qualquer máquina sem placa de vídeo. Os 49 quadros levam uns 10 segundos.
 - **Enquadramento fixo:** o quadro mostra 2,5 unidades; os pés ficam a 86% da altura. Personagem de até 2,05 unidades.
 - **Tamanho no jogo:** o sprite é escalado para a altura da caixa de colisão do personagem, com 20% de folga para a arma e os gestos.
 - **O atlas não recorta os quadros** (cada um ocupa 256×256): mais simples e a linha de base fica igual em todos. O do Lâmina tem 2048×2304 e 830 kB.
-- **`public/sprites/` vai para o repositório** (o jogo roda sem Blender). `arte/quadros/` e o `.blend` do boneco de teste são gerados e ficam fora.
+- **`public/sprites/` vai para o repositório** (o jogo roda sem Blender). `arte/quadros/` e os `.blend` são gerados e ficam fora.
 - **Só o combate usa sprites por enquanto.** Cartas, banco e preparação continuam com as formas geométricas; os retratos nas cartas são da Fase 8.
 - **Tipos mínimos do Node** para o servidor e as ferramentas ficam em `node.d.ts` na raiz (sem `@types/node`).
 
 ## Próximo passo
 
-1. André: informar a versão do Blender e mandar o modelo do Lâmina (`arte/fontes/lamina.blend` conforme `arte/LEIA-ME.md`, ou os arquivos do pack para o Claude Code montar o `.blend`). Depois, aprovar o visual.
+1. André: aprovar o visual do Lâmina (ou pedir mudanças) e publicar o servidor no Render (`PUBLICAR.md`).
 2. Fase 7B — os outros 11 personagens, um por vez, com aprovação visual em cada um.
