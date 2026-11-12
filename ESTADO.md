@@ -10,6 +10,8 @@ Fases 7A, 7B e 8 aprovadas em 2026-11-12.
 
 **Cenários no Blender:** as três arenas têm cenário em imagens, em uso e aprovados pelo André (2026-11-12). O André pediu "faz tudo": os três pontos da arena básica foram resolvidos (lua menor e mais alta, corda rente à viga com borlas só nas pontas, luz das lanternas mais fraca no portal) e entrou a proteção de desempenho abaixo.
 
+**Publicado:** o cliente está em https://duelgame-opal.vercel.app (projeto `duelgame` na Vercel do André, com deploy automático a cada push no `main`). A variável `VITE_SERVIDOR` já está definida lá; falta confirmar que o servidor do Render está no ar e que o online funciona.
+
 Fases 0 a 6 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
 
 Pendências herdadas:
@@ -326,7 +328,7 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 Tudo o que falta para a "Definição de 100%" depende do André:
 
 1. Conferir no celular se o cenário completo fica fluido (em Opções > Cenário dá para forçar "completo" ou "leve").
-2. Publicar o servidor (Render) e o cliente (Vercel) e fazer a conferência do `PUBLICAR.md`.
+2. Confirmar que o servidor está no ar no Render e fazer a conferência do `PUBLICAR.md` em https://duelgame-opal.vercel.app.
 3. Medir os quadros por segundo em um celular intermediário, com 16 personagens em combate (2x2, rodadas finais).
 4. Jogar online com 4 pessoas em redes diferentes, com uma reconexão.
 5. Aplicar o `ROTEIRO-DE-TESTE.md` com 8 pessoas e trazer os 5 problemas mais citados para corrigir.
