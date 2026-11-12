@@ -200,6 +200,15 @@ class Humanoide:
             self.tubo(f"canela_{lado}", f"canela_{lado}", (0, y, 0.48), (0, y, 0.1), 0.075 * g, 0.06 * g, calca)
             self.caixa(f"pe_{lado}", f"canela_{lado}", (0.05, y, 0.05), (0.24, 0.12, 0.1), sapato, chanfro=0.03)
 
+    def uniforme_curto(self, camisa, calcao, meia):
+        """Manga curta, calção e meião por cima do corpo (que deve ter braços e pernas cor de pele)."""
+        g = self.g
+        for lado, y in (("f", -self.ombro), ("t", self.ombro)):
+            self.tubo(f"manga_curta_{lado}", f"braco_{lado}", (0, y, 1.28), (0, y, 1.12), 0.088 * g, 0.082 * g, camisa)
+        for lado, y in (("f", -self.quadril), ("t", self.quadril)):
+            self.tubo(f"calcao_{lado}", f"coxa_{lado}", (0, y, 0.9), (0, y, 0.64), 0.112 * g, 0.12 * g, calcao)
+            self.tubo(f"meiao_{lado}", f"canela_{lado}", (0, y, 0.44), (0, y, 0.1), 0.08 * g, 0.066 * g, meia)
+
     def rosto(self, olho, cabeca=0.23, sobrancelha=None):
         """Olhos na frente da cabeça (de lado só um aparece inteiro)."""
         z = 1.32 + cabeca + 0.02

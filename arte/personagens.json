@@ -28,5 +28,20 @@
     "id": "ancora",
     "fonte": "arte/fontes/ancora.blend",
     "gerador": "ferramentas/arte/modelos/ancora.py"
+  },
+  {
+    "id": "maestro",
+    "fonte": "arte/fontes/maestro.blend",
+    "gerador": "ferramentas/arte/modelos/maestro.py"
+  },
+  {
+    "id": "paredao",
+    "fonte": "arte/fontes/paredao.blend",
+    "gerador": "ferramentas/arte/modelos/paredao.py"
+  },
+  {
+    "id": "ponta",
+    "fonte": "arte/fontes/ponta.blend",
+    "gerador": "ferramentas/arte/modelos/ponta.py"
   }
 ]

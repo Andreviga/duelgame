@@ -64,9 +64,9 @@ Os `.blend` em `arte/fontes/` são gerados e não vão para o repositório; os a
 
 ## Estado atual
 
-- `lamina`, `sombra` e `vento` (Dojo): aprovados pelo André.
-- `mare`, `canhoneiro` e `ancora` (Piratas): modelados, aguardando a aprovação visual do André.
-- Os outros 6 continuam como formas geométricas.
+- Dojo (`lamina`, `sombra`, `vento`) e Piratas (`mare`, `canhoneiro`, `ancora`): aprovados pelo André.
+- Futebol (`maestro`, `paredao`, `ponta`): modelados, aguardando a aprovação visual do André.
+- Os 3 Monstros continuam como formas geométricas.
 
 Para refazer só alguns: `ARTE_SO=sombra,vento npm run arte`.
 
