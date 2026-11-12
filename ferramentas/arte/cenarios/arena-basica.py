@@ -58,15 +58,18 @@ for i in range(150):
 for i, (x, y, r) in enumerate(((118, 96, 7), (402, 58, 5), (688, 132, 6), (964, 70, 5), (1452, 118, 7), (1318, 44, 4), (236, 232, 4))):
     tom = "#d6defa"
     c.placa(f"estrela_g{i}", [(x - r, y), (x - r * 0.22, y - r * 0.22), (x, y - r), (x + r * 0.22, y - r * 0.22), (x + r, y), (x + r * 0.22, y + r * 0.22), (x, y + r), (x - r * 0.22, y + r * 0.22)], c.brilho(tom), profundidade=879)
-# Lua: à direita, emoldurada pelo portal, acima de onde se luta. Clara, mas sem estourar.
-LUA = (1105, 296)
-halo("lua", *LUA, 330, "#8f9bd0", 0.5, 872, queda=2.6)
-halo("lua_perto", *LUA, 130, "#aab4e0", 0.35, 871, queda=1.6)
-c.disco("lua", *LUA, 84, c.brilho("#838fb8"), lados=16, profundidade=866, giro=0.2)
-c.disco("lua_luz", LUA[0] - 10, LUA[1] - 10, 68, c.brilho("#8c98c0"), lados=14, profundidade=865, giro=0.5)
+# Lua: à direita, emoldurada pelo portal. Menor e mais alta que na primeira versão, para ficar
+# acima da cabeça de quem luta em cima da plataforma da direita. Clara, mas sem estourar.
+LUA = (1090, 302)
+K = 60 / 84  # a lua já foi maior; as medidas abaixo são as daquele tamanho, encolhidas
+halo("lua", *LUA, 330 * K, "#8f9bd0", 0.45, 872, queda=2.6)
+halo("lua_perto", *LUA, 130 * K, "#aab4e0", 0.3, 871, queda=1.6)
+c.disco("lua", *LUA, 84 * K, c.brilho("#7c88b0"), lados=16, profundidade=866, giro=0.2)
+c.disco("lua_luz", LUA[0] - 10 * K, LUA[1] - 10 * K, 68 * K, c.brilho("#8591b9"), lados=14, profundidade=865, giro=0.5)
 for i, (dx, dy, r) in enumerate(((-30, -22, 22), (26, 18, 15), (-12, 38, 11), (36, -34, 9), (4, -50, 7), (-52, 14, 8))):
-    c.disco(f"cratera{i}", LUA[0] + dx, LUA[1] + dy, r, c.brilho("#7480aa"), lados=7, profundidade=864, giro=i)
-    c.disco(f"cratera_fundo{i}", LUA[0] + dx + r * 0.15, LUA[1] + dy + r * 0.15, r * 0.7, c.brilho("#6b7799"), lados=6, profundidade=863, giro=i + 1)
+    dx, dy, r = dx * K, dy * K, r * K
+    c.disco(f"cratera{i}", LUA[0] + dx, LUA[1] + dy, r, c.brilho("#6e7aa4"), lados=7, profundidade=864, giro=i)
+    c.disco(f"cratera_fundo{i}", LUA[0] + dx + r * 0.15, LUA[1] + dy + r * 0.15, r * 0.7, c.brilho("#657193"), lados=6, profundidade=863, giro=i + 1)
 # Nuvens altas: faixas compridas e facetadas em dois tons, mais para as bordas.
 for i, (x, y, l, a, tom) in enumerate(
     (
@@ -305,18 +308,21 @@ for nome, x, lado in (("e", X0_TELHADO, -1), ("d", X1_TELHADO, 1)):
     c.placa(f"portal_ponta_{nome}", [(x - lado * 30, 160), (x + lado * 4, 152), (x + lado * 22, 124), (x + lado * 2, 166)], TELHA_ESCURA, profundidade=-72)
 # Corda grossa trançada na viga de baixo, com três borlas: detalhe de santuário, sem símbolo nenhum.
 CORDA = c.mat("#6a5a40", ambiente=0.5, luz=0.5, base=0.8)
-pontos_da_corda = [(COL_E + 150 + (COL_D - COL_E - 300) * i / 24, 300 + 10 * math.sin(math.pi * i / 24)) for i in range(25)]
-c.fita("portal_corda", pontos_da_corda, [5 + 5 * math.sin(math.pi * i / 24) for i in range(25)], CORDA, profundidade=-38)
-for i in (6, 12, 18):
+# A corda fica rente à viga, quase sem barriga, e as borlas só perto das colunas: no meio fica
+# a plataforma do alto, e nada deve parecer que encosta nela.
+pontos_da_corda = [(COL_E + 150 + (COL_D - COL_E - 300) * i / 24, 297 + 3 * math.sin(math.pi * i / 24)) for i in range(25)]
+c.fita("portal_corda", pontos_da_corda, [4 + 2 * math.sin(math.pi * i / 24) for i in range(25)], CORDA, profundidade=-38)
+for i in (1, 23):
     bx, by = pontos_da_corda[i]
-    c.placa(f"portal_borla{i}", [(bx - 4, by + 3), (bx + 4, by + 3), (bx + 6, by + 26), (bx, by + 32), (bx - 6, by + 26)], CORDA, profundidade=-39)
+    c.placa(f"portal_borla{i}", [(bx - 4, by + 3), (bx + 4, by + 3), (bx + 6, by + 20), (bx, by + 25), (bx - 6, by + 20)], CORDA, profundidade=-39)
 
 # Lanternas de papel penduradas na viga, junto das colunas: o único brilho quente perto da luta,
 # e fica nas pontas.
 for nome, x in (("e", COL_E + 84), ("d", COL_D - 84)):
     c.retangulo(f"lanterna_fio_{nome}", x - 1.5, 296, x + 1.5, 326, TRONCO, profundidade=-20)
     halo(f"lanterna_{nome}", x, 350, 96, "#ffbe66", 0.5, -52, queda=2.2)
-    c.lampada(f"lanterna_luz_{nome}", x, 352, -110, "#ffb45a", forca=1.35, raio=130)
+    # Luz fraca e curta: forte, ela deixava o portal bem mais vermelho perto das lanternas.
+    c.lampada(f"lanterna_luz_{nome}", x, 352, -110, "#ffb45a", forca=0.7, raio=95)
     corpo = [(x - 9, 328), (x + 9, 328), (x + 16, 338), (x + 16, 362), (x + 9, 372), (x - 9, 372), (x - 16, 362), (x - 16, 338)]
     c.placa(f"lanterna_{nome}", corpo, LUZ, profundidade=-56)
     c.placa(f"lanterna_miolo_{nome}", [(x - 5, 334), (x + 5, 334), (x + 9, 342), (x + 9, 358), (x + 5, 366), (x - 5, 366), (x - 9, 358), (x - 9, 342)], c.brilho("#ffe6a8"), profundidade=-57)
