@@ -1,0 +1,49 @@
+{
+  "arena": "arena-basica",
+  "blender": "5.3.0",
+  "camadas": {
+    "ceu": {
+      "largura": 1600,
+      "altura": 900
+    },
+    "longe": {
+      "largura": 2000,
+      "altura": 900
+    },
+    "perto": {
+      "largura": 2400,
+      "altura": 900
+    },
+    "chao": {
+      "largura": 1600,
+      "altura": 80
+    },
+    "plataforma": {
+      "largura": 380,
+      "altura": 40
+    },
+    "frente": {
+      "largura": 2400,
+      "altura": 900
+    }
+  },
+  "tema": "pátio de dojo à noite",
+  "encaixe": {
+    "descricao": "Nas camadas longe, perto e frente, o centro horizontal fica em x=600 do mundo e a linha y=600 da camada fica em y=520 do mundo (o topo do chão), com a câmera no centro.",
+    "linhaDoChao": 600
+  },
+  "paralaxeSugerida": {
+    "ceu": 0.0,
+    "longe": 0.12,
+    "perto": 0.35,
+    "frente": 1.15
+  },
+  "corAbaixo": {
+    "longe": "#0e1222",
+    "perto": "#080a14"
+  },
+  "pxPorUnidade": {
+    "chao": 2,
+    "plataforma": 2
+  }
+}
