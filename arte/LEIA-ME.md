@@ -72,6 +72,41 @@ Os `.blend` em `arte/fontes/` são gerados e não vão para o repositório; os a
 
 Para refazer só alguns: `ARTE_SO=sombra,vento npm run arte`.
 
+## Cenários das arenas
+
+Cada arena tem um script em `ferramentas/arte/cenarios/<id>.py`, que monta a cena do zero no Blender
+e renderiza as camadas em `public/cenarios/<id>/`. A biblioteca comum é `cenarios/cenario.py`
+(formas low-poly, materiais e o render).
+
+```bash
+python3 ferramentas/arte/rodar_blender.py ferramentas/arte/cenarios/arena-basica.py
+# prévia rápida, em outra pasta:  ... arena-basica.py -- --saida /tmp/previa --escala 0.5
+# só algumas camadas:             ... arena-basica.py -- --so perto,frente
+```
+
+| Arquivo | Conteúdo | Tamanho |
+|---|---|---|
+| `ceu.png` | céu, lua, estrelas e nuvens altas (sem transparência) | 1600×900 |
+| `longe.png` | serras e o que está distante | 2000×900 |
+| `perto.png` | o que fica logo atrás da luta | 2400×900 |
+| `chao.png` | o chão sólido, de frente, na proporção exata do JSON da arena (2 px por unidade) | varia |
+| `plataforma.png` | uma plataforma; metade de cima é a tábua, metade de baixo a sombra | 380×40 |
+| `frente.png` | o que passa na frente da luta, só nas bordas | 2400×900 |
+| `cenario.json` | tamanhos, encaixe e paralaxe sugerida, para o jogo ler | — |
+
+- **Encaixe:** nas camadas largas, o centro fica atrás de x = 600 do mundo e a linha y = 600 da
+  camada fica na altura do chão da arena.
+- **Leitura da luta:** atrás da área de jogo o cenário é escuro, pouco saturado e sem detalhe fino;
+  brilho quente só nas bordas. Nada no fundo tem linha clara na altura do chão.
+- **Reproduzível:** Cycles na CPU, semente fixa, sem denoise, só luz direta (sem ruído), sem
+  pontilhado e sem data gravada no arquivo. Rodar duas vezes dá os mesmos arquivos, byte a byte.
+- **Luz:** as mesmas duas direções dos personagens (`render_sprites.py`).
+- **Peso:** no máximo 1,5 MB por arena.
+
+Estado: `arena-basica` (pátio de dojo à noite) renderizada, 1,0 MB, aguardando a aprovação do André.
+**O jogo ainda não carrega essas imagens**: `desenharFundo` e `desenharArena` continuam desenhando
+por código. A troca por camadas com paralaxe é o próximo passo, só em `src/render`.
+
 ## Licenças
 
 Hoje não há nada de terceiros na arte. Se um dia entrar algum pack, confira a licença na página
