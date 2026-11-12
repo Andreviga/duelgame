@@ -548,6 +548,13 @@ export class CenaCombate extends Phaser.Scene {
         this.anel(ev.x, ev.y, 90, cor(ev.id), 5, 340);
         fx.faiscas(ev.x, ev.y, e.lutadores[ev.id]?.direcao ?? 1, 8, cor(ev.id));
         fx.tremor = Math.max(fx.tremor, 8);
+      } else if (ev.tipo === "cartao") {
+        // cartão erguido sobre a cabeça do alvo: um clarão vermelho e o atordoamento
+        const visual = this.visuais[ev.alvo];
+        if (visual) visual.brilho = 1;
+        this.anel(ev.x, ev.y, 46, 0xff4d5e, 8, 320);
+        this.anel(ev.x, ev.y, 26, 0xffffff, 5, 220);
+        tocar("erro");
       } else {
         // explosão de um monstro ao sair da arena
         this.anel(ev.x, ev.y, ev.raio, 0xf2713d, 16, 520);

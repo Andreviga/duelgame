@@ -187,6 +187,20 @@ export function alvoDaHabilidade(
         );
       return alvo ? { alvo } : null;
     }
+    case "cartao":
+      return atual && atual.atordoado === 0 && dy(atual) < ALINHADO && dx(atual) <= hab.alcance
+        ? { alvo: atual }
+        : null;
+    case "bumerangue":
+      // Vale também no ar: quem a usa chega pulando, e a lâmina sai da altura do corpo.
+      return atual && dy(atual) < ALINHADO && dx(atual) > 70 && dx(atual) <= hab.alcance
+        ? { alvo: atual }
+        : null;
+    case "leque":
+      // Os projéteis sobem em leque: serve para alvo na mesma altura ou acima.
+      return atual && dx(atual) > 60 && dx(atual) <= hab.alcance && atual.y <= l.y + ALINHADO
+        ? { alvo: atual }
+        : null;
     case "tufao": {
       const emCena = vivos.filter((o) => sobreChao(o) && dx(o) <= hab.alcance);
       return l.noChao && emCena.some((o) => o.dano >= DANO_PARA_TUFAO) ? { alvo: null } : null;

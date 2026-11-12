@@ -7,6 +7,7 @@ import type {
   Arena,
   DefImpacto,
   DefPersonagem,
+  DefProjetil,
   Esquadrao,
   EstadoCombate,
   Evento,
@@ -34,6 +35,10 @@ const FOLGA_DO_TELEPORTE = 45;
 const ESCALA_DO_CANHAO = 1.8;
 /** Depois de atravessar um alvo, o projétil só causa esta fração do dano, sem arremessar. */
 export const DANO_APOS_ATRAVESSAR = 0.25;
+/** Graus entre um projétil e o seguinte na habilidade "leque" (o primeiro sai reto). */
+export const ABERTURA_DO_LEQUE = 13;
+/** A lâmina da habilidade "bumerangue" (quem a usa não atira no golpe comum). */
+const LAMINA_QUE_VOLTA: DefProjetil = { velocidade: 0, largura: 26, altura: 12, vida: 0 };
 /** Dentro do casco, o dano recebido é reduzido por este fator. */
 export const DANO_NO_CASCO = 0.5;
 /** Aliados mantêm pelo menos esta fração da largura média entre si, andando até este tanto por tick. */
@@ -337,11 +342,23 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
     l: Lutador,
     imp: DefImpacto,
     velocidade: number,
-    opcoes: { alvo?: number; quiques?: number; raioDeBusca?: number; escala?: number } = {},
+    opcoes: {
+      alvo?: number;
+      quiques?: number;
+      raioDeBusca?: number;
+      escala?: number;
+      /** Graus acima da horizontal. */
+      subida?: number;
+      /** Projétil próprio da habilidade, para quem não atira no golpe comum. */
+      projetil?: DefProjetil;
+      /** Ticks de ida antes de voltar; quem volta atravessa os inimigos. */
+      volta?: number;
+    } = {},
   ): void => {
-    const proj = l.def.ataque.projetil;
+    const proj = opcoes.projetil ?? l.def.ataque.projetil;
     if (!proj) return;
     const escala = opcoes.escala ?? 1;
+    const subida = ((opcoes.subida ?? 0) * Math.PI) / 180;
     const largura = proj.largura * escala;
     const x = l.x + l.direcao * (l.def.largura / 2 + largura / 2);
     const y = l.y - l.def.altura * 0.55;
@@ -351,12 +368,14 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
       dono: l.id,
       x,
       y,
-      vx: velocidade * l.direcao,
-      vy: 0,
+      vx: velocidade * l.direcao * Math.cos(subida),
+      vy: -velocidade * Math.sin(subida),
       velocidade,
       largura,
       altura: proj.altura * escala,
-      vida: Math.round(proj.vida * (opcoes.alvo === undefined ? 1 : 3)),
+      vida: opcoes.volta
+        ? opcoes.volta * 2 + 4
+        : Math.round(proj.vida * (opcoes.alvo === undefined ? 1 : 3)),
       alvo: opcoes.alvo ?? null,
       quiques: opcoes.quiques ?? 0,
       raioDeBusca: opcoes.raioDeBusca ?? 0,
@@ -364,6 +383,8 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
       atingidos: [],
       multiplicador: 1,
       enfraquecido: false,
+      volta: opcoes.volta ?? 0,
+      atravessa: opcoes.volta !== undefined,
       dano: imp.dano,
       arremessoBase: imp.arremessoBase,
       arremessoCrescimento: imp.arremessoCrescimento,
@@ -468,6 +489,36 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
         l.alvo = alvo.id;
         break;
       }
+      case "cartao": {
+        if (!alvo) break;
+        // Atordoa sem arremessar: o alvo larga o que estava fazendo e fica parado para o próximo golpe.
+        alvo.dano += hab.dano;
+        alvo.atordoado = Math.max(alvo.atordoado, hab.duracao);
+        alvo.ataque = { fase: "nenhum", ticks: 0, acertou: false };
+        if (!noCasco(alvo)) alvo.hab = semHabilidade();
+        alvo.ultimoAtacante = l.id;
+        l.recarga = 0;
+        l.alvo = alvo.id;
+        eventos.push({
+          tipo: "cartao",
+          id: l.id,
+          alvo: alvo.id,
+          x: alvo.x,
+          y: alvo.y - alvo.def.altura,
+        });
+        break;
+      }
+      case "bumerangue":
+        disparar(l, hab, hab.velocidade, {
+          projetil: LAMINA_QUE_VOLTA,
+          volta: Math.ceil(hab.alcance / hab.velocidade),
+        });
+        break;
+      case "leque":
+        for (let k = 0; k < hab.quantidade; k++) {
+          disparar(l, hab, hab.velocidade, { subida: k * ABERTURA_DO_LEQUE });
+        }
+        break;
       case "tufao": {
         const centro = (esq + dir) / 2;
         for (const o of ls) {
@@ -610,6 +661,12 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
     p.x += p.vx;
     p.y += p.vy;
     p.vida--;
+    if (p.volta > 0 && --p.volta === 0) {
+      // Fim da ida: volta pelo mesmo caminho e pode acertar de novo quem já acertou.
+      p.vx = -p.vx;
+      p.vy = -p.vy;
+      p.atingidos = [];
+    }
     const dono = ls.find((l) => l.id === p.dono);
     const alvo = ls.find(
       (b) => b.vivo && b.lado !== p.lado && !p.atingidos.includes(b.id) && projetilAcerta(p, b),
@@ -632,6 +689,8 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
         p.atingidos = [];
         p.multiplicador = defesa.quantidade;
         p.enfraquecido = false;
+        p.volta = 0;
+        p.atravessa = false;
       } else {
         const sentido = p.vx !== 0 ? (p.vx > 0 ? 1 : -1) : alvo.x >= dono.x ? 1 : -1;
         aplicarImpacto(
@@ -643,7 +702,9 @@ export function stepCombate(e: EstadoCombate): EstadoCombate {
           p.enfraquecido ? DANO_APOS_ATRAVESSAR : 0,
         );
         p.atingidos = [...p.atingidos, alvo.id];
-        if (p.quiques > 0) {
+        if (p.atravessa) {
+          // segue em frente: só some quando a vida acaba
+        } else if (p.quiques > 0) {
           // Quica para o inimigo mais próximo que ainda não foi atingido.
           let proximoAlvo: Lutador | null = null;
           let melhor = p.raioDeBusca;

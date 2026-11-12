@@ -30,9 +30,12 @@ const HABILIDADES: readonly TipoHabilidade[] = [
   "casco",
   "teleporte",
   "tufao",
+  "cartao",
+  "bumerangue",
+  "leque",
 ];
 /** Habilidades que disparam projétil: o personagem precisa ter um projétil definido. */
-const HABILIDADES_DE_TIRO: readonly TipoHabilidade[] = ["bola", "canhao"];
+const HABILIDADES_DE_TIRO: readonly TipoHabilidade[] = ["bola", "canhao", "leque"];
 
 /** Validação simples dos JSON de conteúdo. Erros dizem o caminho do campo com problema. */
 export class ErroDeDados extends Error {}

@@ -2,13 +2,14 @@ import { describe, expect, it } from "vitest";
 import { ARENA_BASICA as arena, espelhar, formacao, personagem, PERSONAGENS } from "../src/dados";
 import { criarAleatorio } from "../src/sim/aleatorio";
 import {
+  ABERTURA_DO_LEQUE,
   criarCombate,
   criarLutador,
   DANO_NO_CASCO,
   stepCombate,
   TICKS_MAXIMOS,
 } from "../src/sim/combate/combate";
-import { escolherAlvo } from "../src/sim/combate/ia";
+import { alvoDaHabilidade, escolherAlvo } from "../src/sim/combate/ia";
 import type { Esquadrao, EstadoCombate, Evento, Lutador, Vaga } from "../src/sim/combate/tipos";
 
 const lamina = personagem("lamina");
@@ -23,6 +24,10 @@ const faisca = personagem("faisca");
 const rochedo = personagem("rochedo");
 const brasa = personagem("brasa");
 const vento = personagem("vento");
+const juiza = personagem("juiza");
+const cozinheiro = personagem("cozinheiro");
+const cogumelo = personagem("cogumelo");
+const monge = personagem("monge");
 const CHAO = arena.chao.y;
 const vaga = (def: Vaga["def"], x: number, y = CHAO): Vaga => ({ def, x, y });
 
@@ -388,6 +393,111 @@ describe("habilidades", () => {
     expect(avancar(inicial, 200).vistos.some(usou("tufao"))).toBe(false);
   });
 
+  it("cartão (Juíza): atordoa e fere o alvo, sem arremessar, e interrompe o que ele fazia", () => {
+    const inicial = montar([vaga(juiza, 400)], [vaga(lamina, 500)], [], (l) => {
+      soHabilidade(l);
+      if (l.id === 1) {
+        // o alvo não consegue bater nem usar habilidade: só serve para levar o cartão
+        l.recarga = 100_000;
+        l.habRecarga = 100_000;
+      }
+    });
+    const { e, vistos } = ate(inicial, (ev) => ev.tipo === "cartao");
+    const alvo = e.lutadores[1];
+    const hab = juiza.habilidade;
+    expect(vistos.some(usou("cartao"))).toBe(true);
+    expect(alvo?.dano).toBe(hab.dano);
+    expect(alvo?.atordoado).toBeGreaterThanOrEqual(hab.duracao - 1);
+    expect(alvo?.ataque.fase).toBe("nenhum");
+    // não é um golpe: ninguém foi arremessado
+    expect(golpesEm(vistos)).toEqual([]);
+    expect(Math.abs(alvo?.vy ?? 0)).toBeLessThan(1);
+    // quem deu o cartão fica com o golpe pronto
+    expect(e.lutadores[0]?.recarga).toBe(0);
+  });
+
+  it("cartão não é gasto em quem já está atordoado", () => {
+    const inicial = montar([vaga(juiza, 400)], [vaga(lamina, 500)], [1], soHabilidade);
+    expect(avancar(inicial, 200).vistos.some(usou("cartao"))).toBe(false);
+  });
+
+  it("bumerangue (Cozinheiro): a lâmina atravessa os inimigos, volta e acerta de novo", () => {
+    const inicial = montar(
+      [vaga(cozinheiro, 300)],
+      [vaga(ancora, 520), vaga(ancora, 600)],
+      [1, 2],
+      soHabilidade,
+    );
+    const inicio = ate(inicial, usou("bumerangue"));
+    const lamina_ = inicio.e.projeteis[0];
+    const hab = cozinheiro.habilidade;
+    const ida = Math.ceil(hab.alcance / hab.velocidade);
+    expect(lamina_?.atravessa).toBe(true);
+    expect(lamina_?.volta).toBe(ida - 1); // já andou um tick
+
+    // Na ida acerta os dois, uma vez cada, e não some ao acertar.
+    const naIda = avancar(inicio.e, ida - 2);
+    expect(golpesEm([...inicio.e.eventos, ...naIda.vistos])).toEqual([1, 2]);
+    expect(naIda.e.projeteis).toHaveLength(1);
+    expect(naIda.e.projeteis[0]?.vx).toBeGreaterThan(0);
+
+    // Depois inverte e some sozinha. Quem ainda estiver no caminho leva de novo, agora empurrado
+    // para o lado de quem lançou (o alvo arremessado na ida pode ter saído da linha).
+    const naVolta = avancar(naIda.e, ida + 8);
+    const golpes = naVolta.vistos.flatMap((ev) =>
+      ev.tipo === "golpe" && ev.atacante === 0 ? [ev] : [],
+    );
+    expect(golpes.length).toBeGreaterThanOrEqual(1);
+    expect(new Set(golpes.map((g) => g.alvo)).size).toBe(golpes.length); // no máximo uma vez cada
+    expect(golpes.every((g) => g.direcao === -1)).toBe(true);
+    expect(naVolta.e.projeteis).toHaveLength(0);
+  });
+
+  it("leque (Cogumelo): dispara três projéteis, o primeiro reto e os outros cada vez mais para cima", () => {
+    const inicial = montar([vaga(cogumelo, 300)], [vaga(ancora, 560)], [1], soHabilidade);
+    const { e } = ate(inicial, usou("leque"));
+    const hab = cogumelo.habilidade;
+    expect(e.projeteis).toHaveLength(hab.quantidade);
+    const angulos = e.projeteis.map((p) => (Math.atan2(-p.vy, p.vx) * 180) / Math.PI);
+    angulos.forEach((a, k) => expect(a).toBeCloseTo(k * ABERTURA_DO_LEQUE, 5));
+    for (const p of e.projeteis) expect(Math.hypot(p.vx, p.vy)).toBeCloseTo(hab.velocidade, 5);
+    // o de baixo, reto, acerta o alvo que está na mesma altura
+    expect(golpesEm(ate(e, (ev) => ev.tipo === "golpe").vistos)).toEqual([1]);
+  });
+
+  it("leque não é gasto em alvo que está abaixo", () => {
+    const acima = montar([vaga(cogumelo, 560, 290)], [vaga(ancora, 760)], [1], (l) => {
+      if (l.id === 0) l.alvo = 1;
+    });
+    const eu = acima.lutadores[0];
+    if (!eu) throw new Error("lutador ausente");
+    expect(alvoDaHabilidade(eu, acima.lutadores, arena, [])).toBeNull();
+    // na mesma altura, a mesma distância serve
+    const juntos = montar([vaga(cogumelo, 560)], [vaga(ancora, 760)], [1], (l) => {
+      if (l.id === 0) l.alvo = 1;
+    });
+    const noChao = juntos.lutadores[0];
+    if (!noChao) throw new Error("lutador ausente");
+    expect(alvoDaHabilidade(noChao, juntos.lutadores, arena, [])?.alvo?.id).toBe(1);
+  });
+
+  it("badalada (Monge do Sino): empurra para longe, quase na horizontal, quem está em volta", () => {
+    const inicial = montar(
+      [vaga(monge, 600)],
+      [vaga(lamina, 500), vaga(lamina, 700)],
+      [1, 2],
+      soHabilidade,
+    );
+    const { e, vistos } = ate(inicial, (ev) => ev.tipo === "golpe");
+    expect(vistos.some(usou("area"))).toBe(true);
+    expect(golpesEm([...e.eventos])).toEqual([1, 2]);
+    const [esquerda, direita] = [e.lutadores[1], e.lutadores[2]];
+    expect(esquerda?.vx).toBeLessThan(0);
+    expect(direita?.vx).toBeGreaterThan(0);
+    // ângulo baixo: anda bem mais para o lado do que sobe
+    expect(Math.abs(direita?.vx ?? 0)).toBeGreaterThan(Math.abs(direita?.vy ?? 0) * 2);
+  });
+
   it("ser atingido cancela a habilidade em andamento", () => {
     const inicial = montar([vaga(ancora, 600)], [vaga(lamina, 665)], [], (l) => {
       if (l.id === 0) l.hab = { ticks: 10, atingidos: [], restante: 0, alvo: null };
@@ -403,14 +513,16 @@ describe("habilidades", () => {
 
   it("toda habilidade do elenco é usada em combates de verdade", () => {
     const usadas = new Set<string>();
-    for (let s = 1; s <= 12 && usadas.size < 11; s++) {
+    const tipos = new Set(PERSONAGENS.map((d) => d.habilidade.tipo)).size;
+    const metade = PERSONAGENS.length / 2;
+    for (let s = 1; s <= 12 && usadas.size < tipos; s++) {
       const todos = PERSONAGENS.map((def, i) => ({ def, x: 0, y: 0, i }));
       const lado = (inicio: number) =>
         todos
-          .slice(inicio, inicio + 6)
+          .slice(inicio, inicio + metade)
           .map((t, k) => vaga(t.def, arena.pontos[k]?.x ?? 300, arena.pontos[k]?.y ?? CHAO));
-      let e = criarCombate(arena, [lado(0), espelhar(lado(6), arena)], s);
-      const outro = criarCombate(arena, [lado(6), espelhar(lado(0), arena)], s + 100);
+      let e = criarCombate(arena, [lado(0), espelhar(lado(metade), arena)], s);
+      const outro = criarCombate(arena, [lado(metade), espelhar(lado(0), arena)], s + 100);
       for (const inicial of [e, outro]) {
         e = inicial;
         while (!e.fim) {
@@ -422,13 +534,16 @@ describe("habilidades", () => {
     expect([...usadas].sort()).toEqual([
       "area",
       "bola",
+      "bumerangue",
       "cadeia",
       "canhao",
       "carrinho",
+      "cartao",
       "casco",
       "devolver",
       "gancho",
       "investida",
+      "leque",
       "teleporte",
       "tufao",
     ]);

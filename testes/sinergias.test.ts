@@ -84,14 +84,16 @@ const golpeando = (l: Lutador, direcao: -1 | 1 = 1): void => {
 };
 
 describe("contagem de características", () => {
-  it("o elenco tem 3 personagens por mundo e 3 por papel", () => {
+  it("o elenco tem 4 personagens por mundo e 4 por papel", () => {
     for (const mundo of ["futebol", "piratas", "monstros", "dojo"]) {
-      expect(PERSONAGENS.filter((d) => d.mundo === mundo)).toHaveLength(3);
+      expect(PERSONAGENS.filter((d) => d.mundo === mundo)).toHaveLength(4);
     }
     for (const papel of ["corpo", "distancia", "tanque", "assassino"]) {
-      expect(PERSONAGENS.filter((d) => d.papel === papel)).toHaveLength(3);
+      expect(PERSONAGENS.filter((d) => d.papel === papel)).toHaveLength(4);
     }
-    expect(PERSONAGENS.map((d) => d.custo).sort()).toEqual([2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 5, 5]);
+    expect(PERSONAGENS.map((d) => d.custo).sort()).toEqual([
+      2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5,
+    ]);
   });
 
   it("um personagem sozinho não ativa nada; dois ativam o primeiro degrau; três, o segundo", () => {

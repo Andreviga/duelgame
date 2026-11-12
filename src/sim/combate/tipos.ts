@@ -76,7 +76,10 @@ export type TipoHabilidade =
   | "cadeia"
   | "casco"
   | "teleporte"
-  | "tufao";
+  | "tufao"
+  | "cartao"
+  | "bumerangue"
+  | "leque";
 
 /**
  * Habilidade com tempo de recarga. O sentido de cada campo depende do tipo:
@@ -91,6 +94,9 @@ export type TipoHabilidade =
  *  - casco:     fica imóvel e imune a arremesso por `duracao` ticks.
  *  - teleporte: reaparece atrás do inimigo de menor peso (a até `alcance`).
  *  - tufao:     empurra todos os inimigos a até `alcance` para a borda mais próxima.
+ *  - cartao:    atordoa o alvo (a até `alcance`) por `duracao` ticks e causa `dano`, sem arremessar.
+ *  - bumerangue: lança, a `velocidade`, uma lâmina que atravessa os inimigos até `alcance` e volta, acertando de novo.
+ *  - leque:     dispara `quantidade` projéteis a `velocidade`, abertos em leque para cima; `alcance` é a distância máxima.
  */
 export interface DefHabilidade extends DefImpacto {
   readonly tipo: TipoHabilidade;
@@ -235,6 +241,10 @@ export interface Projetil extends DefImpacto {
   multiplicador: number;
   /** Já atravessou um alvo: daqui em diante só causa parte do dano, sem arremessar. */
   enfraquecido: boolean;
+  /** Ticks até inverter o sentido e poder acertar de novo quem já acertou (0 = não volta). */
+  volta: number;
+  /** Atravessa todos os inimigos sem sumir nem enfraquecer (a lâmina que vai e volta). */
+  atravessa: boolean;
 }
 
 /** O que a IA quer fazer neste tick. A física decide o que acontece. */
@@ -282,6 +292,14 @@ export type Evento =
       readonly impacto: number;
     }
   | { readonly tipo: "ataque"; readonly id: number }
+  | {
+      /** Um alvo foi atordoado por um cartão. (x, y) é o topo da cabeça dele. */
+      readonly tipo: "cartao";
+      readonly id: number;
+      readonly alvo: number;
+      readonly x: number;
+      readonly y: number;
+    }
   | { readonly tipo: "tiro"; readonly id: number; readonly x: number; readonly y: number }
   | {
       readonly tipo: "habilidade";
