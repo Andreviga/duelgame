@@ -54,7 +54,7 @@ export class CenaInicial extends Phaser.Scene {
 
   preload(): void {
     carregarSprites(this);
-    carregarCenarios(this);
+    carregarCenarios(this, [ARENA_BASICA.id]);
   }
 
   create(): void {

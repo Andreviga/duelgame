@@ -36,11 +36,29 @@ test("arena com cenário em imagens: o combate usa as camadas, sem erro", async 
   expect(erros).toEqual([]);
 });
 
-test("arena sem cenário em imagens: o combate usa o desenho por código, sem erro", async ({
+test("cada partida carrega só o cenário da sua arena (e o do menu)", async ({ page }) => {
+  const arenas = new Set<string>();
+  page.on("response", (r) => {
+    const achou = /\/cenarios\/([^/]+)\//.exec(r.url());
+    if (achou?.[1]) arenas.add(achou[1]);
+  });
+  const erros = await abrirCombate(page, "arena-torre");
+  await expect(page.locator("body")).toHaveAttribute("data-cenario", "imagens");
+  // O menu mostra a arena básica; a partida, a torre. A larga não entra nesta sessão.
+  expect([...arenas].sort()).toEqual(["arena-basica", "arena-torre"]);
+  expect(erros).toEqual([]);
+});
+
+test("com ?cenario=codigo o jogo não baixa imagens de cenário e desenha a arena por código", async ({
   page,
 }) => {
-  const erros = await abrirCombate(page, "arena-torre");
+  const pedidos: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().includes("/cenarios/")) pedidos.push(r.url());
+  });
+  const erros = await abrirCombate(page, "arena-torre&cenario=codigo");
   await expect(page.locator("body")).toHaveAttribute("data-cenario", "codigo");
+  expect(pedidos).toEqual([]);
   expect(erros).toEqual([]);
 });
 

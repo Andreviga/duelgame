@@ -8,7 +8,7 @@ Fases 7A, 7B e 8 aprovadas em 2026-11-12.
 
 **Celular em pé:** o André decidiu manter o aviso "gire o aparelho" (2026-11-12). O jogo é só deitado.
 
-**Cenários no Blender:** `arena-basica` (pátio de dojo à noite) aprovada pelo André e em uso. `arena-larga` (convés de navio ao pôr do sol) feita e em uso, **aguardando a aprovação visual do André**. `arena-torre` continua desenhada por código. Os três pontos em aberto da arena básica (portal, corda, lua) seguem sem decisão.
+**Cenários no Blender:** as três arenas têm cenário em imagens e em uso. `arena-basica` e `arena-larga` aprovadas pelo André; `arena-torre` (torre de pedra na tempestade) **aguardando a aprovação visual**. Os três pontos em aberto da arena básica (portal, corda, lua) seguem sem decisão.
 
 Fases 0 a 6 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
 
@@ -140,7 +140,7 @@ Pendências herdadas:
 ### Cenários em imagem
 - `src/render/camadas.ts`: contas puras de encaixe, paralaxe e cobertura da tela, com teste (`testes/camadas.test.ts`).
 - `src/render/cenarios.ts`: carga das imagens e do `cenario.json`, e a classe que cria céu, longe, perto, chão, plataformas e frente.
-- `src/dados/cenarios.json`: lista das arenas que têm imagens (hoje `arena-basica` e `arena-larga`).
+- `src/dados/cenarios.json`: lista das arenas que têm imagens (as três).
 - Reserva por código para arena sem imagens ou com imagem que falhou; testes de navegador para os três casos (`testes/e2e/cenarios.spec.ts`).
 
 ## Números do lote
@@ -172,7 +172,7 @@ Relatório completo: `relatorios/lote-fase5.md` (gerado em 2026-11-11 com `LOTE_
 
 ## Comandos
 
-- `npm run dev`: abre o jogo em http://localhost:5173. Parâmetros no endereço: `?semente=N`, `&debug`, `&velocidade=2` (ou 4), `&demo` (combate 4x4 solto), `&auto` (o seu jogador também é um bot: a partida anda sozinha), `&modo=duplas`, `&arena=arena-basica` (fixa a arena).
+- `npm run dev`: abre o jogo em http://localhost:5173. Parâmetros no endereço: `?semente=N`, `&debug`, `&velocidade=2` (ou 4), `&demo` (combate 4x4 solto), `&auto` (o seu jogador também é um bot: a partida anda sozinha), `&modo=duplas`, `&arena=arena-basica` (fixa a arena), `&cenario=codigo` (ignora as imagens de cenário e desenha as arenas por código).
 - `npm test`: Vitest (simulação)
 - `npm run lint`: tipos + ESLint + Prettier (checagem)
 - `npm run build`: checagem de tipos + build de produção
@@ -300,7 +300,10 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 
 ### Cenários em imagem
 - **Falha de imagem de cenário não abre a tela de falha:** a arena cai no desenho por código. Sprites continuam indispensáveis.
-- **Todas as arenas da lista são carregadas na abertura**, não só a da partida. Hoje são duas (2,26 MB e cerca de 60 MB de memória de vídeo); convém passar a carregar só a sorteada.
+- **Cada tela carrega só o cenário da arena que mostra** (o menu, a básica). Uma partida fora da arena básica carrega dois cenários na sessão, cerca de 60 MB de memória de vídeo.
+- **Arena torre: tudo cinza-esverdeado apagado**, porque verde e azul são cores de time; os cristais brilham pouco e ficam nas pontas e embaixo. O corpo da torre fica todo abaixo do chão da luta.
+- **A reserva por código só entra se uma imagem falhar**: todas as arenas têm cenário agora.
+- **As camadas de imagem pesam no desenho.** No ambiente de desenvolvimento (sem placa de vídeo, tela de 844×390 com densidade 2) o combate 2x2 cai de cerca de 23 para cerca de 10 quadros por segundo com as imagens. Isso não é medida de celular, mas é sinal de que a fluidez precisa ser conferida no aparelho. Os dois testes de partida inteira rodam com `?cenario=codigo` por causa disso.
 - **Arena larga: o pôr do sol é rosado e o sol fica baixo, no canto direito**, porque laranja é cor de time e brilho atrás da luta atrapalha a leitura.
 - **A camada `frente` não encolhe abaixo da largura da tela:** com a câmera aberta, os galhos ficam presos aos cantos em vez de sumir.
 - **Memória de vídeo das camadas da arena básica:** cerca de 30 MB (7,6 milhões de pixels). Fluidez no celular não medida daqui.
@@ -310,7 +313,7 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 
 Tudo o que falta para a "Definição de 100%" depende do André:
 
-1. Aprovar o cenário da `arena-larga`; depois vem a `arena-torre`. Decidir os três pontos em aberto da arena básica (portal, corda, lua).
+1. Aprovar o cenário da `arena-torre`. Decidir os três pontos em aberto da arena básica (portal, corda, lua).
 2. Publicar o servidor (Render) e o cliente (Vercel) e fazer a conferência do `PUBLICAR.md`.
 3. Medir os quadros por segundo em um celular intermediário, com 16 personagens em combate (2x2, rodadas finais).
 4. Jogar online com 4 pessoas em redes diferentes, com uma reconexão.

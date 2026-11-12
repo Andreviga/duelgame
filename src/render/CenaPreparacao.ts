@@ -111,7 +111,7 @@ export class CenaPreparacao extends Phaser.Scene {
 
   preload(): void {
     carregarSprites(this);
-    carregarCenarios(this);
+    carregarCenarios(this, [arenaAtual().id]);
   }
 
   create(): void {

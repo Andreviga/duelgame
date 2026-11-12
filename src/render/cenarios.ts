@@ -17,12 +17,25 @@ interface DadosDoCenario {
   corAbaixo: { longe: string; perto: string };
 }
 
+/**
+ * Com `?cenario=codigo` no endereço, o jogo ignora as imagens e desenha as arenas por código.
+ * Serve para comparar desempenho e para os testes longos, que não dependem do cenário.
+ */
+const SO_CODIGO =
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).get("cenario") === "codigo";
+
 const chave = (arena: string, imagem: Imagem): string => `cenario:${arena}:${imagem}`;
 const chaveDosDados = (arena: string): string => `cenario:${arena}:dados`;
 
-/** Põe na fila de carga os cenários que ainda não foram carregados. Chamar no `preload` da cena. */
-export function carregarCenarios(cena: Phaser.Scene): void {
-  for (const arena of CENARIOS) {
+/**
+ * Põe na fila de carga os cenários pedidos que ainda não foram carregados. Chamar no `preload`.
+ * Cada tela pede só a arena que vai mostrar: carregar as três de uma vez pesaria à toa.
+ */
+export function carregarCenarios(cena: Phaser.Scene, arenas: readonly string[]): void {
+  if (SO_CODIGO) return;
+  for (const arena of arenas) {
+    if (!CENARIOS.includes(arena)) continue;
     for (const imagem of IMAGENS) {
       if (cena.textures.exists(chave(arena, imagem))) continue;
       cena.load.image(chave(arena, imagem), `cenarios/${arena}/${imagem}.png`);
@@ -38,7 +51,7 @@ export const ehArquivoDeCenario = (chaveDoArquivo: string): boolean =>
   chaveDoArquivo.startsWith("cenario:");
 
 function dadosDoCenario(cena: Phaser.Scene, arena: string): DadosDoCenario | null {
-  if (!CENARIOS.includes(arena)) return null;
+  if (SO_CODIGO || !CENARIOS.includes(arena)) return null;
   if (!IMAGENS.every((imagem) => cena.textures.exists(chave(arena, imagem)))) return null;
   const d = cena.cache.json.get(chaveDosDados(arena)) as Partial<DadosDoCenario> | undefined;
   if (!d?.encaixe || !d.paralaxeSugerida || !d.corAbaixo) return null;

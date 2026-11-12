@@ -54,7 +54,9 @@ for (const modo of ["todos", "duplas"]) {
   test(`partida inteira (${modo}) contra 3 bots, do menu à tela de resultado`, async ({ page }) => {
     test.setTimeout(300_000);
     // ?auto: o jogador humano também é jogado por um bot, para a partida andar sozinha.
-    const erros = await abrir(page, `/?auto&modo=${modo}&semente=8&velocidade=4`);
+    // Sem as imagens de cenário: aqui o que se testa é a partida, e sem placa de vídeo as camadas
+    // deixam o jogo lento demais para caber no tempo do teste.
+    const erros = await abrir(page, `/?auto&modo=${modo}&semente=8&velocidade=4&cenario=codigo`);
     await cena(page, "resultado", 280_000);
     await page.mouse.click(600, 592); // jogar de novo
     await cena(page, "inicial");

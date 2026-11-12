@@ -108,8 +108,8 @@ python3 ferramentas/arte/rodar_blender.py ferramentas/arte/cenarios/arena-basica
 Estado:
 
 - `arena-basica` (pátio de dojo à noite): em uso no jogo, aprovada pelo André. 1,41 MB.
-- `arena-larga` (convés de navio ao pôr do sol): em uso no jogo, aguardando a aprovação do André. 0,85 MB.
-- `arena-torre`: ainda desenhada por código.
+- `arena-larga` (convés de navio ao pôr do sol): em uso no jogo, aprovada pelo André. 0,85 MB.
+- `arena-torre` (torre de pedra na tempestade): em uso no jogo, aguardando a aprovação do André. 1,29 MB.
 
 **Como o jogo usa as imagens** (`src/render/cenarios.ts` e `src/render/camadas.ts`):
 
@@ -118,6 +118,7 @@ Estado:
 - Ordem de desenho: céu → longe → perto → chão e plataformas → personagens e efeitos → frente → interface.
 - A paralaxe e a linha do chão vêm do `cenario.json`. As camadas largas nunca mostram a borda lateral:
   quando o zoom pediria uma imagem mais estreita que a tela, ela para de encolher.
+- Cada tela carrega só o cenário da arena que vai mostrar (o menu, a arena básica).
 - Reserva: arena fora da lista, ou com qualquer imagem que não carregou, é desenhada por código
   (`desenharFundo` e `desenharArena`), como antes.
 

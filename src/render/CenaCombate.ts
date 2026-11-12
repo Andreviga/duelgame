@@ -128,7 +128,8 @@ export class CenaCombate extends Phaser.Scene {
 
   preload(): void {
     carregarSprites(this);
-    carregarCenarios(this);
+    // Em partida, a arena sorteada; na demonstração, a arena básica.
+    carregarCenarios(this, [jogo.partida ? arenaAtual().id : this.arenaDaDemo().id]);
   }
 
   create(): void {
