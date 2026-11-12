@@ -44,17 +44,15 @@ class Humanoide:
         self.arma_padrao = "mao"
         self._esqueleto()
 
-    # ---------- esqueleto ----------
-    def _esqueleto(self):
-        t = self.t
-        dados = bpy.data.armatures.new("esqueleto")
-        self.esqueleto = bpy.data.objects.new("esqueleto", dados)
-        self.cena.collection.objects.link(self.esqueleto)
-        bpy.context.view_layer.objects.active = self.esqueleto
-        bpy.ops.object.mode_set(mode="EDIT")
+    # ---------- ossos ----------
+    def ossos(self):
+        """Nome -> (cabeça, cauda, pai). As criaturas não humanoides trocam este método pelo seu
+        esqueleto, mantendo os mesmos nomes de osso para as poses continuarem valendo."""
         ombro = 0.21 * self.g
         quadril = 0.1 * self.g
-        ossos = {
+        self.ombro = ombro
+        self.quadril = quadril
+        return {
             "raiz": ((0, 0, 0.9), (0, 0, 1.0), None),
             "tronco": ((0, 0, 0.9), (0, 0, 1.32), "raiz"),
             "cabeca": ((0, 0, 1.32), (0, 0, 1.78), "tronco"),
@@ -70,16 +68,28 @@ class Humanoide:
             "arma_mao": ((0.02, -ombro, 0.72), (0.3, -ombro, 0.72), "ante_f"),
             "arma_costas": ((-0.16, 0, 1.2), (-0.16, 0, 1.5), "tronco"),
         }
+
+    # ---------- esqueleto ----------
+    def _esqueleto(self):
+        t = self.t
+        dados = bpy.data.armatures.new("esqueleto")
+        self.esqueleto = bpy.data.objects.new("esqueleto", dados)
+        self.cena.collection.objects.link(self.esqueleto)
+        bpy.context.view_layer.objects.active = self.esqueleto
+        bpy.ops.object.mode_set(mode="EDIT")
+        ossos = self.ossos()
         for nome, (cabeca, cauda, pai) in ossos.items():
             osso = dados.edit_bones.new(nome)
             osso.head = Vector(cabeca) * t
             osso.tail = Vector(cauda) * t
             osso.roll = 0.0
+            direcao = osso.tail - osso.head
+            if abs(direcao.x) > 1e-6 and abs(direcao.z) > 1e-6:
+                # Osso inclinado: alinha o eixo Z local com a profundidade, para girar no plano lateral.
+                osso.align_roll((0.0, 1.0, 0.0))
             if pai:
                 osso.parent = dados.edit_bones[pai]
         bpy.ops.object.mode_set(mode="OBJECT")
-        self.ombro = ombro
-        self.quadril = quadril
         self.esqueleto.animation_data_create()
         for osso in self.esqueleto.pose.bones:
             osso.rotation_mode = "XYZ"

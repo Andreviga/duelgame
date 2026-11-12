@@ -2,9 +2,9 @@
 
 ## Fase atual
 
-**Fase 7B — os outros 11 personagens, por mundo: Dojo e Piratas aprovados; Futebol pronto (Maestro, Paredão e Ponta), aguardando a aprovação visual do André.**
+**Fase 7B — os outros 11 personagens, por mundo: os 12 modelados. Dojo, Piratas e Futebol aprovados; Monstros (Brasa, Rochedo e Faísca) aguardando a aprovação visual do André.**
 
-Fase 7A aprovada em 2026-11-12 (Lâmina). Na 7B a aprovação é por mundo, na ordem Dojo, Piratas, Futebol, Monstros. Feitos: 9 de 12 (Dojo, Piratas e Futebol).
+Fase 7A aprovada em 2026-11-12 (Lâmina). Na 7B a aprovação é por mundo, na ordem Dojo, Piratas, Futebol, Monstros. Feitos: 12 de 12.
 
 Fases 0 a 6 aprovadas em 2026-11-11. Repositório: https://github.com/Andreviga/duelgame (branch `main`).
 
@@ -19,7 +19,7 @@ Pendências herdadas:
 - [ ] Nenhum personagem, mundo ou papel passa de 55% de vitória. *Personagens: sim. Trios: perto de 55% depois do ajuste de 2026-11-12; o Dojo (perto de 57%) ainda passa. Ver "Números do lote".*
 - [ ] Partida completa contra 3 bots nos dois modos, do menu à tela de resultado, sem erro no console. *Automatizado em `npm run test:e2e`; falta o André jogar.*
 - [ ] Partida online completa com 4 pessoas em redes diferentes, com uma reconexão no meio. *Automatizado na mesma máquina: 4 clientes de rede jogam a partida inteira (`testes/servidor.test.ts`) e duas abas com reconexão (`npm run test:e2e`). Falta publicar e jogar com 4 pessoas.*
-- [ ] Os 12 personagens com todas as animações. *Pipeline pronto (Fase 7A); 9 de 12 modelados (Dojo e Piratas aprovados; Futebol aguardando aprovação).*
+- [ ] Os 12 personagens com todas as animações. *Pipeline pronto (Fase 7A); 12 de 12 modelados; 9 aprovados, Monstros aguardando aprovação.*
 - [ ] Som e efeitos em todos os eventos da Fase 8. *Efeitos visuais já existem; som não.*
 - [ ] Jogável no celular por toque, a 60 quadros por segundo. *Fase 9.*
 - [ ] Tutorial concluído por uma pessoa de fora sem ajuda. *Fase 8.*
@@ -250,6 +250,6 @@ phaser 4.2.1 · vite 8.3.8 · typescript 6.0.3 · vitest 5.1.0 · @playwright/te
 
 ## Próximo passo
 
-1. André: aprovar o visual do Futebol (ou pedir mudanças) e publicar o servidor no Render (`PUBLICAR.md`).
-2. Depois: Monstros (Brasa, Rochedo, Faísca), com esqueleto próprio.
+1. André: aprovar o visual dos Monstros (ou pedir mudanças), o que fecha a Fase 7B, e publicar o servidor no Render (`PUBLICAR.md`).
+2. Depois: Fase 8, só com o "aprovado" e o plano curto.
 2. Fase 7B — os outros 11 personagens, um por vez, com aprovação visual em cada um.

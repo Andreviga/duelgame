@@ -56,6 +56,8 @@ Não há modelos, texturas nem animações de terceiros.
 - `ferramentas/arte/modelos/humanoide.py`: biblioteca para humanoides. Monta o esqueleto (com cotovelos
   e joelhos), o corpo padrão e as sete ações comuns (`parado`, `andar`, `pular`, `cair`, `atingido`,
   `arremessado`, `nocaute`). As convenções dos ângulos das poses estão no começo do arquivo.
+- Os Monstros usam a mesma biblioteca com outro esqueleto: cada um troca o método `ossos()` (gorila, tartaruga
+  quadrúpede, besouro), mantendo os nomes de osso. A tartaruga define todas as suas ações.
 - `ferramentas/arte/modelos/<id>.py`: um arquivo por personagem. Define cores, roupas, acessórios e arma,
   e as duas ações próprias: `atacar` e `habilidade`. Ao rodar, salva `arte/fontes/<id>.blend`.
 - `arte/personagens.json`: lista quem entra no `npm run arte`, com o script gerador de cada um.
@@ -64,9 +66,9 @@ Os `.blend` em `arte/fontes/` são gerados e não vão para o repositório; os a
 
 ## Estado atual
 
-- Dojo (`lamina`, `sombra`, `vento`) e Piratas (`mare`, `canhoneiro`, `ancora`): aprovados pelo André.
-- Futebol (`maestro`, `paredao`, `ponta`): modelados, aguardando a aprovação visual do André.
-- Os 3 Monstros continuam como formas geométricas.
+- Dojo, Piratas e Futebol (9 humanoides): aprovados pelo André.
+- Monstros (`brasa`, `rochedo`, `faisca`): modelados, aguardando a aprovação visual do André.
+- Os 12 personagens têm sprite; nenhum usa mais a forma geométrica no combate.
 
 Para refazer só alguns: `ARTE_SO=sombra,vento npm run arte`.
 

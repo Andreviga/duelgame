@@ -43,5 +43,20 @@
     "id": "ponta",
     "fonte": "arte/fontes/ponta.blend",
     "gerador": "ferramentas/arte/modelos/ponta.py"
+  },
+  {
+    "id": "brasa",
+    "fonte": "arte/fontes/brasa.blend",
+    "gerador": "ferramentas/arte/modelos/brasa.py"
+  },
+  {
+    "id": "rochedo",
+    "fonte": "arte/fontes/rochedo.blend",
+    "gerador": "ferramentas/arte/modelos/rochedo.py"
+  },
+  {
+    "id": "faisca",
+    "fonte": "arte/fontes/faisca.blend",
+    "gerador": "ferramentas/arte/modelos/faisca.py"
   }
 ]
