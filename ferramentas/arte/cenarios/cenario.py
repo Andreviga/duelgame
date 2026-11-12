@@ -63,6 +63,8 @@ class Cenario:
         self.arena = arena
         self.sorteio = random.Random(semente)
         self.materiais = {}
+        self.cores_dos_materiais = {}
+        self.lampadas = {}
         self.camadas = {}
         self.atual = None
         bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -125,6 +127,7 @@ class Cenario:
         elos.new(emissao.outputs[0], soma.inputs[1])
         elos.new(soma.outputs[0], saida.inputs["Surface"])
         self.materiais[chave] = m
+        self.cores_dos_materiais[m.name] = c
         return m
 
     def brilho(self, hexa, forca=1.0, alfa=1.0):
@@ -151,6 +154,167 @@ class Cenario:
             elos.new(mistura.outputs[0], saida.inputs["Surface"])
         self.materiais[chave] = m
         return m
+
+    def clarao(self, hexa, cx, cy, raio, forca=1.0, queda=2.0, achatar=1.0):
+        """Brilho redondo que some aos poucos até `raio` (halo de lua, de lanterna, névoa).
+
+        Não depende da luz. `queda` maior concentra o brilho no centro; `achatar` > 1 faz uma
+        elipse deitada (o raio vertical fica `raio / achatar`).
+        """
+        m = bpy.data.materials.new(f"clarao_{len(self.materiais)}")
+        self.materiais[("clarao", len(self.materiais))] = m
+        m.use_nodes = True
+        nos, elos = m.node_tree.nodes, m.node_tree.links
+        nos.clear()
+        saida = nos.new("ShaderNodeOutputMaterial")
+        geometria = nos.new("ShaderNodeNewGeometry")
+        plano = nos.new("ShaderNodeVectorMath")
+        plano.operation = "MULTIPLY"
+        plano.inputs[1].default_value = (1, 0, achatar)
+        elos.new(geometria.outputs["Position"], plano.inputs[0])
+        distancia = nos.new("ShaderNodeVectorMath")
+        distancia.operation = "DISTANCE"
+        distancia.inputs[1].default_value = (cx, 0, -cy * achatar)
+        elos.new(plano.outputs["Vector"], distancia.inputs[0])
+        faixa = nos.new("ShaderNodeMapRange")
+        faixa.inputs["From Min"].default_value = 0
+        faixa.inputs["From Max"].default_value = raio
+        faixa.inputs["To Min"].default_value = 1
+        faixa.inputs["To Max"].default_value = 0
+        elos.new(distancia.outputs["Value"], faixa.inputs["Value"])
+        curva = nos.new("ShaderNodeMath")
+        curva.operation = "POWER"
+        curva.inputs[1].default_value = queda
+        elos.new(faixa.outputs[0], curva.inputs[0])
+        vezes = nos.new("ShaderNodeMath")
+        vezes.operation = "MULTIPLY"
+        vezes.inputs[1].default_value = forca
+        elos.new(curva.outputs[0], vezes.inputs[0])
+        emissao = nos.new("ShaderNodeEmission")
+        emissao.inputs["Color"].default_value = (*cor(hexa), 1)
+        vazio = nos.new("ShaderNodeBsdfTransparent")
+        mistura = nos.new("ShaderNodeMixShader")
+        elos.new(vezes.outputs[0], mistura.inputs[0])
+        elos.new(vazio.outputs[0], mistura.inputs[1])
+        elos.new(emissao.outputs[0], mistura.inputs[2])
+        elos.new(mistura.outputs[0], saida.inputs["Surface"])
+        return m
+
+    def halo(self, nome, cx, cy, raio, hexa, forca=0.5, profundidade=0.0, queda=2.0, achatar=1.0):
+        """Placa com um `clarao`: o jeito de pôr um brilho suave na cena."""
+        material = self.clarao(hexa, cx, cy, raio, forca, queda, achatar)
+        return self.retangulo(nome, cx - raio, cy - raio / achatar, cx + raio, cy + raio / achatar, material, profundidade)
+
+    def lampada(self, nome, x, y, profundidade, hexa, forca=1.5, raio=160.0):
+        """Ponto de luz que ilumina só a camada atual (lanterna, janela).
+
+        Não é uma luz do Blender: a conta é feita dentro dos materiais da camada (distância e
+        ângulo de cada face até a lâmpada). Assim não há sorteio de luz, logo não há ruído, e o
+        render sai igual em qualquer máquina. Não faz sombra. `raio` é até onde a luz chega forte.
+        """
+        self.lampadas.setdefault(self.atual.name, []).append((x, y, profundidade, cor(hexa), forca, raio))
+
+    def _aplicar_lampadas(self):
+        """Liga as lâmpadas de cada camada aos materiais usados nela."""
+        for camada, lampadas in self.lampadas.items():
+            grupo = bpy.data.node_groups.new(f"lampadas_{camada}", "ShaderNodeTree")
+            grupo.interface.new_socket(name="Luz", in_out="OUTPUT", socket_type="NodeSocketColor")
+            nos, elos = grupo.nodes, grupo.links
+            saida = nos.new("NodeGroupOutput")
+            geometria = nos.new("ShaderNodeNewGeometry")
+            soma = None
+            for x, y, profundidade, tom, forca, raio in lampadas:
+                ate = nos.new("ShaderNodeVectorMath")
+                ate.operation = "SUBTRACT"
+                ate.inputs[0].default_value = (x, profundidade, -y)
+                elos.new(geometria.outputs["Position"], ate.inputs[1])
+                distancia = nos.new("ShaderNodeVectorMath")
+                distancia.operation = "LENGTH"
+                elos.new(ate.outputs["Vector"], distancia.inputs[0])
+                direcao = nos.new("ShaderNodeVectorMath")
+                direcao.operation = "NORMALIZE"
+                elos.new(ate.outputs["Vector"], direcao.inputs[0])
+                angulo = nos.new("ShaderNodeVectorMath")
+                angulo.operation = "DOT_PRODUCT"
+                elos.new(geometria.outputs["Normal"], angulo.inputs[0])
+                elos.new(direcao.outputs["Vector"], angulo.inputs[1])
+                # luz "envolvente": faces de lado ainda pegam um pouco
+                envolve = nos.new("ShaderNodeMath")
+                envolve.operation = "MULTIPLY_ADD"
+                envolve.inputs[1].default_value = 0.7
+                envolve.inputs[2].default_value = 0.3
+                envolve.use_clamp = True
+                elos.new(angulo.outputs["Value"], envolve.inputs[0])
+                quadrado = nos.new("ShaderNodeMath")
+                quadrado.operation = "POWER"
+                quadrado.inputs[1].default_value = 2.0
+                elos.new(distancia.outputs["Value"], quadrado.inputs[0])
+                mais = nos.new("ShaderNodeMath")
+                mais.operation = "ADD"
+                mais.inputs[1].default_value = raio * raio
+                elos.new(quadrado.outputs[0], mais.inputs[0])
+                queda = nos.new("ShaderNodeMath")
+                queda.operation = "DIVIDE"
+                queda.inputs[0].default_value = forca * raio * raio
+                elos.new(mais.outputs[0], queda.inputs[1])
+                vezes = nos.new("ShaderNodeMath")
+                vezes.operation = "MULTIPLY"
+                elos.new(queda.outputs[0], vezes.inputs[0])
+                elos.new(envolve.outputs[0], vezes.inputs[1])
+                colorido = nos.new("ShaderNodeVectorMath")
+                colorido.operation = "SCALE"
+                colorido.inputs[0].default_value = tom
+                elos.new(vezes.outputs[0], colorido.inputs["Scale"])
+                if soma is None:
+                    soma = colorido
+                else:
+                    junta = nos.new("ShaderNodeVectorMath")
+                    junta.operation = "ADD"
+                    elos.new(soma.outputs["Vector"], junta.inputs[0])
+                    elos.new(colorido.outputs["Vector"], junta.inputs[1])
+                    soma = junta
+            elos.new(soma.outputs["Vector"], saida.inputs[0])
+
+            feitos = set()
+            for objeto in self.camadas[camada]["colecao"].objects:
+                if objeto.type != "MESH":
+                    continue
+                for m in objeto.data.materials:
+                    if m.name in feitos or m.name not in self.cores_dos_materiais:
+                        continue
+                    feitos.add(m.name)
+                    mn, me = m.node_tree.nodes, m.node_tree.links
+                    final = next(n for n in mn if n.type == "OUTPUT_MATERIAL")
+                    anterior = final.inputs["Surface"].links[0].from_socket
+                    luzes = mn.new("ShaderNodeGroup")
+                    luzes.node_tree = grupo
+                    tinta = mn.new("ShaderNodeMixRGB")
+                    tinta.blend_type = "MULTIPLY"
+                    tinta.inputs[0].default_value = 1.0
+                    tinta.inputs[1].default_value = (*self.cores_dos_materiais[m.name], 1)
+                    me.new(luzes.outputs[0], tinta.inputs[2])
+                    brilho = mn.new("ShaderNodeEmission")
+                    me.new(tinta.outputs[0], brilho.inputs["Color"])
+                    junta = mn.new("ShaderNodeAddShader")
+                    me.new(anterior, junta.inputs[0])
+                    me.new(brilho.outputs[0], junta.inputs[1])
+                    me.new(junta.outputs[0], final.inputs["Surface"])
+
+    def fita(self, nome, pontos, largura, material, profundidade=0.0):
+        """Faixa fina que segue uma linha de pontos (corda, galho, haste)."""
+        esquerda, direita = [], []
+        for i, (x, y) in enumerate(pontos):
+            ax, ay = pontos[max(i - 1, 0)]
+            bx, by = pontos[min(i + 1, len(pontos) - 1)]
+            dx, dy = bx - ax, by - ay
+            n = math.hypot(dx, dy) or 1.0
+            l = largura[i] if isinstance(largura, (list, tuple)) else largura
+            esquerda.append((x - dy / n * l / 2, y + dx / n * l / 2, profundidade))
+            direita.append((x + dy / n * l / 2, y - dx / n * l / 2, profundidade))
+        v = esquerda + direita
+        n = len(pontos)
+        f = [(i, i + 1, n + i + 1, n + i) for i in range(n - 1)]
+        return self.malha(nome, v, f, material)
 
     def degrade(self, paradas, y0, y1, alfas=None):
         """Degradê vertical que não depende da luz, entre as alturas y0 (em cima) e y1 (embaixo).
@@ -475,6 +639,7 @@ class Cenario:
         so = [n for n in opcoes["so"].split(",") if n]
         saida = pathlib.Path(opcoes["saida"] or RAIZ / "public" / "cenarios" / self.arena)
         saida.mkdir(parents=True, exist_ok=True)
+        self._aplicar_lampadas()
         camera = self._preparar(int(opcoes["amostras"]))
         r = self.cena.render
 
