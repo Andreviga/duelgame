@@ -20,7 +20,7 @@
       "inicio": 9,
       "ativo": 2,
       "recuperacao": 11,
-      "recarga": 30,
+      "recarga": 32,
       "arremessoBase": 2.6,
       "arremessoCrescimento": 0.08,
       "anguloGraus": 25,
@@ -39,7 +39,7 @@
       "velocidade": 10,
       "duracao": 1,
       "quantidade": 3,
-      "dano": 5,
+      "dano": 4.5,
       "arremessoBase": 3,
       "arremessoCrescimento": 0.09,
       "anguloGraus": 45
@@ -141,7 +141,7 @@
     "puloDuplo": 12,
     "quedaMaxima": 12,
     "ataque": {
-      "dano": 8.5,
+      "dano": 9,
       "alcance": 52,
       "inicio": 8,
       "ativo": 4,
@@ -154,7 +154,7 @@
     "habilidade": {
       "tipo": "gancho",
       "nome": "Gancho",
-      "recarga": 360,
+      "recarga": 420,
       "alcance": 460,
       "velocidade": 0,
       "duracao": 16,
@@ -181,7 +181,7 @@
     "puloDuplo": 12,
     "quedaMaxima": 12,
     "ataque": {
-      "dano": 6.5,
+      "dano": 5.5,
       "alcance": 400,
       "inicio": 11,
       "ativo": 2,
@@ -206,7 +206,7 @@
       "duracao": 1,
       "quantidade": 1,
       "dano": 10,
-      "arremessoBase": 6.5,
+      "arremessoBase": 5.5,
       "arremessoCrescimento": 0.17,
       "anguloGraus": 32
     }
@@ -241,7 +241,7 @@
       "tipo": "area",
       "nome": "Redemoinho",
       "recarga": 280,
-      "alcance": 150,
+      "alcance": 125,
       "velocidade": 0,
       "duracao": 16,
       "quantidade": 1,
@@ -405,7 +405,7 @@
       "velocidade": 11,
       "duracao": 14,
       "quantidade": 1,
-      "dano": 9,
+      "dano": 8,
       "arremessoBase": 6,
       "arremessoCrescimento": 0.14,
       "anguloGraus": 30
@@ -467,12 +467,12 @@
     "puloDuplo": 12,
     "quedaMaxima": 12,
     "ataque": {
-      "dano": 5.5,
+      "dano": 8,
       "alcance": 380,
       "inicio": 10,
       "ativo": 2,
       "recuperacao": 12,
-      "recarga": 28,
+      "recarga": 25,
       "arremessoBase": 3.4,
       "arremessoCrescimento": 0.085,
       "anguloGraus": 25,
@@ -492,8 +492,8 @@
       "duracao": 1,
       "quantidade": 1,
       "dano": 4,
-      "arremessoBase": 6.5,
-      "arremessoCrescimento": 0.12,
+      "arremessoBase": 5,
+      "arremessoCrescimento": 0.1,
       "anguloGraus": 18
     }
   }

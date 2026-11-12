@@ -12,17 +12,17 @@
       "niveis": [
         {
           "minimo": 2,
-          "descricao": "+12% de velocidade de movimento",
+          "descricao": "+6% de velocidade de movimento",
           "efeitos": {
-            "velocidade": 1.12
+            "velocidade": 1.06
           }
         },
         {
           "minimo": 3,
-          "descricao": "Ataques ganham +6% de arremesso horizontal",
+          "descricao": "Ataques ganham +2% de arremesso horizontal",
           "efeitos": {
-            "velocidade": 1.12,
-            "arremessoHorizontal": 1.06
+            "velocidade": 1.06,
+            "arremessoHorizontal": 1.02
           }
         }
       ]
@@ -39,10 +39,10 @@
         },
         {
           "minimo": 3,
-          "descricao": "O primeiro golpe de cada pirata causa +15% de dano",
+          "descricao": "O primeiro golpe de cada pirata causa +3% de dano",
           "efeitos": {
             "elixirAoVencer": 1,
-            "primeiroGolpe": 1.15
+            "primeiroGolpe": 1.03
           }
         }
       ]
@@ -72,17 +72,17 @@
       "niveis": [
         {
           "minimo": 2,
-          "descricao": "+6% de velocidade de ataque",
+          "descricao": "+4% de velocidade de ataque",
           "efeitos": {
-            "velocidadeDeAtaque": 1.06
+            "velocidadeDeAtaque": 1.04
           }
         },
         {
           "minimo": 3,
-          "descricao": "Habilidades carregam 5% mais rápido",
+          "descricao": "Habilidades carregam 2% mais rápido",
           "efeitos": {
-            "velocidadeDeAtaque": 1.06,
-            "recargaHabilidade": 1.05
+            "velocidadeDeAtaque": 1.04,
+            "recargaHabilidade": 1.02
           }
         }
       ]
